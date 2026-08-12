@@ -10,6 +10,7 @@ enum DefaultsKey {
     static let localModel = "localModel"
     static let guardrailEnabled = "guardrailEnabled"
     static let doubleTapEnabled = "doubleTapEnabled"
+    static let doubleTapModifier = "doubleTapModifier"
     static let hotKeyEnabled = "hotKeyEnabled"
     static let hotKeyCode = "hotKeyCode"
     static let hotKeyModifiers = "hotKeyModifiers"
@@ -50,6 +51,14 @@ final class Preferences {
     var isDoubleTapEnabled: Bool {
         didSet {
             write(isDoubleTapEnabled, DefaultsKey.doubleTapEnabled)
+            onTriggersChanged?()
+        }
+    }
+
+    /** Which key is tapped twice. */
+    var doubleTapModifier: TapModifier {
+        didSet {
+            write(doubleTapModifier.rawValue, DefaultsKey.doubleTapModifier)
             onTriggersChanged?()
         }
     }
@@ -166,6 +175,8 @@ final class Preferences {
         self.defaults = defaults
 
         isDoubleTapEnabled = defaults.object(forKey: DefaultsKey.doubleTapEnabled) as? Bool ?? true
+        doubleTapModifier = defaults.string(forKey: DefaultsKey.doubleTapModifier)
+            .flatMap(TapModifier.init) ?? .command
         isHotKeyEnabled = defaults.object(forKey: DefaultsKey.hotKeyEnabled) as? Bool ?? true
 
         let storedCode = defaults.object(forKey: DefaultsKey.hotKeyCode) as? Int

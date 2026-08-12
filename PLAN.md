@@ -225,6 +225,21 @@ keyboard shows the key that will actually be pressed.
 it off in System Settings without telling us, so it is read back rather than
 mirrored into a copy that would slowly become a lie.
 
+**The double tap works on any of ⌘, ⌥, ⌃ or ⇧**, which turned out to depend on
+something already broken. The guard against firing while someone is typing used
+a global `NSEvent` keyDown monitor, and those never fire without Input
+Monitoring, so it had been doing nothing. That was survivable with Command,
+which is rarely tapped alone, and would be unusable with Shift, which is pressed
+for every capital letter. It now compares the session's own keystroke counter,
+`CGEventSource.counterForEventType`, at the moment of each tap. That needs no
+permission, and it counts synthetic keystrokes too, which is how it can be
+tested at all. Shift still carries a warning in the UI, because the guard only
+covers keys pressed between the taps.
+
+**Pages are a fixed width centred in the window**, rather than filling it.
+Letting the form stretch pushes every label to the far left and leaves a ragged
+gap on the right.
+
 **A real `NSToolbar` in its preference style, not a SwiftUI `TabView`.** Icons
 above their labels across the top is what a Mac settings window looks like, and
 SwiftUI only produces it inside a `Settings` scene, which this app cannot use:

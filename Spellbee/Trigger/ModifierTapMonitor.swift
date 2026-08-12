@@ -1,11 +1,11 @@
 import AppKit
 
 /**
- Detects a double tap of the Command key.
+ Detects a double tap of a modifier key.
 
  Observes events passively rather than tapping them. A double tap never needs to
- be swallowed (Command alone does nothing on its own), so there is no reason to
- take on an event tap: no Input Monitoring grant, and none of the
+ be swallowed (a modifier alone does nothing on its own), so there is no reason
+ to take on an event tap: no Input Monitoring grant, and none of the
  disabled-by-timeout failure mode that comes with taps.
 
  The cost of a modifier trigger is that it cannot fire on the first tap, so
@@ -22,18 +22,36 @@ final class ModifierTapMonitor {
 
     var onDoubleTap: (() -> Void)?
 
+    /** Which key to watch. Changing it while running rebinds immediately. */
+    var modifier: TapModifier = .command {
+        didSet { reset() }
+    }
+
     private var monitors: [Any] = []
-    private var isCommandDown = false
-    private var commandDownAt: Date?
+    private var isDown = false
+    private var pressedAt: Date?
     private var lastTapAt: Date?
 
     /**
-     Set when anything else happens between taps.
+     Set when the mouse is used between taps.
 
-     Without this, releasing Command at the end of an unrelated shortcut counts
-     as a tap, so ⌘C followed by ⌘V would fire the trigger.
+     Without this, releasing a modifier at the end of an unrelated action counts
+     as a tap.
      */
     private var wasInterrupted = false
+
+    /**
+     How many keys the session had seen at each point of interest.
+
+     Typing is what separates "tapped Shift twice" from "wrote two capital
+     letters", and this app cannot see key presses: a global `NSEvent` keyDown
+     monitor never fires without Input Monitoring, silently, so the guard that
+     used to rely on one was doing nothing at all. The session's own keystroke
+     counter needs no permission and answers the only question being asked,
+     which is whether any key was pressed in between.
+     */
+    private var keysAtPress: UInt32 = 0
+    private var keysAtLastTap: UInt32 = 0
 
     func start() {
         guard monitors.isEmpty else { return }
@@ -42,7 +60,7 @@ final class ModifierTapMonitor {
             self?.handleFlagsChanged(event)
         }
 
-        add(matching: [.keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel]) { [weak self] _ in
+        add(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel]) { [weak self] _ in
             self?.wasInterrupted = true
         }
     }
@@ -71,46 +89,61 @@ final class ModifierTapMonitor {
 
     private func handleFlagsChanged(_ event: NSEvent) {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        let commandIsDown = flags.contains(.command)
-        let otherModifiers = flags.subtracting(.command)
+        let isWatchedDown = flags.contains(modifier.flag)
+        let others = flags.subtracting(modifier.flag)
 
         /** A chord is not a tap, and it ends any sequence in progress. */
-        if !otherModifiers.isEmpty {
+        if !others.isEmpty {
             reset()
             return
         }
 
-        defer { isCommandDown = commandIsDown }
+        defer { isDown = isWatchedDown }
 
-        if commandIsDown, !isCommandDown {
-            commandDownAt = event.timestampDate
+        if isWatchedDown, !isDown {
+            pressedAt = event.timestampDate
+            keysAtPress = Self.keyDownCount
             wasInterrupted = false
             return
         }
 
-        guard !commandIsDown, isCommandDown else { return }
+        guard !isWatchedDown, isDown else { return }
 
         let releasedAt = event.timestampDate
+
         guard
             !wasInterrupted,
-            let pressedAt = commandDownAt,
+            /** A key pressed while it was held makes it a modifier, not a tap. */
+            Self.keyDownCount == keysAtPress,
+            let pressedAt,
             releasedAt.timeIntervalSince(pressedAt) <= holdLimit
         else {
             reset()
             return
         }
 
-        if let lastTapAt, releasedAt.timeIntervalSince(lastTapAt) <= gapLimit {
+        if
+            let lastTapAt,
+            releasedAt.timeIntervalSince(lastTapAt) <= gapLimit,
+            /** Typing between the taps means this was writing, not a trigger. */
+            Self.keyDownCount == keysAtLastTap
+        {
             reset()
             onDoubleTap?()
         } else {
             self.lastTapAt = releasedAt
+            keysAtLastTap = Self.keyDownCount
         }
     }
 
+    /** Keys pressed in this login session, counted by the window server. */
+    private static var keyDownCount: UInt32 {
+        UInt32(CGEventSource.counterForEventType(.combinedSessionState, eventType: .keyDown))
+    }
+
     private func reset() {
-        isCommandDown = false
-        commandDownAt = nil
+        isDown = false
+        pressedAt = nil
         lastTapAt = nil
         wasInterrupted = false
     }

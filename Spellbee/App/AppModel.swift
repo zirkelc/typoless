@@ -208,6 +208,13 @@ final class AppModel {
             armedTriggers.remove(.hotKey)
         }
 
+        /**
+         Set before the early return below, because which key is tapped can
+         change while the monitor is already armed, and that change on its own
+         leaves the set of armed triggers untouched.
+         */
+        modifierTaps.modifier = preferences.doubleTapModifier
+
         guard wanted != armedTriggers else { return }
 
         if wanted.contains(.doubleTap), !armedTriggers.contains(.doubleTap) {

@@ -39,8 +39,8 @@ enum SettingsTab: String, CaseIterable, Identifiable {
      */
     var width: CGFloat {
         switch self {
-        case .apps: return 620
-        default: return 560
+        case .apps: return 700
+        default: return 620
         }
     }
 

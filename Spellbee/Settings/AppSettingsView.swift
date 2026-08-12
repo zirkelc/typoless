@@ -14,7 +14,7 @@ struct AppSettingsView: View {
     @State private var overrideSelection: String?
 
     var body: some View {
-        SettingsPage {
+        SettingsPage(contentWidth: 560) {
             SettingsRow(label: "Never correct in:") {
                 List(selection: $deniedSelection) {
                     ForEach(deniedApps, id: \.bundleID) { app in

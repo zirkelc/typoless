@@ -9,6 +9,16 @@ import SwiftUI
  it is that people can already read it.
  */
 struct SettingsPage<Content: View>: View {
+    /**
+     How wide the labels and controls are, before the window's own margins.
+
+     Fixed rather than filling the window, so the block sits in the middle with
+     even space on either side. Letting the form stretch pushes every label to
+     the far left and leaves a ragged gap on the right, which is what a settings
+     window is not supposed to look like.
+     */
+    var contentWidth: CGFloat = 460
+
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -16,7 +26,9 @@ struct SettingsPage<Content: View>: View {
             content
         }
         .formStyle(.columns)
-        .padding(20)
+        .frame(width: contentWidth)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
     }
 }
 
@@ -69,8 +81,23 @@ struct GeneralSettingsView: View {
             Divider().padding(.vertical, 10)
 
             SettingsRow(label: "Triggers:") {
-                Toggle("Double-tap ⌘", isOn: $preferences.isDoubleTapEnabled)
-                SettingsNote("Tap Command twice, quickly. Nothing else may happen in between.")
+                HStack(spacing: 8) {
+                    Toggle("Double-tap", isOn: $preferences.isDoubleTapEnabled)
+
+                    Picker("", selection: $preferences.doubleTapModifier) {
+                        ForEach(TapModifier.allCases, id: \.self) { modifier in
+                            Text(modifier.displayName).tag(modifier)
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                    .disabled(!preferences.isDoubleTapEnabled)
+                }
+
+                SettingsNote(
+                    preferences.doubleTapModifier.caution
+                        ?? "Tap \(preferences.doubleTapModifier.symbol) twice, quickly. No other key or click in between."
+                )
 
                 Toggle("Keyboard shortcut", isOn: $preferences.isHotKeyEnabled)
                 ShortcutRecorder(shortcut: $preferences.hotKey)
