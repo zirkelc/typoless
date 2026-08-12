@@ -29,6 +29,15 @@ struct TextTarget {
     let isUserSelection: Bool
 
     /**
+     Where the caret sat when nothing was selected.
+
+     Worth recording because minimal corrections mostly happen elsewhere in the
+     field, so the caret can be put back within a character or two of where the
+     user left it instead of being flung to the end of their message.
+     */
+    let caret: Int?
+
+    /**
      Where to draw the overlay, in top-left origin screen coordinates.
 
      One rect per visual line of the text being corrected where the app can say,
@@ -181,6 +190,7 @@ enum TextTargetResolver {
             text: text,
             range: range,
             isUserSelection: hasUserSelection,
+            caret: hasUserSelection ? nil : selection?.location,
             rects: rects(of: focused, range: range, in: text)
         )
     }

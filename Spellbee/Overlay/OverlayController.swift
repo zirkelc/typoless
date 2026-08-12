@@ -31,10 +31,13 @@ final class OverlayController {
     /**
      Places the overlay over one or more regions of the screen.
 
-     - Parameter rects: Regions to trace, in top-left origin screen coordinates.
-       Usually one per visual line of the text being corrected.
+     - Parameters:
+       - rects: Regions to trace, in top-left origin screen coordinates. Usually
+         one per visual line of the text being corrected, or one per changed
+         word once the correction has landed.
+       - style: Whether this is work in progress or the result of it.
      */
-    func show(over rects: [CGRect]) {
+    func show(over rects: [CGRect], style: OverlayStyle = .scanning) {
         let usable = rects.filter { $0.width > 0 && $0.height > 0 }
         guard let union = usable.unionOfAll else {
             Log.overlay.warning("Refusing to show overlay with no usable rects")
@@ -58,7 +61,7 @@ final class OverlayController {
 
         let panel = existingPanel()
         panel.setFrame(ScreenGeometry.cocoaRect(fromTopLeft: frame), display: false)
-        panel.contentView = NSHostingView(rootView: OverlayView(rects: local))
+        panel.contentView = NSHostingView(rootView: OverlayView(rects: local, style: style))
         panel.orderFrontRegardless()
         isVisible = true
 

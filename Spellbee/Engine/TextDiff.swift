@@ -1,7 +1,7 @@
 import Foundation
 
 /** One contiguous difference between the original text and a corrected version. */
-struct TextEdit {
+struct TextEdit: Sendable {
     let range: Range<String.Index>
     let original: String
     let replacement: String
@@ -124,6 +124,45 @@ enum TextDiff {
         }
 
         return result
+    }
+
+    /**
+     The single span where two versions of a text differ, in UTF-16 offsets.
+
+     Trims the matching head and tail rather than describing the whole string, so
+     putting one version back over the other touches as little of the field as
+     possible. Nil when the two are identical.
+
+     Deliberately coarser than `edits(from:to:)`: this describes one span
+     covering every difference, which is what an undo wants, whereas the diff
+     describes each difference separately, which is what an edit wants.
+     */
+    static func differingSpan(from before: String, to after: String) -> (range: CFRange, replacement: String)? {
+        let source = Array(before.utf16)
+        let target = Array(after.utf16)
+
+        var head = 0
+        while head < source.count, head < target.count, source[head] == target[head] {
+            head += 1
+        }
+
+        var tail = 0
+        while
+            tail < source.count - head,
+            tail < target.count - head,
+            source[source.count - 1 - tail] == target[target.count - 1 - tail] {
+            tail += 1
+        }
+
+        let length = source.count - head - tail
+        let replacement = target[head..<(target.count - tail)]
+
+        guard length > 0 || !replacement.isEmpty else { return nil }
+
+        return (
+            CFRange(location: head, length: length),
+            String(decoding: replacement, as: UTF16.self)
+        )
     }
 
     private struct Atom {

@@ -44,13 +44,16 @@ actor FoundationModelsCorrector: Corrector {
         model = SystemLanguageModel(guardrails: .permissiveContentTransformations)
     }
 
-    func correct(_ text: String) async throws -> String {
+    func corrections(for text: String) async throws -> [TextEdit] {
         guard model.isAvailable else { throw CorrectorError.modelUnavailable }
 
         let protected = ProtectedSpans.find(in: text)
         var edits: [TextEdit] = []
 
         for chunk in TextChunker.chunks(of: text) {
+            /** The user can give up mid-pass, and a long field is several chunks. */
+            try Task.checkCancellation()
+
             let source = String(text[chunk])
             guard isWorthCorrecting(source) else { continue }
 
@@ -90,8 +93,8 @@ actor FoundationModelsCorrector: Corrector {
             edits += verdict.accepted
         }
 
-        Log.app.info("Applying \(edits.count, privacy: .public) edits")
-        return TextDiff.apply(edits, to: text)
+        Log.app.info("Found \(edits.count, privacy: .public) edits")
+        return edits
     }
 
     /** Nil when the model declines or fails, which leaves the chunk untouched. */

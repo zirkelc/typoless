@@ -9,7 +9,24 @@ import Foundation
  in tests.
  */
 protocol Corrector: Sendable {
-    func correct(_ text: String) async throws -> String
+    /**
+     The changes to make, rather than the text with them already made.
+
+     Returning edits instead of a finished string is what lets the app write
+     back only the words it actually changed. A field holding a mention, a link
+     or any other formatting keeps all of it, because the characters carrying it
+     are never touched. Handing back a whole corrected string would force the
+     caller to overwrite the field entirely, and everything in it that is not
+     plain characters would be lost on the way.
+     */
+    func corrections(for text: String) async throws -> [TextEdit]
+}
+
+extension Corrector {
+    /** The corrected text, for callers that want the result rather than the changes. */
+    func correct(_ text: String) async throws -> String {
+        TextDiff.apply(try await corrections(for: text), to: text)
+    }
 }
 
 /**
@@ -21,7 +38,11 @@ protocol Corrector: Sendable {
  text.
  */
 struct WhitespaceCorrector: Corrector {
-    func correct(_ text: String) async throws -> String {
+    func corrections(for text: String) async throws -> [TextEdit] {
+        TextDiff.edits(from: text, to: collapsed(text))
+    }
+
+    private func collapsed(_ text: String) -> String {
         var lines = text.components(separatedBy: .newlines)
 
         lines = lines.map { line in

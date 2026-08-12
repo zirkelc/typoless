@@ -1,12 +1,12 @@
 #!/bin/bash
 #
-# Checks that the guardrail applies real corrections and refuses rewrites.
+# Checks the parts of the engine that decide what a correction does.
 #
-# The rules it covers are the app's central promise, and they are pure
-# functions of two strings, so they are worth checking without a running app or
-# a model. Run from the repo root:
+# The rules covered here are the app's central promise, and they are pure
+# functions of a couple of strings, so they are worth checking without a
+# running app or a model. Run from the repo root:
 #
-#     ./Config/verify-guardrail.sh
+#     ./Config/verify-engine.sh
 #
 # This concatenates the engine sources with the cases below and runs them as a
 # script. It stands in for a real test target, which the project does not have
@@ -15,8 +15,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Left behind on purpose. This lives under the system temp directory, which is
+# cleaned up on its own, and deleting it here would mean a recursive delete in
+# a script that runs unattended.
 SCRATCH=$(mktemp -d)
-trap 'rm -rf "$SCRATCH"' EXIT
 SOURCE="$SCRATCH/verify.swift"
 
 cat \
@@ -25,6 +27,7 @@ cat \
     Spellbee/Engine/EditGuardrail.swift \
     Spellbee/Engine/ProtectedSpans.swift \
     Spellbee/Engine/ModelReplyCleaner.swift \
+    Spellbee/Accessibility/FieldEdit.swift \
     > "$SOURCE"
 
 cat >> "$SOURCE" <<'SWIFT'
@@ -95,6 +98,104 @@ checkClean("fenced", "```\nHello world.\n```", expect: "Hello world.")
 checkClean("reasoning and preamble", "<think>hmm</think>\n\nCorrected:\n\nHello world.", expect: "Hello world.")
 checkClean("keeps an inner quote", "She said \"hello\" to me.", expect: "She said \"hello\" to me.")
 checkClean("keeps a real blank line", "Hello world.", expect: "Hello world.")
+
+print("\n== changes stay minimal ==")
+
+/// Checks that a correction touches only the words it had to.
+///
+/// This is what lets the app write back without flattening a field: the
+/// characters carrying a mention, a link or any other formatting are never
+/// part of an edit, so they are never rewritten.
+func checkEdits(_ name: String, _ original: String, _ corrected: String, expect: [String]) {
+    let edits = TextDiff.edits(from: original, to: corrected)
+    let touched = edits.map(\.original)
+    let ok = touched == expect
+    if !ok { failures += 1 }
+    print("\(ok ? "PASS" : "FAIL") \(name)")
+    if !ok { print("        got: \(touched)\n   expected: \(expect)") }
+}
+
+checkEdits(
+    "one word in a long line",
+    "hey @chris, can you check teh deploy on https://ci.example.com today",
+    "hey @chris, can you check the deploy on https://ci.example.com today",
+    expect: ["teh"]
+)
+checkEdits(
+    "two far apart",
+    "i went to teh shop and bougth milk",
+    "I went to the shop and bought milk",
+    expect: ["i", "teh", "bougth"]
+)
+checkEdits("nothing to do", "All good here.", "All good here.", expect: [])
+checkEdits(
+    "trailing punctuation only",
+    "see you tomorrow",
+    "see you tomorrow.",
+    expect: ["tomorrow"]
+)
+
+print("\n== the span an undo has to put back ==")
+
+func checkSpan(_ name: String, from before: String, to after: String, expect: (Int, Int, String)?) {
+    let span = TextDiff.differingSpan(from: before, to: after)
+    let got = span.map { ($0.range.location, $0.range.length, $0.replacement) }
+    let ok = got?.0 == expect?.0 && got?.1 == expect?.1 && got?.2 == expect?.2
+    if !ok { failures += 1 }
+    print("\(ok ? "PASS" : "FAIL") \(name)")
+    if !ok { print("        got: \(String(describing: got))\n   expected: \(String(describing: expect))") }
+}
+
+checkSpan("identical", from: "same", to: "same", expect: nil)
+checkSpan("one word", from: "the cat sat", to: "the dog sat", expect: (4, 3, "dog"))
+checkSpan("insertion", from: "hello world", to: "hello big world", expect: (6, 0, "big "))
+checkSpan("deletion", from: "hello big world", to: "hello world", expect: (6, 4, ""))
+checkSpan("shared letters at both ends", from: "recieve", to: "receive", expect: (3, 2, "ei"))
+
+print("\n== positions after the changes land ==")
+
+func checkCaret(_ name: String, _ edits: [FieldEdit], from offset: Int, expect: Int) {
+    let result = edits.caretPosition(from: offset)
+    let ok = result == expect
+    if !ok { failures += 1 }
+    print("\(ok ? "PASS" : "FAIL") \(name)")
+    if !ok { print("        got: \(result)\n   expected: \(expect)") }
+}
+
+/// "teh cat" -> "the cats": one same-length fix early, one growth later.
+let sample = [
+    FieldEdit(range: CFRange(location: 0, length: 3), replacement: "the"),
+    FieldEdit(range: CFRange(location: 4, length: 3), replacement: "cats"),
+]
+
+checkCaret("before every change", sample, from: 0, expect: 0)
+checkCaret("between them", sample, from: 4, expect: 4)
+checkCaret("after both", sample, from: 7, expect: 8)
+checkCaret("inside a changed word", sample, from: 5, expect: 8)
+checkCaret("no changes at all", [], from: 12, expect: 12)
+
+func checkLanded(_ name: String, _ edits: [FieldEdit], expect: [(Int, Int)]) {
+    let ranges = edits.landedRanges.map { ($0.location, $0.length) }
+    let ok = ranges.count == expect.count && zip(ranges, expect).allSatisfy { $0.0 == $1.0 && $0.1 == $1.1 }
+    if !ok { failures += 1 }
+    print("\(ok ? "PASS" : "FAIL") \(name)")
+    if !ok { print("        got: \(ranges)\n   expected: \(expect)") }
+}
+
+checkLanded("displaced by what came before", sample, expect: [(0, 3), (4, 4)])
+checkLanded(
+    "pure deletion has nothing to point at",
+    [FieldEdit(range: CFRange(location: 5, length: 1), replacement: "")],
+    expect: []
+)
+checkLanded(
+    "later change shifted by an earlier deletion",
+    [
+        FieldEdit(range: CFRange(location: 5, length: 1), replacement: ""),
+        FieldEdit(range: CFRange(location: 10, length: 3), replacement: "the"),
+    ],
+    expect: [(9, 3)]
+)
 
 print("")
 if failures == 0 {

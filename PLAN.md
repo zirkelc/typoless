@@ -41,8 +41,8 @@ App Group (reserved): `group.dev.zirkelc.spellbee`
 5. Split on paragraph boundaries to fit the model context. Correct each chunk independently with a short language header.
 6. Model returns **only the corrected text**. The edits are derived here by comparing it against the original, never reported by the model.
 7. **Guardrail pass.** Reject any change that is not spacing, punctuation, capitalisation or an in-place spelling fix; that touches a protected span; or that would leave a chunk with more changes refused than accepted, in which case the whole chunk is dropped.
-8. Apply surviving edits **back-to-front**, by selection replacement where the app honours it, then whole value, then paste. Every write is confirmed by reading the value back.
-9. Restore caret to the original offset adjusted by the net delta.
+8. Write each surviving edit as **its own range replacement, back-to-front**, so text the correction did not touch is never rewritten. Falls back to whole value, then paste, only for fields that refuse in-place edits. Every write is confirmed by reading the value back.
+9. Restore caret to the original offset adjusted by the net delta of the changes before it.
 
 Steps 6-7 are the product. The "don't rephrase" constraint cannot be enforced by prompting alone; the
 deterministic guardrail is what enforces it. Step 8 is equally non-negotiable: replacing a whole
@@ -127,8 +127,8 @@ a fraction of a second to several, so it is not a rare case.
 
 ## Risks
 
-1. **Rich text.** Whole-field plain-string replacement destroys mentions, links, emoji. Mitigated by step 8.
-2. **Whole-field scope + no pre-pass.** A stray double-⌘ in a long composer rewrites everything the user typed. Revert Last Fix is the safety net and must not slip past M3.
+1. **Rich text.** Whole-field plain-string replacement destroys mentions, links, emoji. Closed at M3 by step 8: only the changed words are written, so the characters carrying formatting are never touched. Still live for fields that refuse in-place edits and fall through to paste, which is Electron in practice.
+2. **Whole-field scope + no pre-pass.** A stray double-⌘ in a long composer rewrites everything the user typed. Revert Last Fix is the safety net, and minimal writes shrink the blast radius to the words that actually changed.
 3. **Double-⌘ false positives** during ⌘-Tab, plus ~250-300ms of forced latency before we know it was not a triple tap. Require no other key or mouse event between taps. The conventional hotkey is the escape hatch.
 4. **Secure input** blocks event monitoring system-wide. Detect and surface in the menu bar rather than appearing broken.
 5. **Context window.** Foundation Models shares ~4k tokens between input and output (verify at M2). Long emails overflow. Handled by paragraph chunking plus a hard length cap with a visible notice. `SystemLanguageModel.tokenCount(for:)` would measure this exactly but requires macOS 26.4, above our 26.0 deployment target and above the current dev machine (26.3.1), so chunking must estimate from character counts. Revisit if the floor moves.
@@ -174,19 +174,78 @@ for updates. The same way Raycast, Alfred, Karabiner and Cotypist ship.
 | M0 | ✅ Skeleton, menu bar, dual scheme, permissions onboarding, overlay window shell |
 | M1 | ✅ Double-⌘ global monitor + conventional hotkey, AX read/write, revert |
 | M2 | ✅ Foundation Models correction, en/de, chunking, guardrail |
-| M3 | ◐ Revert done early, in M1. **Minimal edit application still outstanding** |
-| M4 | ◐ Three tiers, per-line tracing, sweep and cancel-on-focus-change all done ahead of schedule. Missing: pulse on changed ranges, cancel on Escape |
+| M3 | ✅ Revert done early, in M1. Minimal edit application landed; each change is written as its own range replacement |
+| M4 | ✅ Three tiers, per-line tracing, sweep, pulse on changed ranges, cancel on Escape and on focus change |
 | M5 | Settings, languages, deny-list. Nothing built; there is no settings window at all |
 | M6 | Developer ID signing, notarization, Sparkle. Blocked on a Developer ID certificate, which does not exist yet |
 
-The one piece of M3 that matters is unbuilt. Edits are computed minimally and
-applied minimally *to the string*, and then the whole field or selection is
-written back in a single operation. In a field holding mentions, links or
-formatting that flattens everything, which is the risk the whole design was
-shaped around. Writing each surviving edit as its own range replacement,
-back to front, is what closes it.
+M0-M4 is a usable app. M5 is reach, M6 is shipping.
 
-M0-M3 is a usable app. M4-M5 are polish and reach.
+### M3 and M4 notes
+
+**The corrector hands back changes, not corrected text.** `Corrector` returns
+`[TextEdit]` instead of a `String`. That one signature is what makes minimal
+writing possible: a finished string forces the caller to overwrite the field,
+and everything in it that is not plain characters goes with it. Callers that
+genuinely want the result keep a default `correct(_:)` built on top.
+
+**Three failure modes, told apart.** Writing each edit on its own means each one
+can fail on its own, and the three cases are not the same thing:
+
+- The field ignored the *first* edit. Nothing was written, so a fallback tier
+  can start from a clean field.
+- The field ignored a *later* edit. The remaining edits sit at lower offsets and
+  are unaffected, so they carry on and the pass is reported as partial.
+- The field holds something other than what was written *or* what was there
+  before. It has done something this code does not model, so the pass stops
+  rather than writing further edits into text whose shape is now unknown.
+
+Only the first is a fallback. Treating the third as one would splice a stale
+string over a field that had moved.
+
+**The selection has to be put back before falling back.** Trying the edits
+leaves the selection on whichever one was attempted last. Pasting is aimed at
+the current selection, so without restoring it first a fallback would replace
+text the user never offered.
+
+**Undo is now itself a minimal edit.** The revert record keeps the whole field
+before and after, and `TextDiff.differingSpan` trims the matching head and tail,
+so putting the original back touches only the span that changed. It refuses
+outright if the user has typed since, because undoing then would take their own
+words with it.
+
+**Escape is a promise that nothing gets written.** The model call runs as its
+own cancellable task, and the correctors check for cancellation between chunks.
+Cancellation is cooperative, so a model already generating has nowhere to check
+until it is finished; the engine therefore treats a cancelled task that returned
+anyway as a refusal, and writes nothing.
+
+**Global `NSEvent` key monitors do not work here.** Escape was first watched for
+with `addGlobalMonitorForEvents(matching: .keyDown)`. It never fired once, with
+accessibility granted and the double-tap trigger's own modifier monitor working
+from the same process. It reports no error. Escape is now claimed through
+Carbon's `RegisterEventHotKey`, which needs no permission and consumes the key,
+so during the second or two a correction runs Escape means "stop" and nothing
+else. Worth knowing that the modifier trigger's guard against ⌘C-then-⌘V uses
+the same kind of monitor for its keyDown half, so that half is presumably dead
+too; the mouse half is fine.
+
+**⌥⌘Space was a broken default and looked like a working one.** It is the
+system's "show Finder search window" shortcut. Registration succeeded, the
+trigger fired, the correction ran, and Finder came forward at the same time, so
+the guard against the frontmost app changing threw every result away. A
+shortcut can be claimed and still lose. Default is now ⌃⌥⌘Space.
+
+**Carbon offers every registered shortcut to every installed handler.** With one
+shortcut that never showed; with two, pressing Escape also fired the correction
+trigger. Each handler now checks the hot key id and returns
+`eventNotHandledErr` for anything that is not its own.
+
+**The pulse asks the field where the words ended up.** Rects gathered before the
+write describe text that has since moved. `landedRanges` displaces each change
+by however much the changes before it grew or shrank the text, and the field is
+asked for the bounds of those. Green rather than the accent colour, so "this
+changed" cannot be read as another sweep of "this is being read".
 
 ### M2 notes
 
@@ -244,7 +303,7 @@ retrying the identical request is pointless. A declined chunk is retried once
 with the English instructions, which answers often enough to be worth the second
 round trip. A chunk that is declined twice is left as the user wrote it.
 
-`./Config/verify-guardrail.sh` checks all of the above without a model or a
+`./Config/verify-engine.sh` checks all of the above without a model or a
 running app. It should become a real test target.
 
 ### Comparing backends
@@ -347,9 +406,8 @@ progress indicator needs. The setup window is an AppKit window for the same
 reason: opening it from the menu is then a direct call rather than a round trip
 through an environment action that only exists inside a view hierarchy.
 
-Not yet true: writing back still replaces the whole selected range in one go, so
-the rich-text risk stands until M3 lands minimal edits. Safe to try in plain
-text fields, not in a composer holding mentions or links.
+Writing back replaced the whole selected range in one go, which left the
+rich-text risk open. Closed at M3.
 
 ### M0 notes
 

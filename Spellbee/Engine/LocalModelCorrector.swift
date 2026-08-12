@@ -44,12 +44,15 @@ actor LocalModelCorrector: Corrector {
         self.onProgress = onProgress
     }
 
-    func correct(_ text: String) async throws -> String {
+    func corrections(for text: String) async throws -> [TextEdit] {
         let container = try await loadedContainer()
         let protected = ProtectedSpans.find(in: text)
         var edits: [TextEdit] = []
 
         for chunk in TextChunker.chunks(of: text) {
+            /** The user can give up mid-pass, and a long field is several chunks. */
+            try Task.checkCancellation()
+
             let source = String(text[chunk])
             guard source.contains(where: \.isLetter) else { continue }
 
@@ -86,8 +89,8 @@ actor LocalModelCorrector: Corrector {
             edits += verdict.accepted
         }
 
-        Log.app.info("Applying \(edits.count, privacy: .public) edits from \(self.model.displayName, privacy: .public)")
-        return TextDiff.apply(edits, to: text)
+        Log.app.info("Found \(edits.count, privacy: .public) edits from \(self.model.displayName, privacy: .public)")
+        return edits
     }
 
     /** Fetches the weights ahead of any correction, so the wait is not a surprise. */
