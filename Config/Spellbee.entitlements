@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Deliberately unsandboxed. The accessibility APIs this app is built on
+	     are unavailable to sandboxed apps: no permission prompt is ever shown,
+	     the app cannot be added by hand in System Settings, and the trust check
+	     always returns false. That rules out the Mac App Store, so the app is
+	     distributed with Developer ID and the hardened runtime instead. -->
+	<key>com.apple.security.app-sandbox</key>
+	<false/>
+</dict>
+</plist>
