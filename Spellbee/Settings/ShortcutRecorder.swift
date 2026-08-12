@@ -19,19 +19,20 @@ struct ShortcutRecorder: View {
     @State private var monitor: Any?
 
     var body: some View {
-        LabeledContent("Shortcut") {
-            HStack {
-                Button(action: toggle) {
-                    Text(isRecording ? "Press keys…" : shortcut.displayName)
-                        .frame(minWidth: 120)
-                        .monospacedDigit()
-                }
-                .buttonStyle(.bordered)
-                .tint(isRecording ? .accentColor : nil)
+        HStack(spacing: 8) {
+            Button(action: toggle) {
+                Text(isRecording ? "Press keys…" : shortcut.displayName)
+                    .frame(minWidth: 110)
+            }
+            .buttonStyle(.bordered)
+            .tint(isRecording ? .accentColor : nil)
 
-                if shortcut != .default {
-                    Button("Reset") { shortcut = .default }
-                }
+            if isRecording {
+                Text("Esc to cancel")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else if shortcut != .default {
+                Button("Reset") { shortcut = .default }
             }
         }
         .onDisappear(perform: stopRecording)

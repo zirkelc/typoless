@@ -4,60 +4,75 @@ import SwiftUI
 /**
  The deny-list, and the settings an app answers differently from the rest.
 
- Both are keyed by bundle identifier, which is stable across renames and
- updates in a way a path or a display name is not.
+ Both are keyed by bundle identifier, which is stable across renames and updates
+ in a way a path or a display name is not.
  */
 struct AppSettingsView: View {
     @Bindable var preferences: Preferences
 
-    @State private var selection: String?
+    @State private var deniedSelection: String?
+    @State private var overrideSelection: String?
 
     var body: some View {
-        Form {
-            Section("Never correct in these apps") {
-                List(selection: $selection) {
+        SettingsPage {
+            SettingsRow(label: "Never correct in:") {
+                List(selection: $deniedSelection) {
                     ForEach(deniedApps, id: \.bundleID) { app in
-                        AppRow(app: app)
+                        AppRow(app: app).tag(app.bundleID)
                     }
                 }
-                .frame(minHeight: 140)
+                .frame(height: 150)
+                .border(Color(nsColor: .separatorColor))
 
-                HStack {
-                    Button("Add…", action: addApp)
-                    Button("Remove", action: removeSelected)
-                        .disabled(selection == nil)
+                HStack(spacing: 8) {
+                    Button("Add…") { addApp() }
+                    Button("Remove") { removeDenied() }
+                        .disabled(deniedSelection == nil)
                     Spacer()
-                    Button("Reset to Defaults", action: resetDenyList)
+                    Button("Reset") {
+                        preferences.deniedBundleIDs = TextTargetResolver.defaultDeniedBundleIDs
+                    }
                 }
+
+                SettingsNote("Terminals, editors and password managers, where a \"text field\" is usually code, a command, or a secret.")
             }
 
-            Section("Full stops, per app") {
-                if overriddenApps.isEmpty {
-                    Text("""
-                    Every app follows the global setting. Add one here to have \
-                    it answer differently, which is worth doing for a chat app \
-                    when the global answer suits your email.
-                    """)
-                    .font(.caption)
+            Divider().padding(.vertical, 10)
+
+            SettingsRow(label: "Full stops:") {
+                Text(preferences.addsSentenceFinalPunctuation
+                    ? "Everywhere else, a finished sentence gets a full stop."
+                    : "Everywhere else, no full stop is added.")
+                    .font(.callout)
                     .foregroundStyle(.secondary)
-                }
 
-                ForEach(overriddenApps, id: \.bundleID) { app in
-                    Toggle(isOn: overrideBinding(for: app.bundleID)) {
-                        AppRow(app: app)
+                List(selection: $overrideSelection) {
+                    ForEach(overriddenApps, id: \.bundleID) { app in
+                        Toggle(isOn: overrideBinding(for: app.bundleID)) {
+                            AppRow(app: app)
+                        }
+                        .tag(app.bundleID)
+                    }
+                }
+                .frame(height: 110)
+                .border(Color(nsColor: .separatorColor))
+                .overlay {
+                    if overriddenApps.isEmpty {
+                        Text("Every app follows the setting above.")
+                            .font(.callout)
+                            .foregroundStyle(.tertiary)
                     }
                 }
 
-                HStack {
-                    Button("Add App…", action: addOverride)
-                    Spacer()
-                    if !overriddenApps.isEmpty {
-                        Button("Remove All") { preferences.appOverrides = [:] }
-                    }
+                HStack(spacing: 8) {
+                    Button("Add App…") { addOverride() }
+                    Button("Remove") { removeOverride() }
+                        .disabled(overrideSelection == nil)
                 }
+
+                SettingsNote("Worth setting for a chat app when the answer above suits your email, or the other way round.")
             }
         }
-        .formStyle(.grouped)
     }
 
     private var deniedApps: [InstalledApp] {
@@ -85,19 +100,23 @@ struct AppSettingsView: View {
 
     private func addOverride() {
         guard let bundleID = chooseApplication() else { return }
+
+        /** Added to differ, so it starts as the opposite of the global answer. */
         preferences.appOverrides[bundleID] = AppOverride(
             sentenceFinalPunctuation: !preferences.addsSentenceFinalPunctuation
         )
     }
 
-    private func removeSelected() {
-        guard let selection else { return }
-        preferences.deniedBundleIDs.remove(selection)
-        self.selection = nil
+    private func removeDenied() {
+        guard let deniedSelection else { return }
+        preferences.deniedBundleIDs.remove(deniedSelection)
+        self.deniedSelection = nil
     }
 
-    private func resetDenyList() {
-        preferences.deniedBundleIDs = TextTargetResolver.defaultDeniedBundleIDs
+    private func removeOverride() {
+        guard let overrideSelection else { return }
+        preferences.appOverrides[overrideSelection] = nil
+        self.overrideSelection = nil
     }
 
     /** Nil when the user cancels, or picks something with no bundle identifier. */
@@ -121,14 +140,12 @@ private struct AppRow: View {
         HStack(spacing: 8) {
             Image(nsImage: app.icon)
                 .resizable()
-                .frame(width: 18, height: 18)
+                .frame(width: 16, height: 16)
 
-            VStack(alignment: .leading, spacing: 0) {
-                Text(app.name)
-                Text(app.bundleID)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            Text(app.name)
+            Text(app.bundleID)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 }
@@ -158,4 +175,8 @@ private struct InstalledApp {
             ?? NSImage(systemSymbolName: "questionmark.app", accessibilityDescription: nil)
             ?? NSImage()
     }
+}
+
+#Preview {
+    AppSettingsView(preferences: Preferences()).frame(width: 620)
 }

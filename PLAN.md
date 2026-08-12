@@ -225,6 +225,24 @@ keyboard shows the key that will actually be pressed.
 it off in System Settings without telling us, so it is read back rather than
 mirrored into a copy that would slowly become a lie.
 
+**A real `NSToolbar` in its preference style, not a SwiftUI `TabView`.** Icons
+above their labels across the top is what a Mac settings window looks like, and
+SwiftUI only produces it inside a `Settings` scene, which this app cannot use:
+its windows open from a menu bar item, which is a direct call rather than an
+environment action that only exists inside a view hierarchy. Each page is sized
+to its own content and the window grows from its top edge, so the title bar
+stays put. Pages use `.formStyle(.columns)`, giving right-aligned labels and a
+single column of controls, rather than the rounded grouped boxes, which read as
+iOS rather than as a Mac settings window.
+
+**Settings pages can be drawn without running the app.** `--render-settings
+<dir>` in debug builds renders each page to a PNG and quits. Screenshotting the
+real window needs a Screen Recording grant, which a build script does not have
+and should not ask for; rendering the views is our own drawing rather than the
+screen's, so it needs no permission and no window. Its one limit is that
+`ImageRenderer` cannot draw AppKit-backed controls, so checkboxes and lists come
+out as placeholder glyphs. It checks layout, alignment and wording, not controls.
+
 ### Measuring the prompt
 
 `Eval/` is a SwiftPM executable. `./build-metallib.sh` once, then `swift run`.

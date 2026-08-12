@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import SwiftUI
 
 @main
@@ -56,6 +57,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if ProcessInfo.processInfo.arguments.contains("--compare-backends") {
             Task { await model.compareBackends() }
         }
+
+        /**
+         Draws every settings page to a PNG and quits.
+
+         Screenshotting the running window needs a Screen Recording grant, which
+         a build script does not have and should not ask for. Rendering the views
+         is our own drawing rather than the screen's, so it needs no permission
+         and no window, and it is the only way to look at a layout without
+         someone sitting in front of it.
+         */
+        if let index = ProcessInfo.processInfo.arguments.firstIndex(of: "--render-settings") {
+            let directory = ProcessInfo.processInfo.arguments[safe: index + 1] ?? NSTemporaryDirectory()
+            renderSettingsPages(into: URL(fileURLWithPath: directory))
+            NSApp.terminate(nil)
+        }
         #endif
+    }
+
+    #if DEBUG
+    private func renderSettingsPages(into directory: URL) {
+        for tab in SettingsTab.allCases {
+            let renderer = ImageRenderer(
+                content: tab.view(model: model)
+                    .frame(width: tab.width)
+                    .background(Color(nsColor: .windowBackgroundColor))
+            )
+            /** Retina, so the text is legible at the size it is drawn. */
+            renderer.scale = 2
+
+            guard
+                let image = renderer.cgImage,
+                let destination = CGImageDestinationCreateWithURL(
+                    directory.appending(path: "settings-\(tab.rawValue).png") as CFURL,
+                    "public.png" as CFString,
+                    1,
+                    nil
+                )
+            else {
+                Log.app.error("Could not render \(tab.rawValue, privacy: .public)")
+                continue
+            }
+
+            CGImageDestinationAddImage(destination, image, nil)
+            CGImageDestinationFinalize(destination)
+        }
+    }
+    #endif
+}
+
+private extension Array {
+    subscript(safe index: Index) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }
