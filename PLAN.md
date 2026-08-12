@@ -235,7 +235,22 @@ capitalisation fixes count towards a chunk's trustworthiness, was measured too
 and is worse: it throws away whole chunks whose corrections were legitimately
 all capitalisation.
 
-Two things that relaxation exposed, both worth knowing:
+Three holes the eval found, all since closed, all measured the same offline way
+at no cost to any real correction (113 exact to 114):
+
+- **Symbols were stripped alongside punctuation**, which made every symbol
+  interchangeable with every other. `5 €` to `5 $` and `🎉` to `😀` both reduced
+  to the same letters on each side and passed as punctuation changes. Only
+  punctuation is stripped now. A genuine symbol substitution such as `->` to `→`
+  is refused as a result, which is the right answer: that is a rewrite.
+- **Junk appended to a word passed as a typo.** Apple's model returned `Danke` as
+  `Danke퀎4`, two edits away with a matching first letter. A spelling fix now has
+  to stay in the alphabet the word was written in.
+- **Literal emoji were not protected spans**, only `:shortcode:` form, though
+  step 4 always said they should be. Which emoji someone chose is not a spelling
+  question.
+
+Two things the casing relaxation exposed, both worth knowing:
 
 - On a chunk a model **translated**, one more accepted edit tips
   `rejectedCount <= accepted.count` and the chunk is applied in part rather than

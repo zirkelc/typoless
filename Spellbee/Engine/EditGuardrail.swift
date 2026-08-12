@@ -170,6 +170,15 @@ enum EditGuardrail {
             }
 
             /**
+             A typo stays in the alphabet the word was written in. A model that
+             has come off the rails does not: `Danke` came back as `Danke퀎4`,
+             which is two edits away and passes every other test here. Nothing a
+             correction legitimately does introduces a letter from another
+             script.
+             */
+            guard scripts(of: after).isSubset(of: scripts(of: before)) else { return false }
+
+            /**
              Measured without case, because case is not a spelling mistake and
              counting it as one refuses real fixes. `wendesday` to `wednesday`
              is two edits and allowed; the same fix written `Wednesday`, which
@@ -185,12 +194,58 @@ enum EditGuardrail {
         }
     }
 
+    /** Coarse alphabet families, enough to tell a typo from a different writing system. */
+    private enum Script {
+        case latin, greek, cyrillic, other
+    }
+
+    /**
+     Which alphabets a word draws its letters from.
+
+     Only letters are considered. Digits, punctuation and symbols are judged by
+     the checks above this one, and folding them in here would refuse ordinary
+     corrections around them.
+     */
+    private static func scripts(of text: some StringProtocol) -> Set<Script> {
+        var found: Set<Script> = []
+
+        for character in text where character.isLetter {
+            guard let scalar = character.unicodeScalars.first else { continue }
+
+            switch scalar.value {
+            case 0..<0x0250, 0x1E00...0x1EFF:
+                found.insert(.latin)
+            case 0x0370...0x03FF:
+                found.insert(.greek)
+            case 0x0400...0x04FF:
+                found.insert(.cyrillic)
+            default:
+                found.insert(.other)
+            }
+        }
+
+        return found
+    }
+
     private static func withoutWhitespace(_ text: String) -> String {
         text.filter { !$0.isWhitespace }
     }
 
+    /**
+     Strips punctuation only, deliberately leaving symbols in place.
+
+     Symbols used to be stripped alongside punctuation, which quietly made every
+     symbol interchangeable with every other: `5 €` to `5 $` and `🎉` to `😀`
+     both reduced to the same letters on each side and were waved through as
+     punctuation changes. One of those is a money error and the other rewrites
+     the tone of a message.
+
+     The cost is that a genuine symbol substitution, `->` to `→`, is now refused
+     rather than allowed. That is the right answer anyway: it is a rewrite, not
+     a correction.
+     */
     private static func withoutPunctuation(_ text: String) -> String {
-        text.filter { !$0.isPunctuation && !$0.isSymbol }
+        text.filter { !$0.isPunctuation }
     }
 
     /** Levenshtein distance, two rows at a time. */

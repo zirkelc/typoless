@@ -46,6 +46,42 @@ enum ProtectedSpans {
             }
         }
 
+        spans += emoji(in: text)
+
         return spans
+    }
+
+    /**
+     Emoji as they are actually typed, rather than as `:shortcode:`.
+
+     A model will happily swap one for another, and the swap survives every
+     other check because an emoji is neither a word nor punctuation. Which
+     emoji someone chose is not a spelling question, so none of them are ours
+     to change.
+     */
+    private static func emoji(in text: String) -> [Range<String.Index>] {
+        var spans: [Range<String.Index>] = []
+
+        for index in text.indices where text[index].isEmoji {
+            spans.append(index..<text.index(after: index))
+        }
+
+        return spans
+    }
+}
+
+private extension Character {
+    /**
+     Whether this reads as an emoji rather than as text.
+
+     `isEmoji` alone is true of plain digits and `#`, which carry emoji
+     presentation only when followed by a variation selector, so the presented
+     form is what is asked for.
+     */
+    var isEmoji: Bool {
+        guard let first = unicodeScalars.first else { return false }
+
+        return first.properties.isEmojiPresentation
+            || (first.properties.isEmoji && unicodeScalars.count > 1)
     }
 }

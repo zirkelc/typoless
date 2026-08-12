@@ -90,6 +90,21 @@ check("translation", "wir gehen ins kino", "we are going to the cinema", expect:
 check("mostly rewritten", "can you send it over when your done", "Please forward it once you have finished.", expect: "can you send it over when your done")
 check("model answered instead", "what is the capital of france", "The capital of France is Paris.", expect: "what is the capital of france")
 
+print("\n== symbols are content, not punctuation ==")
+
+// Stripping symbols alongside punctuation made every symbol interchangeable
+// with every other, so a money amount and the tone of a message were both one
+// unremarkable "punctuation change" away from being rewritten.
+check("emoji swap", "We shipped it 🎉", "We shipped it 😀", expect: "We shipped it 🎉")
+check("currency swap", "Kosten: 5 € netto", "Kosten: 5 $ netto", expect: "Kosten: 5 € netto")
+check("corrections around an emoji still land", "i think its ready 🎉", "I think it's ready 🎉", expect: "I think it's ready 🎉")
+check("corrections around a currency still land", "das kostet 5 € netto", "Das kostet 5 € netto", expect: "Das kostet 5 € netto")
+
+print("\n== a typo stays in its own alphabet ==")
+
+check("junk appended", "Danke", "Danke\u{D00E}4", expect: "Danke")
+check("latin accents are not another alphabet", "gruesse aus muenchen", "Grüße aus München", expect: "Grüße aus München")
+
 print("\n== protected spans ==")
 check("url untouched", "check http://foo.com/Bar now", "Check http://foo.com/bar now.", expect: "Check http://foo.com/Bar now.")
 check("handle untouched", "ask @chris.cook about it", "Ask @Chris.Cook about it.", expect: "Ask @chris.cook about it.")
