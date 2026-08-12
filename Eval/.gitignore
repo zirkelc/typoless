@@ -1,0 +1,6 @@
+.build/
+.swiftpm/
+
+# Regenerable, several megabytes, and rewritten by every run. The conclusions
+# worth keeping live in PLAN.md, not here.
+Results/

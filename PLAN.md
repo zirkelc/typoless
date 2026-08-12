@@ -77,7 +77,8 @@ recent fixes as before→after, Settings…, Setup Guide, Quit.
 - **General** — launch at login, double-⌘ on/off, conventional hotkey recorder, revert shortcut, show icon.
 - **Languages** — English / German toggles, auto-detect on/off.
 - **Corrections** — per-kind toggles (spelling, punctuation, capitalization, whitespace), strictness slider mapping to guardrail thresholds, preserve-list (emoji, markdown, code, mentions, URLs).
-- **Apps** — deny-list. Default-denied: terminals, Xcode, VS Code, password managers.
+- **Sentence-final punctuation** — whether a message with no closing mark gets one. Allowed today, and it is the single largest source of unrequested changes for every backend: 19 of Gemma's 32 false positives in the eval are this one habit. It stays on because finishing a sentence is a correction, but it is the setting most worth having, both globally and **per app**: a full stop is right in mail and changes the tone of a Slack line. Asking the model to handle it does not work; the eval variant that named terminal punctuation made Gemma start deleting full stops from text that was already correct. This belongs in the guardrail.
+- **Apps** — deny-list, plus per-app overrides for the settings above. Default-denied: terminals, Xcode, VS Code, password managers.
 - **Privacy** — "nothing leaves your Mac", opt-in local log.
 
 ## Overlay animation
@@ -180,6 +181,48 @@ for updates. The same way Raycast, Alfred, Karabiner and Cotypist ship.
 | M6 | Developer ID signing, notarization, Sparkle. Blocked on a Developer ID certificate, which does not exist yet |
 
 M0-M4 is a usable app. M5 is reach, M6 is shipping.
+
+### Measuring the prompt
+
+`Eval/` is a SwiftPM executable. `./build-metallib.sh` once, then `swift run`.
+Flags: `--language --model --variant --guardrail on|off|both --limit --failures`.
+
+It reuses the engine rather than copying it: `Sources/spellbee-eval/Engine/`
+holds symlinks to the real files, so the prompt under test is always the
+shipped prompt. Renaming or removing an engine file means adding or dropping
+the matching symlink. `EvalPipeline` mirrors the correctors step for step
+because they read the prompt straight out of `CorrectionLanguage` and take no
+prompt argument, so variants cannot be swept through them; the prompt itself is
+never duplicated.
+
+Adding a language is one dataset file plus one `CorrectionLanguage` case. Adding
+a model is one `LocalModel` case. Nothing in the harness names either.
+
+Measured with the guardrail on, 54 English and 53 German cases, 13 negatives
+each:
+
+| model | lang | exact | fix recall | untouched-correct | med s |
+|---|---|---|---|---|---|
+| Apple on-device | en / de | 61% / 62% | 74% / 75% | 12/13 / 12/13 | 0.38 / 0.46 |
+| Gemma 4 E4B | en / de | 61% / 62% | 88% / 90% | 11/13 / 12/13 | 0.56 / 0.69 |
+| Qwen3.5 2B | en / de | 22% / 53% | 16% / 70% | 12/13 / 13/13 | 0.27 / 0.31 |
+
+Gemma leads recall by 14 to 15 points at 1.5x the latency, and is deterministic
+run to run where Apple's varies by about 2 points. Qwen3 4B was removed from the
+menu: 18% English recall and none of 24 punctuation errors fixed.
+
+Turning the guardrail off costs 3 to 7 points of German exact match and roughly
+doubles false-positive cases. What it catches, from the eval rather than from
+first principles: a model stripping the backticks off `pnpm install`, `@chris.cook`
+becoming `Chris. Cook`, `Passt dir` becoming `Passt ihr`, an English question
+silently translated into German, and both backends leaking fragments of their
+own prompt into the middle of an email.
+
+Two costs, both understood. `wendesday` to `Wednesday` is refused because the
+spelling distance is case-sensitive and the capital counts as a third edit,
+which is a rule worth fixing. `sorry ,my mistake .` is refused because the diff
+misaligns on the space before the comma and produces nonsense atoms; that one
+fails safe.
 
 ### M3 and M4 notes
 

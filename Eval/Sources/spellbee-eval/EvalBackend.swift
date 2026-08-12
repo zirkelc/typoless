@@ -1,0 +1,189 @@
+import Foundation
+import FoundationModels
+import HuggingFace
+import MLXHuggingFace
+import MLXLLM
+import MLXLMCommon
+import Tokenizers
+
+/**
+ A model that can be asked for a corrected chunk.
+
+ Deliberately narrower than `Corrector`: everything above this line, the
+ chunking, the diff and the guardrail, is shared by every backend, so the only
+ thing a backend does is turn a prompt into a reply. That is what makes a
+ comparison between two of them mean anything.
+ */
+protocol EvalBackend: Sendable {
+    var id: String { get }
+    var displayName: String { get }
+
+    /** Loads whatever the backend needs before it is timed. */
+    func prepare() async throws
+
+    /** Nil when the model declines or fails, which leaves the chunk untouched. */
+    func reply(instructions: String, prompt: String, freeTextSuffix: String) async -> String?
+
+    /** Frees the weights, which are the largest thing this process ever holds. */
+    func release() async
+}
+
+extension EvalBackend {
+    func release() async {}
+}
+
+/** Every backend the app can be configured with, in a fixed order. */
+enum Backends {
+    static func all() -> [any EvalBackend] {
+        [AppleBackend()] + LocalModel.allCases.map(MLXBackend.init)
+    }
+
+    static func named(_ id: String) -> (any EvalBackend)? {
+        all().first { $0.id == id }
+    }
+}
+
+/**
+ Apple's on-device model, asked for a structured value.
+
+ `CorrectedText` repeats the shape the app declares privately in
+ `FoundationModelsCorrector`. It is a schema rather than a prompt, so the thing
+ under test is still the real one; keeping a second copy here avoids widening
+ the app's own declaration for the benefit of a tool.
+ */
+struct AppleBackend: EvalBackend {
+    let id = CorrectorBackend.appleOnDevice.rawValue
+    let displayName = CorrectorBackend.appleOnDevice.displayName
+
+    private let model = SystemLanguageModel(guardrails: .permissiveContentTransformations)
+
+    func prepare() async throws {
+        guard model.isAvailable else { throw EvalError.backendUnavailable(displayName) }
+    }
+
+    func reply(instructions: String, prompt: String, freeTextSuffix: String) async -> String? {
+        let session = LanguageModelSession(model: model, instructions: instructions)
+
+        do {
+            let response = try await session.respond(
+                to: prompt,
+                generating: CorrectedText.self,
+                options: GenerationOptions(sampling: .greedy)
+            )
+            return response.content.text
+        } catch {
+            return nil
+        }
+    }
+}
+
+@Generable
+private struct CorrectedText {
+    @Guide(
+        description: """
+        The text with only spelling, punctuation, capitalisation and spacing \
+        corrected. Every original word must still be present, in the same order.
+        """
+    )
+    let text: String
+}
+
+/**
+ A downloaded model running through MLX.
+
+ An actor because the container is loaded once and reused across every case in a
+ run, which is also what the app does within a session.
+ */
+actor MLXBackend: EvalBackend {
+    private let model: LocalModel
+    private var container: ModelContainer?
+
+    init(_ model: LocalModel) {
+        self.model = model
+    }
+
+    nonisolated var id: String { model.rawValue }
+    nonisolated var displayName: String { model.displayName }
+
+    func prepare() async throws {
+        try Self.requireMetalLibrary()
+        _ = try await loadedContainer()
+    }
+
+    /**
+     Fails early when MLX's kernels were never compiled.
+
+     Xcode compiles the `.metal` files inside a package; SwiftPM does not, so an
+     executable built with `swift build` gets as far as the first array and then
+     dies inside C++ with a message about a metallib. Saying so before a
+     multi-gigabyte load is friendlier than saying it after.
+     */
+    private static func requireMetalLibrary() throws {
+        let executable = URL(fileURLWithPath: CommandLine.arguments[0])
+            .resolvingSymlinksInPath()
+            .deletingLastPathComponent()
+
+        guard !FileManager.default.fileExists(
+            atPath: executable.appendingPathComponent("mlx.metallib").path
+        ) else {
+            return
+        }
+
+        throw EvalError.metalLibraryMissing(executable.path)
+    }
+
+    func release() {
+        container = nil
+    }
+
+    func reply(instructions: String, prompt: String, freeTextSuffix: String) async -> String? {
+        guard let container = try? await loadedContainer() else { return nil }
+
+        let session = ChatSession(
+            container,
+            instructions: instructions,
+            generateParameters: GenerateParameters(temperature: 0)
+        )
+
+        var request = prompt + freeTextSuffix
+        if model.usesThinkingBlocks {
+            request += " /no_think"
+        }
+
+        do {
+            return ModelReplyCleaner.clean(try await session.respond(to: request))
+        } catch {
+            return nil
+        }
+    }
+
+    private func loadedContainer() async throws -> ModelContainer {
+        if let container { return container }
+
+        let configuration = model.configuration
+        let loaded = try await #huggingFaceLoadModelContainer(configuration: configuration) { _ in }
+        container = loaded
+
+        return loaded
+    }
+}
+
+enum EvalError: Error, CustomStringConvertible {
+    case backendUnavailable(String)
+    case metalLibraryMissing(String)
+    case unknownArgument(String)
+    case missingDatasets
+
+    var description: String {
+        switch self {
+        case .backendUnavailable(let name):
+            return "\(name) is not available on this machine"
+        case .metalLibraryMissing(let directory):
+            return "no mlx.metallib in \(directory); run ./build-metallib.sh"
+        case .unknownArgument(let argument):
+            return "Unknown argument: \(argument)"
+        case .missingDatasets:
+            return "Could not find a Datasets directory"
+        }
+    }
+}

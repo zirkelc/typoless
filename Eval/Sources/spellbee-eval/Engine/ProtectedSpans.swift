@@ -1,0 +1,1 @@
+../../../../Spellbee/Engine/ProtectedSpans.swift

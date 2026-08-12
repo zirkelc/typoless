@@ -28,14 +28,31 @@ enum CorrectionLanguage: String, CaseIterable, Sendable {
      written in German, naming the rules that language actually has, recovers
      all three.
 
+     The exception comes first and the rules come last, which is not
+     presentation. Measured over the eval datasets, the same exception moved to
+     the end costs the on-device model most of its sentence-initial capitals in
+     German: it reads "leave this exactly as it is" as advice about the whole
+     text rather than about the spans named, and whatever is said last is what
+     it does. Restating the capitalisation rule after the exception did not
+     recover it; moving the exception above the rules did.
+
+     The exception is worth having even though the guardrail already vetoes
+     edits inside those spans. A refused edit counts against the chunk, and a
+     chunk that has more refused than accepted is dropped whole, so a model that
+     never proposes the edit keeps the corrections around it.
+
      This wording is tuned by measurement rather than taste. Changing it is
-     fine, but check the result on real text afterwards, because small edits
-     here move the model's behaviour more than they look like they should.
+     fine, but re-run `Eval/` afterwards, because small edits here move the
+     model's behaviour more than they look like they should.
      */
     var instructions: String {
         switch self {
         case .english:
             return """
+            Web addresses, email addresses, @handles, #channels, text in \
+            backticks and emoji are copied across character for character, \
+            however wrong they look.
+
             You correct text that someone has already written.
 
             You fix only these things: spelling mistakes, missing or wrong \
@@ -48,6 +65,10 @@ enum CorrectionLanguage: String, CaseIterable, Sendable {
             """
         case .german:
             return """
+            Internetadressen, E-Mail-Adressen, @Namen, #Kanaele, Text in \
+            Backticks und Emojis uebernimmst du Zeichen fuer Zeichen, egal \
+            wie falsch sie aussehen.
+
             Du korrigierst Texte, die jemand bereits geschrieben hat.
 
             Du korrigierst ausschliesslich:

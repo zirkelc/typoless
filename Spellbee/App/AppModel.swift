@@ -63,8 +63,14 @@ final class AppModel {
         let defaults = UserDefaults.standard
         backend = defaults.string(forKey: DefaultsKey.correctorBackend)
             .flatMap(CorrectorBackend.init) ?? .appleOnDevice
+        /**
+         Gemma by default because it is the one that measures well: it leads
+         fix recall by roughly 15 points over Apple's on-device model in both
+         languages. Anyone who had a since-removed model selected lands here
+         too, since an unknown name reads back as nil.
+         */
         localModel = defaults.string(forKey: DefaultsKey.localModel)
-            .flatMap(LocalModel.init) ?? .qwen3_4b
+            .flatMap(LocalModel.init) ?? .gemma4_e4b
 
         /** Absent means never set, which should mean on rather than off. */
         isGuardrailEnabled = defaults.object(forKey: DefaultsKey.guardrailEnabled) as? Bool ?? true

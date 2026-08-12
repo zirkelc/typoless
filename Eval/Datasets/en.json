@@ -1,0 +1,329 @@
+{
+  "policy": "Expected text fixes only spelling, punctuation, capitalisation and spacing. It never adds a terminal full stop that the input does not have, because a chat message written without one is not wrong, and adding one is the over-correction this app exists to avoid. Protected spans (URLs, emails, @handles, #channels, backticked code, emoji, deliberately lower-case product names) are always identical in input and expected. A case whose expected text equals its input is a negative and must come back byte-identical.",
+  "cases": [
+    {
+      "id": "en-neg-01",
+      "input": "Just pushed the fix, it should be live in a few minutes.",
+      "expected": "Just pushed the fix, it should be live in a few minutes.",
+      "tags": ["negative"]
+    },
+    {
+      "id": "en-neg-02",
+      "input": "Can you review the PR when you get a chance?",
+      "expected": "Can you review the PR when you get a chance?",
+      "tags": ["negative"]
+    },
+    {
+      "id": "en-neg-03",
+      "input": "Sounds good to me",
+      "expected": "Sounds good to me",
+      "tags": ["negative", "fragment"]
+    },
+    {
+      "id": "en-neg-04",
+      "input": "I'll be ten minutes late to the standup, sorry.",
+      "expected": "I'll be ten minutes late to the standup, sorry.",
+      "tags": ["negative", "apostrophe"]
+    },
+    {
+      "id": "en-neg-05",
+      "input": "Thanks for the quick turnaround on that.",
+      "expected": "Thanks for the quick turnaround on that.",
+      "tags": ["negative"]
+    },
+    {
+      "id": "en-neg-06",
+      "input": "The deploy finished at 14:32 and the error rate is back to normal.",
+      "expected": "The deploy finished at 14:32 and the error rate is back to normal.",
+      "tags": ["negative", "numbers"]
+    },
+    {
+      "id": "en-neg-07",
+      "input": "Hi Anna,\n\nThanks for sending the contract over. I have signed it and attached it here.\n\nBest\nChris",
+      "expected": "Hi Anna,\n\nThanks for sending the contract over. I have signed it and attached it here.\n\nBest\nChris",
+      "tags": ["negative", "email", "multiline"]
+    },
+    {
+      "id": "en-neg-08",
+      "input": "Let me know if Tuesday works better for you.",
+      "expected": "Let me know if Tuesday works better for you.",
+      "tags": ["negative"]
+    },
+    {
+      "id": "en-neg-09",
+      "input": "We shipped it 🎉",
+      "expected": "We shipped it 🎉",
+      "tags": ["negative", "emoji"]
+    },
+    {
+      "id": "en-neg-10",
+      "input": "See https://github.com/zirkelc/spellbee for the setup steps.",
+      "expected": "See https://github.com/zirkelc/spellbee for the setup steps.",
+      "tags": ["negative", "url"]
+    },
+    {
+      "id": "en-neg-11",
+      "input": "cc @sarah, the staging build is green again.",
+      "expected": "cc @sarah, the staging build is green again.",
+      "tags": ["negative", "mention"]
+    },
+    {
+      "id": "en-neg-12",
+      "input": "Run `pnpm install` first, then `pnpm build`.",
+      "expected": "Run `pnpm install` first, then `pnpm build`.",
+      "tags": ["negative", "code"]
+    },
+    {
+      "id": "en-neg-13",
+      "input": "No worries, take your time.",
+      "expected": "No worries, take your time.",
+      "tags": ["negative"]
+    },
+    {
+      "id": "en-prot-01",
+      "input": "check https://example.com/Docs/Guide for the setup steps",
+      "expected": "Check https://example.com/Docs/Guide for the setup steps",
+      "tags": ["casing", "url", "protected"]
+    },
+    {
+      "id": "en-prot-02",
+      "input": "ask @chris.cook if he still has the credentials",
+      "expected": "Ask @chris.cook if he still has the credentials",
+      "tags": ["casing", "mention", "protected"]
+    },
+    {
+      "id": "en-prot-03",
+      "input": "the function `getUserById` retruns null sometimes",
+      "expected": "The function `getUserById` returns null sometimes",
+      "tags": ["casing", "spelling", "code", "protected"]
+    },
+    {
+      "id": "en-prot-04",
+      "input": "mail it to Chris@Flyweight.io and i will follow up tomorrow",
+      "expected": "Mail it to Chris@Flyweight.io and I will follow up tomorrow",
+      "tags": ["casing", "email", "protected"]
+    },
+    {
+      "id": "en-prot-05",
+      "input": "we use npm and eslint here, not yarn",
+      "expected": "We use npm and eslint here, not yarn",
+      "tags": ["casing", "product-names", "protected"]
+    },
+    {
+      "id": "en-prot-06",
+      "input": "great work 🚀 realy nice job on the migration",
+      "expected": "Great work 🚀 really nice job on the migration",
+      "tags": ["casing", "spelling", "emoji", "protected"]
+    },
+    {
+      "id": "en-prot-07",
+      "input": "see #general for the annoucement",
+      "expected": "See #general for the announcement",
+      "tags": ["casing", "spelling", "channel", "protected"]
+    },
+    {
+      "id": "en-spell-01",
+      "input": "i recieved the invoice this morning",
+      "expected": "I received the invoice this morning",
+      "tags": ["spelling", "casing"]
+    },
+    {
+      "id": "en-spell-02",
+      "input": "sorry for the delay, i was travelling and completly forgot",
+      "expected": "Sorry for the delay, I was travelling and completely forgot",
+      "tags": ["spelling", "casing"]
+    },
+    {
+      "id": "en-spell-03",
+      "input": "the meeting is on wendesday at three",
+      "expected": "The meeting is on Wednesday at three",
+      "tags": ["spelling", "casing"]
+    },
+    {
+      "id": "en-spell-04",
+      "input": "can you send me teh latest numbers",
+      "expected": "Can you send me the latest numbers",
+      "tags": ["spelling", "casing"]
+    },
+    {
+      "id": "en-spell-05",
+      "input": "i think its ready for review",
+      "expected": "I think it's ready for review",
+      "tags": ["apostrophe", "casing"]
+    },
+    {
+      "id": "en-spell-06",
+      "input": "hi tim, i hope your well and that the launch went smoothly",
+      "expected": "Hi Tim, I hope you're well and that the launch went smoothly",
+      "tags": ["spelling", "casing", "apostrophe"]
+    },
+    {
+      "id": "en-spell-07",
+      "input": "we definately need to seperate those two concerns",
+      "expected": "We definitely need to separate those two concerns",
+      "tags": ["spelling", "casing"]
+    },
+    {
+      "id": "en-spell-08",
+      "input": "the enviroment variables are documented in the readme",
+      "expected": "The environment variables are documented in the readme",
+      "tags": ["spelling", "casing"]
+    },
+    {
+      "id": "en-spell-09",
+      "input": "that should be availabe by the end of the week",
+      "expected": "That should be available by the end of the week",
+      "tags": ["spelling", "casing"]
+    },
+    {
+      "id": "en-punc-01",
+      "input": "if you can make it let me know",
+      "expected": "If you can make it, let me know",
+      "tags": ["punctuation", "casing", "comma"]
+    },
+    {
+      "id": "en-punc-02",
+      "input": "hey sarah could you take a look at this today",
+      "expected": "Hey Sarah, could you take a look at this today",
+      "tags": ["punctuation", "casing", "comma"]
+    },
+    {
+      "id": "en-punc-03",
+      "input": "no problem ,i can do that tomorrow.",
+      "expected": "No problem, I can do that tomorrow.",
+      "tags": ["punctuation", "spacing", "casing"]
+    },
+    {
+      "id": "en-punc-04",
+      "input": "we tried three things: restarting the pod clearing the cache and rolling back.",
+      "expected": "We tried three things: restarting the pod, clearing the cache and rolling back.",
+      "tags": ["punctuation", "casing", "comma"]
+    },
+    {
+      "id": "en-punc-05",
+      "input": "thats not what i meant sorry",
+      "expected": "That's not what I meant, sorry",
+      "tags": ["apostrophe", "casing", "comma"]
+    },
+    {
+      "id": "en-punc-06",
+      "input": "the api returned a 500 do you want me to retry it?",
+      "expected": "The API returned a 500. Do you want me to retry it?",
+      "tags": ["punctuation", "casing", "run-on"]
+    },
+    {
+      "id": "en-punc-07",
+      "input": "great news the client signed!",
+      "expected": "Great news, the client signed!",
+      "tags": ["punctuation", "casing", "comma"]
+    },
+    {
+      "id": "en-case-01",
+      "input": "i spoke to anna in berlin last week",
+      "expected": "I spoke to Anna in Berlin last week",
+      "tags": ["casing", "proper-nouns"]
+    },
+    {
+      "id": "en-case-02",
+      "input": "we are moving the repo to github on friday",
+      "expected": "We are moving the repo to GitHub on Friday",
+      "tags": ["casing", "proper-nouns"]
+    },
+    {
+      "id": "en-case-03",
+      "input": "the pdf is attached, let me know if it doesnt open",
+      "expected": "The PDF is attached, let me know if it doesn't open",
+      "tags": ["casing", "apostrophe"]
+    },
+    {
+      "id": "en-case-04",
+      "input": "im in a meeting until 4pm, ping me after that",
+      "expected": "I'm in a meeting until 4pm, ping me after that",
+      "tags": ["casing", "apostrophe"]
+    },
+    {
+      "id": "en-case-05",
+      "input": "our new macbook arrived today, its much faster than the old one.",
+      "expected": "Our new MacBook arrived today, it's much faster than the old one.",
+      "tags": ["casing", "apostrophe", "proper-nouns"]
+    },
+    {
+      "id": "en-case-06",
+      "input": "see you monday!",
+      "expected": "See you Monday!",
+      "tags": ["casing", "proper-nouns"]
+    },
+    {
+      "id": "en-space-01",
+      "input": "i pushed the branch  and opened a PR",
+      "expected": "I pushed the branch and opened a PR",
+      "tags": ["spacing", "casing"]
+    },
+    {
+      "id": "en-space-02",
+      "input": "hi tim ,can you confirm the time ?",
+      "expected": "Hi Tim, can you confirm the time?",
+      "tags": ["spacing", "punctuation", "casing"]
+    },
+    {
+      "id": "en-space-03",
+      "input": "we need to fix this ASAP.the client is waiting.",
+      "expected": "We need to fix this ASAP. The client is waiting.",
+      "tags": ["spacing", "casing"]
+    },
+    {
+      "id": "en-space-04",
+      "input": "sorry ,my mistake . i will redo it .",
+      "expected": "Sorry, my mistake. I will redo it.",
+      "tags": ["spacing", "punctuation", "casing"]
+    },
+    {
+      "id": "en-space-05",
+      "input": "thanks!ill take a look now",
+      "expected": "Thanks! I'll take a look now",
+      "tags": ["spacing", "apostrophe", "casing"]
+    },
+    {
+      "id": "en-multi-01",
+      "input": "hi anna\n\nthanks for the update. i talked to the team and we can start on monday. let me know if that works\n\nbest\nchris",
+      "expected": "Hi Anna\n\nThanks for the update. I talked to the team and we can start on Monday. Let me know if that works\n\nBest\nChris",
+      "tags": ["casing", "email", "multiline", "multi-error"]
+    },
+    {
+      "id": "en-multi-02",
+      "input": "quick update: the migration ran overnight and finnished at 6am. we lost two rows which i restored by hand. no action needed from you",
+      "expected": "Quick update: the migration ran overnight and finished at 6am. We lost two rows which I restored by hand. No action needed from you",
+      "tags": ["spelling", "casing", "multi-error"]
+    },
+    {
+      "id": "en-multi-03",
+      "input": "can we push the call to three? i have a conflict at two and i dont want to rush it",
+      "expected": "Can we push the call to three? I have a conflict at two and I don't want to rush it",
+      "tags": ["casing", "apostrophe", "multi-error"]
+    },
+    {
+      "id": "en-multi-04",
+      "input": "the build is failing on main since yesterday. i think its the node version but i havent confirmed yet. @sarah do you have a minute to look?",
+      "expected": "The build is failing on main since yesterday. I think it's the Node version but I haven't confirmed yet. @sarah do you have a minute to look?",
+      "tags": ["casing", "apostrophe", "mention", "protected", "multi-error"]
+    },
+    {
+      "id": "en-multi-05",
+      "input": "sorry for the late reply, i was out sick last week. attached is the revised propsal, let me know what you think",
+      "expected": "Sorry for the late reply, I was out sick last week. Attached is the revised proposal, let me know what you think",
+      "tags": ["spelling", "casing", "multi-error"]
+    },
+    {
+      "id": "en-mixed-01",
+      "input": "hi team, quick heads up: das release ist verschoben auf freitag",
+      "expected": "Hi team, quick heads up: das Release ist verschoben auf Freitag",
+      "tags": ["mixed", "casing"]
+    },
+    {
+      "id": "en-mixed-02",
+      "input": "the invoice is paid, ich schicke dir gleich den beleg",
+      "expected": "The invoice is paid, ich schicke dir gleich den Beleg",
+      "tags": ["mixed", "casing"]
+    }
+  ]
+}

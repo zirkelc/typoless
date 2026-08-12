@@ -4,13 +4,11 @@ import MLXLMCommon
 
 /** A downloadable model that can stand in for Apple's on-device one. */
 enum LocalModel: String, CaseIterable, Sendable {
-    case qwen3_4b
     case qwen35_2b
     case gemma4_e4b
 
     var displayName: String {
         switch self {
-        case .qwen3_4b: return "Qwen3 4B"
         case .qwen35_2b: return "Qwen3.5 2B"
         case .gemma4_e4b: return "Gemma 4 E4B"
         }
@@ -25,7 +23,6 @@ enum LocalModel: String, CaseIterable, Sendable {
      */
     var approximateSize: String {
         switch self {
-        case .qwen3_4b: return "2.1 GB"
         case .qwen35_2b: return "1.6 GB"
         case .gemma4_e4b: return "4.8 GB"
         }
@@ -33,7 +30,6 @@ enum LocalModel: String, CaseIterable, Sendable {
 
     var configuration: ModelConfiguration {
         switch self {
-        case .qwen3_4b: return LLMRegistry.qwen3_4b_4bit
         case .qwen35_2b: return LLMRegistry.qwen3_5_2b_4bit
         case .gemma4_e4b: return LLMRegistry.gemma4_e4b_it_4bit
         }
@@ -48,7 +44,7 @@ enum LocalModel: String, CaseIterable, Sendable {
      */
     var usesThinkingBlocks: Bool {
         switch self {
-        case .qwen3_4b, .qwen35_2b: return true
+        case .qwen35_2b: return true
         case .gemma4_e4b: return false
         }
     }
