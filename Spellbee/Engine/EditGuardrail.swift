@@ -169,8 +169,19 @@ enum EditGuardrail {
                 return false
             }
 
-            let distance = editDistance(String(before), String(after))
-            return distance <= maximumSpellingDistance && distance < before.count
+            /**
+             Measured without case, because case is not a spelling mistake and
+             counting it as one refuses real fixes. `wendesday` to `wednesday`
+             is two edits and allowed; the same fix written `Wednesday`, which
+             is what a model returns at the start of a sentence, was three and
+             refused. Nothing is loosened by ignoring case here: a change that
+             is only case never reaches this point, since it is classified as
+             capitalisation several checks earlier.
+             */
+            let lowercasedBefore = before.lowercased()
+            let distance = editDistance(lowercasedBefore, after.lowercased())
+
+            return distance <= maximumSpellingDistance && distance < lowercasedBefore.count
         }
     }
 

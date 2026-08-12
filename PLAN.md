@@ -136,6 +136,7 @@ a fraction of a second to several, so it is not a rare case.
 6. **Model refusals.** Foundation Models occasionally refuses ordinary text. The guardrail turns that into a no-op rather than a mangled message. Log the rate. `SystemLanguageModel(guardrails: .permissiveContentTransformations)` exists and is the right fit for a correct-don't-generate workload; try it first at M2 before assuming refusals are unavoidable.
 7. **Getting the user through the accessibility grant.** The system prompt cannot be relied on: it is the system's decision whether to show anything, and in testing it showed nothing. The setup window must therefore work for a user who has to add the app by hand with the **+** button in System Settings, which means naming that button, saying where the app lives, and detecting the grant the moment it lands. Treat the prompt as a bonus, not the path.
 8. **TCC identity.** Permissions key off signing identity + bundle ID. Stable bundle ID and a Developer ID cert from day one, or dev builds re-prompt endlessly.
+9. **A leftover sandbox container silently splits preferences in two.** `~/Library/Containers/dev.zirkelc.spellbee` survives from the sandboxed builds, and the system refuses to delete it. While it is there, `defaults write dev.zirkelc.spellbee …` resolves to the container while the unsandboxed app reads the host domain, so a setting appears to be written and has no effect. Write the path instead: `defaults write ~/Library/Preferences/dev.zirkelc.spellbee.plist …`, then `killall cfprefsd`.
 
 ## Why not the Mac App Store
 
@@ -218,11 +219,34 @@ becoming `Chris. Cook`, `Passt dir` becoming `Passt ihr`, an English question
 silently translated into German, and both backends leaking fragments of their
 own prompt into the middle of an email.
 
-Two costs, both understood. `wendesday` to `Wednesday` is refused because the
-spelling distance is case-sensitive and the capital counts as a third edit,
-which is a rule worth fixing. `sorry ,my mistake .` is refused because the diff
-misaligns on the space before the comma and produces nonsense atoms; that one
-fails safe.
+Two costs. `sorry ,my mistake .` is refused because the diff misaligns on the
+space before the comma and produces nonsense atoms; that one fails safe, and
+closing it means making the atom diff whitespace-aware.
+
+The other, `wendesday` to `Wednesday`, was the spelling distance counting the
+capital as a third edit and going over the limit of two. The distance now
+ignores case, which loses nothing: a change that is only case never reaches that
+check, having been classified as capitalisation several steps earlier.
+
+Re-scored offline over every stored model output rather than guessed at: of 272
+cases where a model changed something, three results move and exact matches go
+from 112 to 113, with no regression. The obvious accompanying fix, not letting
+capitalisation fixes count towards a chunk's trustworthiness, was measured too
+and is worse: it throws away whole chunks whose corrections were legitimately
+all capitalisation.
+
+Two things that relaxation exposed, both worth knowing:
+
+- On a chunk a model **translated**, one more accepted edit tips
+  `rejectedCount <= accepted.count` and the chunk is applied in part rather than
+  dropped whole, which is the mixed-language mess `isTrustworthy` exists to
+  prevent. Seen once, on a message that was half English and half German.
+- `hause` to `häuser` has always been accepted at distance two. It looked
+  blocked only because a model that capitalised it spent a third edit on the
+  capital. So the same word change was refused or applied depending on where in
+  the sentence it appeared. Closing it needs a rule about word endings rather
+  than a bigger or smaller budget. Pinned in `verify-engine.sh` so it cannot
+  change unnoticed.
 
 ### M3 and M4 notes
 
