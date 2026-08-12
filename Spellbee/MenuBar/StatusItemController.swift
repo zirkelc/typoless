@@ -139,21 +139,22 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             keyEquivalent: ""
         )
         guardrail.target = self
-        guardrail.state = model.isGuardrailEnabled ? .on : .off
-        guardrail.toolTip = model.isGuardrailEnabled
+        guardrail.state = model.preferences.isGuardrailEnabled ? .on : .off
+        guardrail.toolTip = model.preferences.isGuardrailEnabled
             ? "Changes that are not spelling, punctuation, capitalisation or spacing are discarded."
             : "Off: whatever the model returns is applied, including rewritten or translated text."
         menu.addItem(guardrail)
 
         menu.addItem(.separator())
 
+        add(to: menu, title: "Settings…", keyEquivalent: ",", action: #selector(showSettings))
         add(to: menu, title: "Set Up Spellbee…", keyEquivalent: "", action: #selector(showOnboarding))
 
         #if DEBUG
         add(to: menu, title: "Debug: Flash Overlay", keyEquivalent: "", action: #selector(flashOverlay))
         add(
             to: menu,
-            title: "Debug: Compare Models (downloads \(model.localModel.displayName))",
+            title: "Debug: Compare Models (downloads \(model.preferences.localModel.displayName))",
             keyEquivalent: "",
             isEnabled: !model.isComparing,
             action: #selector(compareModels)
@@ -170,12 +171,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             let state = model.engine.lastMessage ?? model.status.label
 
             /** Never let an unguarded state be a silent one. */
-            return model.isGuardrailEnabled ? state : "\(state) — rewriting allowed"
+            return model.preferences.isGuardrailEnabled ? state : "\(state) — rewriting allowed"
         }
 
         /** Same wording as the badge, so the two never disagree. */
         let amount = AppStatus.percentage(progress) ?? "starting…"
-        return "Downloading \(model.localModel.displayName) — \(amount)"
+        return "Downloading \(model.preferences.localModel.displayName) — \(amount)"
     }
 
     /**
@@ -193,13 +194,13 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             keyEquivalent: ""
         )
         apple.target = self
-        apple.state = model.backend == .appleOnDevice ? .on : .off
+        apple.state = model.preferences.backend == .appleOnDevice ? .on : .off
         menu.addItem(apple)
 
         menu.addItem(.separator())
 
         for local in LocalModel.allCases {
-            let isSelected = model.backend == .local && model.localModel == local
+            let isSelected = model.preferences.backend == .local && model.preferences.localModel == local
             let suffix = isSelected && model.downloadProgress != nil
                 ? " — downloading"
                 : " (\(local.approximateSize))"
@@ -240,7 +241,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     @objc private func toggleGuardrail() {
-        model.setGuardrailEnabled(!model.isGuardrailEnabled)
+        model.preferences.isGuardrailEnabled.toggle()
     }
 
     @objc private func cancelDownload() {
@@ -263,6 +264,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func togglePause() {
         model.isPaused.toggle()
+    }
+
+    @objc private func showSettings() {
+        model.showSettings()
     }
 
     @objc private func showOnboarding() {

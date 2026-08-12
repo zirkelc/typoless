@@ -19,7 +19,6 @@ import Tokenizers
 actor LocalModelCorrector: Corrector {
     private let model: LocalModel
     private let detector: LanguageDetector
-    private let allowedKinds: Set<EditKind>
 
     private var container: ModelContainer?
     private var loading: Task<ModelContainer, Error>?
@@ -33,18 +32,16 @@ actor LocalModelCorrector: Corrector {
     init(
         model: LocalModel,
         detector: LanguageDetector = LanguageDetector(),
-        allowedKinds: Set<EditKind> = Set(EditKind.allCases),
         appliesGuardrail: Bool = true,
         onProgress: @escaping @Sendable (Double?) -> Void = { _ in }
     ) {
         self.model = model
         self.detector = detector
-        self.allowedKinds = allowedKinds
         self.appliesGuardrail = appliesGuardrail
         self.onProgress = onProgress
     }
 
-    func corrections(for text: String) async throws -> [TextEdit] {
+    func corrections(for text: String, settings: AppSettings) async throws -> [TextEdit] {
         let container = try await loadedContainer()
         let protected = ProtectedSpans.find(in: text)
         var edits: [TextEdit] = []
@@ -77,8 +74,10 @@ actor LocalModelCorrector: Corrector {
 
             let verdict = EditGuardrail.filter(
                 chunkEdits,
-                allowing: allowedKinds,
-                protectedBy: protected
+                in: text,
+                allowing: settings.allowedKinds,
+                protectedBy: protected,
+                allowsSentenceFinalPunctuation: settings.addsSentenceFinalPunctuation
             )
 
             guard verdict.isTrustworthy else {

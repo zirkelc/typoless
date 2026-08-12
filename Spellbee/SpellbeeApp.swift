@@ -31,12 +31,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: StatusItemController?
     private var onboarding: OnboardingWindowController?
+    private var settings: SettingsWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let onboarding = OnboardingWindowController(model: model)
         self.onboarding = onboarding
 
+        let settings = SettingsWindowController(model: model)
+        self.settings = settings
+
         model.onShowOnboarding = { [weak onboarding] in onboarding?.show() }
+        model.onShowSettings = { [weak settings] in settings?.show() }
         statusItem = StatusItemController(model: model)
 
         if !UserDefaults.standard.bool(forKey: DefaultsKey.hasCompletedOnboarding) {

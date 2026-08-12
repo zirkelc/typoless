@@ -1,21 +1,18 @@
 import Observation
 import SwiftUI
 
-/** Keys for values persisted in user defaults. */
-enum DefaultsKey {
-    static let hasCompletedOnboarding = "hasCompletedOnboarding"
-    static let correctorBackend = "correctorBackend"
-    static let localModel = "localModel"
-    static let guardrailEnabled = "guardrailEnabled"
-}
-
 /**
  Root application state. Owns the long-lived pieces and derives the single
  status value the menu bar renders.
+
+ Settings themselves live in `Preferences`. This holds what is true right now
+ rather than what the user chose: whether a pass is running, how far a download
+ has got, whether the triggers are armed.
  */
 @MainActor
 @Observable
 final class AppModel {
+    let preferences = Preferences()
     let permissions = PermissionsModel()
     let overlay = OverlayController()
     let engine: CorrectionEngine
@@ -25,31 +22,26 @@ final class AppModel {
         didSet { updateTriggers() }
     }
 
-    /** Which model does the correcting, and which downloaded one if not Apple's. */
-    private(set) var backend: CorrectorBackend
-    private(set) var localModel: LocalModel
-
     /** Set while weights are being fetched, from 0 to 1. */
     private(set) var downloadProgress: Double?
 
     /** Set while both backends are being run over the same samples. */
     private(set) var isComparing = false
 
-    /**
-     Whether the model's changes are judged before being applied.
-
-     On by default, and the thing that makes this a correction tool rather than
-     a rewriting one. Off, whatever the model returns goes straight into the
-     field, which is useful for judging a model and risky for everything else.
-     */
-    private(set) var isGuardrailEnabled: Bool
-
     /** Set by whoever owns the window, so the model never touches AppKit itself. */
     @ObservationIgnored var onShowOnboarding: (() -> Void)?
+    @ObservationIgnored var onShowSettings: (() -> Void)?
 
     @ObservationIgnored private let modifierTaps = ModifierTapMonitor()
     @ObservationIgnored private let hotKey = HotKeyMonitor()
-    @ObservationIgnored private var isListening = false
+    @ObservationIgnored private var armedTriggers: ArmedTriggers = []
+
+    /** Which triggers are currently listening, so a change only rewires what moved. */
+    private struct ArmedTriggers: OptionSet {
+        let rawValue: Int
+        static let doubleTap = ArmedTriggers(rawValue: 1 << 0)
+        static let hotKey = ArmedTriggers(rawValue: 1 << 1)
+    }
 
     var status: AppStatus {
         if let downloadProgress { return .downloading(downloadProgress) }
@@ -60,28 +52,20 @@ final class AppModel {
     }
 
     init() {
-        let defaults = UserDefaults.standard
-        backend = defaults.string(forKey: DefaultsKey.correctorBackend)
-            .flatMap(CorrectorBackend.init) ?? .appleOnDevice
-        /**
-         Gemma by default because it is the one that measures well: it leads
-         fix recall by roughly 15 points over Apple's on-device model in both
-         languages. Anyone who had a since-removed model selected lands here
-         too, since an unknown name reads back as nil.
-         */
-        localModel = defaults.string(forKey: DefaultsKey.localModel)
-            .flatMap(LocalModel.init) ?? .gemma4_e4b
-
-        /** Absent means never set, which should mean on rather than off. */
-        isGuardrailEnabled = defaults.object(forKey: DefaultsKey.guardrailEnabled) as? Bool ?? true
-
-        engine = CorrectionEngine(corrector: FoundationModelsCorrector(), overlay: overlay)
+        engine = CorrectionEngine(
+            corrector: FoundationModelsCorrector(),
+            overlay: overlay,
+            preferences: preferences
+        )
 
         modifierTaps.onDoubleTap = { [weak self] in self?.trigger() }
         hotKey.onFire = { [weak self] in self?.trigger() }
 
         /** Revoking a permission mid-session has to disarm the triggers too. */
         permissions.onChange = { [weak self] in self?.updateTriggers() }
+
+        preferences.onTriggersChanged = { [weak self] in self?.updateTriggers() }
+        preferences.onCorrectorChanged = { [weak self] in self?.rebuildCorrector() }
 
         updateTriggers()
         rebuildCorrector()
@@ -90,17 +74,13 @@ final class AppModel {
     /**
      Switches which model corrects text.
 
-     Selecting a downloaded model does not fetch anything on its own. The
-     weights arrive on the first correction, which is when the user has actually
-     asked for the thing that needs them.
+     Selecting a downloaded model fetches it straight away rather than on the
+     first correction, since choosing it is the moment the user has decided to
+     pay for it.
      */
     func use(_ backend: CorrectorBackend, model: LocalModel? = nil) {
-        self.backend = backend
-        if let model { localModel = model }
-
-        let defaults = UserDefaults.standard
-        defaults.set(backend.rawValue, forKey: DefaultsKey.correctorBackend)
-        defaults.set(localModel.rawValue, forKey: DefaultsKey.localModel)
+        preferences.backend = backend
+        if let model { preferences.localModel = model }
 
         rebuildCorrector()
     }
@@ -123,12 +103,6 @@ final class AppModel {
         use(.appleOnDevice)
     }
 
-    func setGuardrailEnabled(_ enabled: Bool) {
-        isGuardrailEnabled = enabled
-        UserDefaults.standard.set(enabled, forKey: DefaultsKey.guardrailEnabled)
-        rebuildCorrector()
-    }
-
     private func rebuildCorrector() {
         /**
          Stop whatever the previous backend was doing. Without the cancel,
@@ -144,29 +118,30 @@ final class AppModel {
 
         downloadProgress = nil
 
-        switch backend {
+        let detector = LanguageDetector(enabled: Array(preferences.enabledLanguages))
+        let appliesGuardrail = preferences.isGuardrailEnabled
+
+        switch preferences.backend {
         case .appleOnDevice:
-            engine.corrector = FoundationModelsCorrector(appliesGuardrail: isGuardrailEnabled)
+            engine.corrector = FoundationModelsCorrector(
+                detector: detector,
+                appliesGuardrail: appliesGuardrail
+            )
         case .local:
             let corrector = LocalModelCorrector(
-                model: localModel,
-                appliesGuardrail: isGuardrailEnabled
+                model: preferences.localModel,
+                detector: detector,
+                appliesGuardrail: appliesGuardrail
             ) { [weak self] progress in
                 Task { @MainActor in self?.downloadProgress = progress }
             }
             engine.corrector = corrector
 
-            /**
-             Fetch the weights now rather than on the first correction. Choosing
-             a model is the moment the user has decided to pay for it, and a
-             multi-minute wait is far worse when it lands on a keystroke that
-             was expected to be instant.
-             */
             Task { await corrector.prepare() }
         }
 
         Log.app.info(
-            "Correcting with \(self.backendDescription, privacy: .public), guardrail \(self.isGuardrailEnabled ? "on" : "OFF", privacy: .public)"
+            "Correcting with \(self.backendDescription, privacy: .public), guardrail \(appliesGuardrail ? "on" : "OFF", privacy: .public)"
         )
     }
 
@@ -188,14 +163,14 @@ final class AppModel {
          machine briefly holds two.
          */
         let existing = engine.corrector as? LocalModelCorrector
-        let local = existing ?? LocalModelCorrector(model: localModel) { [weak self] progress in
+        let local = existing ?? LocalModelCorrector(model: preferences.localModel) { [weak self] progress in
             Task { @MainActor in self?.downloadProgress = progress }
         }
 
         await BackendComparison.run(
             apple: FoundationModelsCorrector(),
             local: local,
-            localName: localModel.displayName
+            localName: preferences.localModel.displayName
         )
 
         /** Only discard weights this comparison brought in itself. */
@@ -205,9 +180,9 @@ final class AppModel {
     }
 
     var backendDescription: String {
-        switch backend {
+        switch preferences.backend {
         case .appleOnDevice: return CorrectorBackend.appleOnDevice.displayName
-        case .local: return localModel.displayName
+        case .local: return preferences.localModel.displayName
         }
     }
 
@@ -218,19 +193,37 @@ final class AppModel {
      a failure the user cannot see, on a keystroke they may not have aimed at us.
      */
     func updateTriggers() {
-        let shouldListen = permissions.isReady && !isPaused
-        guard shouldListen != isListening else { return }
+        let isReady = permissions.isReady && !isPaused
 
-        isListening = shouldListen
-        if shouldListen {
-            modifierTaps.start()
-            hotKey.start()
-            Log.app.info("Triggers armed")
-        } else {
-            modifierTaps.stop()
+        var wanted: ArmedTriggers = []
+        if isReady, preferences.isDoubleTapEnabled { wanted.insert(.doubleTap) }
+        if isReady, preferences.isHotKeyEnabled { wanted.insert(.hotKey) }
+
+        /**
+         The shortcut can change while it is armed, and a registration is not
+         updated in place, so it is torn down and put back.
+         */
+        if wanted.contains(.hotKey), armedTriggers.contains(.hotKey), hotKey.shortcut != preferences.hotKey {
             hotKey.stop()
-            Log.app.info("Triggers disarmed")
+            armedTriggers.remove(.hotKey)
         }
+
+        guard wanted != armedTriggers else { return }
+
+        if wanted.contains(.doubleTap), !armedTriggers.contains(.doubleTap) {
+            modifierTaps.start()
+        } else if !wanted.contains(.doubleTap), armedTriggers.contains(.doubleTap) {
+            modifierTaps.stop()
+        }
+
+        if wanted.contains(.hotKey), !armedTriggers.contains(.hotKey) {
+            hotKey.start(preferences.hotKey)
+        } else if !wanted.contains(.hotKey), armedTriggers.contains(.hotKey) {
+            hotKey.stop()
+        }
+
+        armedTriggers = wanted
+        Log.app.info("Triggers armed: \(String(describing: wanted.rawValue), privacy: .public)")
     }
 
     func trigger() {
@@ -239,5 +232,9 @@ final class AppModel {
 
     func showOnboarding() {
         onShowOnboarding?()
+    }
+
+    func showSettings() {
+        onShowSettings?()
     }
 }

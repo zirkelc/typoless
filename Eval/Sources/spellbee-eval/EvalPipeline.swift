@@ -71,7 +71,7 @@ struct EvalPipeline: Sendable {
                 continue
             }
 
-            let verdict = EditGuardrail.filter(chunkEdits, protectedBy: protected)
+            let verdict = EditGuardrail.filter(chunkEdits, in: text, protectedBy: protected)
             guarded.editsRejected += verdict.rejectedCount
 
             guard verdict.isTrustworthy else {

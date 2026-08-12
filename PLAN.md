@@ -178,10 +178,52 @@ for updates. The same way Raycast, Alfred, Karabiner and Cotypist ship.
 | M2 | ✅ Foundation Models correction, en/de, chunking, guardrail |
 | M3 | ✅ Revert done early, in M1. Minimal edit application landed; each change is written as its own range replacement |
 | M4 | ✅ Three tiers, per-line tracing, sweep, pulse on changed ranges, cancel on Escape and on focus change |
-| M5 | Settings, languages, deny-list. Nothing built; there is no settings window at all |
+| M5 | ✅ Settings window: triggers and a shortcut recorder, languages, per-kind toggles, full stops globally and per app, deny-list, privacy |
 | M6 | Developer ID signing, notarization, Sparkle. Blocked on a Developer ID certificate, which does not exist yet |
 
-M0-M4 is a usable app. M5 is reach, M6 is shipping.
+M0-M5 is the app. M6 is shipping it.
+
+### M5 notes
+
+**One `Preferences` object owns every setting.** They used to be read out of
+`UserDefaults` wherever they were wanted, which is fine for two and unworkable
+for twenty: nothing can observe a change, and the default for a missing value
+gets written out in several places and eventually disagrees with itself.
+
+**Two change hooks, not one.** The first version fired a single "something
+changed" callback that rewired the triggers and rebuilt the corrector. Rebuilding
+evicts several gigabytes of weights and loads them again, so turning off a
+checkbox cost a multi-second reload. Now only the settings that genuinely feed
+the corrector, the backend, the model, the guardrail and the languages, cause
+one. Everything else is read afresh at the start of each correction and takes
+effect on the next keystroke.
+
+**Settings arrive per correction, not per corrector.** `AppSettings` is passed
+into `corrections(for:settings:)` rather than fixed when a corrector is built,
+because the answers differ by app and the user is in a different app each time.
+
+**A declined kind is skipped, not rejected.** `rejectedCount` measures how far
+the model strayed, which is what decides whether a chunk can be trusted at all.
+A change the user asked us not to make says nothing about the model, so counting
+it would make a well-behaved model look like a rewriting one and throw away its
+other corrections.
+
+**An edit is described by the smallest thing that explains it**, so a misspelled
+word at the start of a sentence is one spelling edit rather than a spelling edit
+plus a capitalisation edit. Turning capitalisation off does not hold back the
+capital on a word that had to be respelled anyway. Pinned in `verify-engine.sh`,
+since it surprised me while writing the tests for it.
+
+**The shortcut is recorded, not chosen from a list.** Which combinations are
+free depends on the system's own shortcuts, the keyboard layout, and whatever
+else is running, and ⌥⌘Space already proved that a shortcut can be claimed and
+still lose. Letting the user press it is the only honest way to find out. The
+key's name is asked of the current layout through `UCKeyTranslate` so a German
+keyboard shows the key that will actually be pressed.
+
+**Launch at login is not stored.** `SMAppService` owns it and the user can turn
+it off in System Settings without telling us, so it is read back rather than
+mirrored into a copy that would slowly become a lie.
 
 ### Measuring the prompt
 

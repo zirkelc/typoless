@@ -16,7 +16,6 @@ import FoundationModels
 actor FoundationModelsCorrector: Corrector {
     private let detector: LanguageDetector
     private let model: SystemLanguageModel
-    private let allowedKinds: Set<EditKind>
 
     /**
      Whether the model's changes are judged before being applied.
@@ -29,11 +28,9 @@ actor FoundationModelsCorrector: Corrector {
 
     init(
         detector: LanguageDetector = LanguageDetector(),
-        allowedKinds: Set<EditKind> = Set(EditKind.allCases),
         appliesGuardrail: Bool = true
     ) {
         self.detector = detector
-        self.allowedKinds = allowedKinds
         self.appliesGuardrail = appliesGuardrail
 
         /**
@@ -44,7 +41,7 @@ actor FoundationModelsCorrector: Corrector {
         model = SystemLanguageModel(guardrails: .permissiveContentTransformations)
     }
 
-    func corrections(for text: String) async throws -> [TextEdit] {
+    func corrections(for text: String, settings: AppSettings) async throws -> [TextEdit] {
         guard model.isAvailable else { throw CorrectorError.modelUnavailable }
 
         let protected = ProtectedSpans.find(in: text)
@@ -81,8 +78,10 @@ actor FoundationModelsCorrector: Corrector {
 
             let verdict = EditGuardrail.filter(
                 chunkEdits,
-                allowing: allowedKinds,
-                protectedBy: protected
+                in: text,
+                allowing: settings.allowedKinds,
+                protectedBy: protected,
+                allowsSentenceFinalPunctuation: settings.addsSentenceFinalPunctuation
             )
 
             guard verdict.isTrustworthy else {

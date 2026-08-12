@@ -15,6 +15,9 @@ struct TextTarget {
      */
     let owner: pid_t
 
+    /** Which app the text belongs to, so its own settings can be looked up. */
+    let bundleID: String?
+
     /** Full contents of the field. */
     let text: String
 
@@ -103,9 +106,9 @@ enum TextTargetResolver {
     /**
      Apps where correcting text is more likely to cause harm than help: shells,
      editors and password managers, where the "text field" is usually code, a
-     command, or a secret. The user gets a real deny-list in settings later.
+     command, or a secret. Seeds the deny-list the user can then edit.
      */
-    static let deniedBundleIDs: Set<String> = [
+    static let defaultDeniedBundleIDs: Set<String> = [
         "com.apple.Terminal",
         "com.googlecode.iterm2",
         "com.mitchellh.ghostty",
@@ -118,14 +121,14 @@ enum TextTargetResolver {
         "com.agilebits.onepassword7",
     ]
 
-    static func resolve() throws -> TextTarget {
+    static func resolve(denying denied: Set<String> = defaultDeniedBundleIDs) throws -> TextTarget {
         guard AXIsProcessTrusted() else { throw TextTargetError.notTrusted }
 
         guard let frontmost = NSWorkspace.shared.frontmostApplication else {
             throw TextTargetError.noFocusedElement
         }
 
-        if let bundleID = frontmost.bundleIdentifier, deniedBundleIDs.contains(bundleID) {
+        if let bundleID = frontmost.bundleIdentifier, denied.contains(bundleID) {
             throw TextTargetError.appDenied(bundleID: bundleID)
         }
 
@@ -187,6 +190,7 @@ enum TextTargetResolver {
         return TextTarget(
             element: focused,
             owner: frontmost.processIdentifier,
+            bundleID: frontmost.bundleIdentifier,
             text: text,
             range: range,
             isUserSelection: hasUserSelection,

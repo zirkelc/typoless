@@ -24,6 +24,7 @@ final class CorrectionEngine {
     var corrector: any Corrector
 
     private let overlay: OverlayController
+    private let preferences: Preferences
     private let escape = EscapeMonitor()
 
     private(set) var isRunning = false
@@ -40,9 +41,10 @@ final class CorrectionEngine {
         let after: String
     }
 
-    init(corrector: any Corrector, overlay: OverlayController) {
+    init(corrector: any Corrector, overlay: OverlayController, preferences: Preferences) {
         self.corrector = corrector
         self.overlay = overlay
+        self.preferences = preferences
     }
 
     func run() async {
@@ -57,7 +59,7 @@ final class CorrectionEngine {
 
         let target: TextTarget
         do {
-            target = try TextTargetResolver.resolve()
+            target = try TextTargetResolver.resolve(denying: preferences.deniedBundleIDs)
         } catch let error as TextTargetError {
             report(error.userMessage, log: "Could not resolve a text target: \(error)")
             return
@@ -73,7 +75,7 @@ final class CorrectionEngine {
 
         let edits: [TextEdit]
         do {
-            edits = try await corrections(for: original)
+            edits = try await corrections(for: original, in: target.bundleID)
         } catch is CancellationError {
             report(nil, log: "Cancelled before anything was written")
             return
@@ -152,9 +154,17 @@ final class CorrectionEngine {
      promise that nothing will be written, which matters most when the model is
      slow and the user has already decided they do not want this.
      */
-    private func corrections(for text: String) async throws -> [TextEdit] {
+    private func corrections(for text: String, in bundleID: String?) async throws -> [TextEdit] {
         let corrector = self.corrector
-        let work = Task { try await corrector.corrections(for: text) }
+        let settings = preferences.settings(for: bundleID)
+
+        Log.app.info(
+            """
+            Correcting with kinds=\(settings.allowedKinds.map(\.rawValue).sorted().joined(separator: ","), privacy: .public) \
+            fullStop=\(settings.addsSentenceFinalPunctuation, privacy: .public)
+            """
+        )
+        let work = Task { try await corrector.corrections(for: text, settings: settings) }
 
         escape.onPress = {
             Log.app.info("Cancelled by Escape")

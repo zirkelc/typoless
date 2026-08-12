@@ -36,9 +36,22 @@ var failures = 0
 
 /// Runs the text the user wrote and the text the model returned through the
 /// guardrail, and checks what the field would end up containing.
-func check(_ name: String, _ original: String, _ modelOutput: String, expect: String) {
+func check(
+    _ name: String,
+    _ original: String,
+    _ modelOutput: String,
+    allowing kinds: Set<EditKind> = Set(EditKind.allCases),
+    sentenceFinalPunctuation: Bool = true,
+    expect: String
+) {
     let protected = ProtectedSpans.find(in: original)
-    let verdict = EditGuardrail.filter(TextDiff.edits(from: original, to: modelOutput), protectedBy: protected)
+    let verdict = EditGuardrail.filter(
+        TextDiff.edits(from: original, to: modelOutput),
+        in: original,
+        allowing: kinds,
+        protectedBy: protected,
+        allowsSentenceFinalPunctuation: sentenceFinalPunctuation
+    )
     let result = verdict.isTrustworthy ? TextDiff.apply(verdict.accepted, to: original) : original
     let ok = result == expect
     if !ok { failures += 1 }
@@ -74,6 +87,37 @@ check("umlaut fold is not a licence", "wir fahren nach hause", "Wir fahren nach 
 check("pronoun swap", "Passt dir Dienstag um 10 Uhr?", "Passt ihr Dienstag um 10 Uhr?", expect: "Passt dir Dienstag um 10 Uhr?")
 check("word lengthened", "The deploy finished at 14:32", "The deployment finished at 14:32", expect: "The deploy finished at 14:32")
 check("different word, same first letter", "sie ist schon hier", "sie hat schon hier", expect: "sie ist schon hier")
+
+print("\n== settings change what is allowed ==")
+
+// Turning a kind off must drop only that kind, and must not make the chunk look
+// less trustworthy: a change the user declined says nothing about the model.
+check("spelling off", "teh meeting is on monday", "the meeting is on Monday",
+      allowing: [.casing, .punctuation, .whitespace], expect: "teh meeting is on Monday")
+check("casing off", "teh meeting is on monday", "the meeting is on Monday",
+      allowing: [.spelling, .punctuation, .whitespace], expect: "the meeting is on monday")
+
+// An edit is described by the smallest thing that explains it, and a misspelled
+// word at the start of a sentence is one edit, not two. So it counts as
+// spelling and brings its capital with it: turning capitalisation off does not
+// hold back the capital on a word that had to be respelled anyway.
+check("a respelled word carries its own capital", "teh meeting is on monday", "The meeting is on Monday",
+      allowing: [.spelling], expect: "The meeting is on monday")
+check("declining a kind does not poison the chunk", "hi anna, teh deploy ist durch", "Hi Anna, the deploy ist durch",
+      allowing: [.casing], expect: "Hi Anna, teh deploy ist durch")
+
+// A full stop on the end is the one change with a setting of its own.
+check("full stop refused at the end", "see you tomorrow", "See you tomorrow.",
+      sentenceFinalPunctuation: false, expect: "See you tomorrow")
+check("full stop allowed at the end", "see you tomorrow", "See you tomorrow.",
+      sentenceFinalPunctuation: true, expect: "See you tomorrow.")
+check("mid-sentence punctuation is not a sentence ending", "if you can come let me know",
+      "If you can come, let me know", sentenceFinalPunctuation: false,
+      expect: "If you can come, let me know")
+check("a full stop between sentences still lands", "done. whats next", "Done. What's next",
+      sentenceFinalPunctuation: false, expect: "Done. What's next")
+check("trailing spacing does not hide the end", "see you tomorrow  ", "See you tomorrow.  ",
+      sentenceFinalPunctuation: false, expect: "See you tomorrow  ")
 
 print("\n== known gap, pinned so it cannot change unnoticed ==")
 

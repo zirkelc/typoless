@@ -1,11 +1,21 @@
 import Foundation
 
 /** The only kinds of change this app is allowed to make. */
-enum EditKind: String, CaseIterable {
+enum EditKind: String, CaseIterable, Sendable {
     case whitespace
     case punctuation
     case casing
     case spelling
+
+    /** Named for what the user recognises, not for what the code calls it. */
+    var displayName: String {
+        switch self {
+        case .whitespace: return "Spacing"
+        case .punctuation: return "Punctuation"
+        case .casing: return "Capitalisation"
+        case .spelling: return "Spelling"
+        }
+    }
 }
 
 /**
@@ -50,8 +60,10 @@ enum EditGuardrail {
 
     static func filter(
         _ edits: [TextEdit],
+        in text: String,
         allowing kinds: Set<EditKind> = Set(EditKind.allCases),
-        protectedBy protected: [Range<String.Index>] = []
+        protectedBy protected: [Range<String.Index>] = [],
+        allowsSentenceFinalPunctuation: Bool = true
     ) -> Verdict {
         var accepted: [TextEdit] = []
         var rejected = 0
@@ -63,7 +75,23 @@ enum EditGuardrail {
                 continue
             }
 
+            /**
+             Skipped rather than rejected, here and below.
+
+             `rejectedCount` measures how far the model strayed, which is what
+             decides whether the chunk can be trusted at all. A change the user
+             has simply asked us not to make says nothing about the model, so
+             counting it would make a well-behaved model look like a rewriting
+             one and throw away its other corrections.
+             */
             guard kinds.contains(kind) else { continue }
+
+            guard
+                allowsSentenceFinalPunctuation
+                    || !addsSentenceFinalPunctuation(edit, in: text)
+            else {
+                continue
+            }
 
             guard !protected.contains(where: { $0.overlaps(edit.range) }) else {
                 Log.app.info("Rejected a \(kind.rawValue, privacy: .public) edit inside protected text")
@@ -192,6 +220,30 @@ enum EditGuardrail {
 
             return distance <= maximumSpellingDistance && distance < lowercasedBefore.count
         }
+    }
+
+    /** Marks that close a sentence, and nothing else. */
+    private static let sentenceFinalMarks: Set<Character> = [".", "!", "?", "…"]
+
+    /**
+     Whether this edit only puts a closing mark on the end of the text.
+
+     Finishing a sentence is a correction in an email and a change of tone in a
+     chat message, which is why it is the one kind of change with a setting of
+     its own. It has to be recognised by position as well as by content: a full
+     stop added mid-paragraph is ordinary punctuation, and only the one hanging
+     off the end of what the user wrote is in question.
+     */
+    static func addsSentenceFinalPunctuation(_ edit: TextEdit, in text: String) -> Bool {
+        /** Anything but spacing after this edit means it is not the end. */
+        guard text[edit.range.upperBound...].allSatisfy(\.isWhitespace) else { return false }
+
+        var stripped = Substring(edit.replacement)
+        while let last = stripped.last, sentenceFinalMarks.contains(last) {
+            stripped = stripped.dropLast()
+        }
+
+        return stripped.count < edit.replacement.count && stripped == edit.original
     }
 
     /** Coarse alphabet families, enough to tell a typo from a different writing system. */

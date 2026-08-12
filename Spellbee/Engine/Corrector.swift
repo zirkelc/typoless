@@ -19,13 +19,13 @@ protocol Corrector: Sendable {
      caller to overwrite the field entirely, and everything in it that is not
      plain characters would be lost on the way.
      */
-    func corrections(for text: String) async throws -> [TextEdit]
+    func corrections(for text: String, settings: AppSettings) async throws -> [TextEdit]
 }
 
 extension Corrector {
     /** The corrected text, for callers that want the result rather than the changes. */
-    func correct(_ text: String) async throws -> String {
-        TextDiff.apply(try await corrections(for: text), to: text)
+    func correct(_ text: String, settings: AppSettings = .permissive) async throws -> String {
+        TextDiff.apply(try await corrections(for: text, settings: settings), to: text)
     }
 }
 
@@ -38,7 +38,7 @@ extension Corrector {
  text.
  */
 struct WhitespaceCorrector: Corrector {
-    func corrections(for text: String) async throws -> [TextEdit] {
+    func corrections(for text: String, settings: AppSettings) async throws -> [TextEdit] {
         TextDiff.edits(from: text, to: collapsed(text))
     }
 
