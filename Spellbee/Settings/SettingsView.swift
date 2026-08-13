@@ -99,33 +99,26 @@ struct GeneralSettingsView: View {
                         ?? "Tap \(preferences.doubleTapModifier.symbol) twice, quickly. No other key or click in between."
                 )
 
-                Toggle("Keyboard shortcut", isOn: $preferences.isHotKeyEnabled)
-                ShortcutRecorder(shortcut: $preferences.hotKey)
-                    .disabled(!preferences.isHotKeyEnabled)
-                    .padding(.leading, 20)
+                HStack(spacing: 8) {
+                    Toggle("Keyboard shortcut", isOn: $preferences.isHotKeyEnabled)
+
+                    ShortcutRecorder(shortcut: $preferences.hotKey)
+                        .disabled(!preferences.isHotKeyEnabled)
+                }
+
+                SettingsNote("Fires on one press, wherever you are. Click it to record a different one.")
             }
 
             Divider().padding(.vertical, 10)
 
             SettingsRow(label: "Stopping:") {
-                /**
-                 Shown as a key rather than named in a sentence, so it reads the
-                 same way as the shortcut above it. Not a recorder: Escape is
-                 fixed, because it is claimed only while a correction runs and
-                 anything else would have to be taken from the app underneath
-                 for the life of the session.
-                 */
-                Text("Escape")
-                    .frame(minWidth: 110)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Color(nsColor: .controlColor), in: RoundedRectangle(cornerRadius: 5))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 5)
-                            .stroke(Color(nsColor: .separatorColor))
-                    }
+                ShortcutRecorder(
+                    shortcut: $preferences.cancelKey,
+                    allowsUnmodifiedKeys: true,
+                    fallback: .cancel
+                )
 
-                SettingsNote("Press Escape while a correction is running and nothing is written.")
+                SettingsNote("Pressed while a correction is running, nothing is written. Claimed only for those few seconds, so a bare key is safe here.")
             }
 
             Divider().padding(.vertical, 10)

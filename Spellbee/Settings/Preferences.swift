@@ -14,6 +14,8 @@ enum DefaultsKey {
     static let hotKeyEnabled = "hotKeyEnabled"
     static let hotKeyCode = "hotKeyCode"
     static let hotKeyModifiers = "hotKeyModifiers"
+    static let cancelKeyCode = "cancelKeyCode"
+    static let cancelKeyModifiers = "cancelKeyModifiers"
     static let languageSettings = "languageSettings"
     static let deniedBundleIDs = "deniedBundleIDs"
     static let appOverrides = "appOverrides"
@@ -73,6 +75,20 @@ final class Preferences {
             defaults.set(Int(hotKey.keyCode), forKey: DefaultsKey.hotKeyCode)
             defaults.set(Int(hotKey.modifiers), forKey: DefaultsKey.hotKeyModifiers)
             onTriggersChanged?()
+        }
+    }
+
+    /**
+     The key that abandons a correction in progress.
+
+     Claimed only while a pass is running, which is what lets it be a bare key
+     with no modifiers: the rest of the time it belongs to whatever the user is
+     typing in.
+     */
+    var cancelKey: Shortcut {
+        didSet {
+            defaults.set(Int(cancelKey.keyCode), forKey: DefaultsKey.cancelKeyCode)
+            defaults.set(Int(cancelKey.modifiers), forKey: DefaultsKey.cancelKeyModifiers)
         }
     }
 
@@ -187,6 +203,11 @@ final class Preferences {
         hotKey = Shortcut(
             keyCode: UInt32(storedCode ?? Int(Shortcut.default.keyCode)),
             modifiers: UInt32(storedModifiers ?? Int(Shortcut.default.modifiers))
+        )
+
+        cancelKey = Shortcut(
+            keyCode: UInt32(defaults.object(forKey: DefaultsKey.cancelKeyCode) as? Int ?? Int(Shortcut.cancel.keyCode)),
+            modifiers: UInt32(defaults.object(forKey: DefaultsKey.cancelKeyModifiers) as? Int ?? Int(Shortcut.cancel.modifiers))
         )
 
         languageSettings = Self.readLanguageSettings(from: defaults)
@@ -312,4 +333,7 @@ struct Shortcut: Equatable, Sendable {
         keyCode: UInt32(kVK_Space),
         modifiers: UInt32(controlKey | optionKey | cmdKey)
     )
+
+    /** Escape on its own, which is only claimed while a correction is running. */
+    static let cancel = Shortcut(keyCode: UInt32(kVK_Escape), modifiers: 0)
 }

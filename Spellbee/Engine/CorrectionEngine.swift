@@ -171,7 +171,7 @@ final class CorrectionEngine {
             Log.app.info("Cancelled by Escape")
             work.cancel()
         }
-        escape.start()
+        escape.start(preferences.cancelKey)
         defer { escape.stop() }
 
         let result = try await work.value

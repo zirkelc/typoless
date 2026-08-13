@@ -15,6 +15,18 @@ import SwiftUI
 struct ShortcutRecorder: View {
     @Binding var shortcut: Shortcut
 
+    /**
+     Whether a key with no modifiers may be recorded.
+
+     False for a trigger, since an unmodified key would fire while the user is
+     typing in any app. True for the key that abandons a correction, which is
+     claimed only while one is running and is a bare Escape by default.
+     */
+    var allowsUnmodifiedKeys = false
+
+    /** What to go back to, which is not the same key for both recorders. */
+    var fallback: Shortcut = .default
+
     @State private var isRecording = false
     @State private var monitor: Any?
 
@@ -28,11 +40,11 @@ struct ShortcutRecorder: View {
             .tint(isRecording ? .accentColor : nil)
 
             if isRecording {
-                Text("Esc to cancel")
+                Text(allowsUnmodifiedKeys ? "click again to cancel" : "Esc to cancel")
                     .font(.callout)
                     .foregroundStyle(.secondary)
-            } else if shortcut != .default {
-                Button("Reset") { shortcut = .default }
+            } else if shortcut != fallback {
+                Button("Reset") { shortcut = fallback }
             }
         }
         .onDisappear(perform: stopRecording)
@@ -50,18 +62,18 @@ struct ShortcutRecorder: View {
             /** Modifiers on their own are held down on the way to a real key. */
             guard event.type == .keyDown else { return nil }
 
-            if event.keyCode == kVK_Escape {
+            /**
+             Escape backs out of recording, except where Escape is itself a
+             legitimate answer, in which case the button is the way out.
+             */
+            if event.keyCode == kVK_Escape, !allowsUnmodifiedKeys {
                 stopRecording()
                 return nil
             }
 
             let carbonModifiers = event.modifierFlags.carbonModifiers
 
-            /**
-             An unmodified key would fire while the user is typing in any app,
-             so it is refused rather than recorded and later regretted.
-             */
-            guard carbonModifiers != 0 else { return nil }
+            guard allowsUnmodifiedKeys || carbonModifiers != 0 else { return nil }
 
             shortcut = Shortcut(keyCode: UInt32(event.keyCode), modifiers: carbonModifiers)
             stopRecording()
@@ -144,7 +156,7 @@ extension Shortcut {
         kVK_Tab: "⇥",
         kVK_Delete: "⌫",
         kVK_ForwardDelete: "⌦",
-        kVK_Escape: "⎋",
+        kVK_Escape: "Escape",
         kVK_LeftArrow: "←",
         kVK_RightArrow: "→",
         kVK_UpArrow: "↑",

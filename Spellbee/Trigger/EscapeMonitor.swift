@@ -2,7 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 
 /**
- Claims Escape while a correction is running.
+ Claims the cancel key while a correction is running.
 
  Registered only for the second or two a pass takes, rather than for the life of
  the app, so Escape means what it always means everywhere else the rest of the
@@ -25,9 +25,9 @@ final class EscapeMonitor {
 
     private let hotKey = CarbonHotKey(identifier: HotKeyIdentifier.cancel)
 
-    func start() {
-        hotKey.register(keyCode: UInt32(kVK_Escape), modifiers: 0) { [weak self] in
-            Log.app.info("Escape pressed")
+    func start(_ shortcut: Shortcut = .cancel) {
+        hotKey.register(keyCode: shortcut.keyCode, modifiers: shortcut.modifiers) { [weak self] in
+            Log.app.info("Cancel key pressed")
             self?.onPress?()
         }
     }
