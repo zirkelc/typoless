@@ -60,6 +60,7 @@ struct ModelSettingsView: View {
 
     private func state(of local: LocalModel) -> ModelRow.State {
         if let progress = model.downloads[local] { return .downloading(progress) }
+        if model.loading.contains(local) { return .loading }
         return local.isDownloaded ? .ready : .notDownloaded
     }
 
@@ -97,6 +98,8 @@ private struct ModelRow: View {
         case ready
         case notDownloaded
         case downloading(Double)
+        /** On disk, being read into memory. Seconds, not minutes, and no bar. */
+        case loading
     }
 
     let title: String
@@ -135,6 +138,13 @@ private struct ModelRow: View {
                     .progressViewStyle(.linear)
                     .frame(width: 110)
                 Button("Stop") { onCancel?() }
+
+            case .loading:
+                ProgressView()
+                    .controlSize(.small)
+                Text("Loading…")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
 
             case .notDownloaded:
                 Button("Download") { onDownload?() }

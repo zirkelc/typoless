@@ -35,6 +35,16 @@ final class AppModel {
         downloads.values.max()
     }
 
+    /**
+     Models being read into memory right now.
+
+     Separate from `downloads`, because weights already on disk still take
+     seconds to load and that is not a download. Showing a progress bar for it
+     claimed a transfer that was not happening; showing nothing at all left a
+     click with no answer for several seconds.
+     */
+    private(set) var loading: Set<LocalModel> = []
+
     /** Set while both backends are being run over the same samples. */
     private(set) var isComparing = false
 
@@ -225,7 +235,11 @@ final class AppModel {
             }
             engine.corrector = corrector
 
-            Task { await corrector.prepare() }
+            loading.insert(selected)
+            Task {
+                await corrector.prepare()
+                loading.remove(selected)
+            }
         }
 
         Log.app.info(

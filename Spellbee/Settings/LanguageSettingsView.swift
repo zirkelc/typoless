@@ -46,7 +46,7 @@ struct LanguageSettingsView: View {
                  A pop-up reads as "this is the current value", and adding a
                  language is an action rather than a choice being displayed.
                  */
-                Button("Add Language…") { isAdding = true }
+                Button("Add…") { isAdding = true }
                     .disabled(available.isEmpty)
                     .popover(isPresented: $isAdding, arrowEdge: .bottom) {
                         VStack(alignment: .leading, spacing: 0) {

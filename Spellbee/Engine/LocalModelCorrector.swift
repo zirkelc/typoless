@@ -136,7 +136,17 @@ actor LocalModelCorrector: Corrector {
         Log.app.info("Loading \(name, privacy: .public)")
 
         let report = onProgress
-        report(0)
+
+        /**
+         Only announce a download when there is one to announce.
+
+         Weights already on disk still take seconds to read into memory, and
+         reporting zero before that made switching to a model that was already
+         here show a progress bar sitting at nothing. The two look identical
+         from in here; the difference is whether the files exist.
+         */
+        let isFetching = !model.isDownloaded
+        if isFetching { report(0) }
 
         /**
          The hub client hands over its `Progress` once and then updates that
@@ -156,7 +166,7 @@ actor LocalModelCorrector: Corrector {
         loading[model] = task
 
         let poller = Task {
-            while !Task.isCancelled {
+            while !Task.isCancelled, isFetching {
                 if let fraction = tracker.fraction {
                     report(fraction)
                 }
@@ -167,7 +177,7 @@ actor LocalModelCorrector: Corrector {
         defer {
             poller.cancel()
             loading[model] = nil
-            report(nil)
+            if isFetching { report(nil) }
         }
 
         let loaded = try await task.value
