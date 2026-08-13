@@ -107,6 +107,29 @@ struct GeneralSettingsView: View {
 
             Divider().padding(.vertical, 10)
 
+            SettingsRow(label: "Stopping:") {
+                /**
+                 Shown as a key rather than named in a sentence, so it reads the
+                 same way as the shortcut above it. Not a recorder: Escape is
+                 fixed, because it is claimed only while a correction runs and
+                 anything else would have to be taken from the app underneath
+                 for the life of the session.
+                 */
+                Text("Escape")
+                    .frame(minWidth: 110)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Color(nsColor: .controlColor), in: RoundedRectangle(cornerRadius: 5))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 5)
+                            .stroke(Color(nsColor: .separatorColor))
+                    }
+
+                SettingsNote("Press Escape while a correction is running and nothing is written.")
+            }
+
+            Divider().padding(.vertical, 10)
+
             SettingsRow(label: "Safety:") {
                 Toggle("Only fix, never rewrite", isOn: $preferences.isGuardrailEnabled)
                 SettingsNote(preferences.isGuardrailEnabled
@@ -114,12 +137,6 @@ struct GeneralSettingsView: View {
                     : "Off: whatever the model returns is applied, including rewritten or translated text. Revert Last Fix is the only way back.")
             }
 
-            Divider().padding(.vertical, 10)
-
-            SettingsRow(label: "Stopping:") {
-                Text("Press Escape while a correction is running and nothing is written.")
-                    .fixedSize(horizontal: false, vertical: true)
-            }
         }
     }
 
