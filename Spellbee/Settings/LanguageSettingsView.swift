@@ -12,6 +12,7 @@ struct LanguageSettingsView: View {
     @Bindable var preferences: Preferences
 
     @State private var selection: CorrectionLanguage?
+    @State private var isAdding = false
 
     var body: some View {
         SettingsSurface {
@@ -40,14 +41,38 @@ struct LanguageSettingsView: View {
             }
 
             HStack(spacing: 8) {
-                Menu("Add Language") {
-                    ForEach(available, id: \.self) { language in
-                        Button(language.displayName) { add(language) }
+                /**
+                 A plain button opening a list, rather than a pop-up menu button.
+                 A pop-up reads as "this is the current value", and adding a
+                 language is an action rather than a choice being displayed.
+                 */
+                Button("Add Language…") { isAdding = true }
+                    .disabled(available.isEmpty)
+                    .popover(isPresented: $isAdding, arrowEdge: .bottom) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(available, id: \.self) { language in
+                                Button {
+                                    add(language)
+                                    isAdding = false
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Text(language.displayName)
+                                        if !language.isTuned {
+                                            Image(systemName: "questionmark.circle")
+                                                .foregroundStyle(.tertiary)
+                                        }
+                                        Spacer()
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                            }
+                        }
+                        .padding(.vertical, 6)
+                        .frame(width: 200)
                     }
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                .disabled(available.isEmpty)
 
                 Button("Remove") { remove() }
                     .disabled(selection == nil || added.count <= 1)

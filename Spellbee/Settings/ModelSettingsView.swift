@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /**
@@ -14,13 +15,17 @@ struct ModelSettingsView: View {
     var body: some View {
         SettingsSurface {
             Table {
+                TableHeader("Default model", trailing: "On disk")
+
+                Divider()
+
                 ModelRow(
                     title: CorrectorBackend.appleOnDevice.displayName,
                     detail: "Built in, nothing to download",
                     isDefault: model.preferences.backend == .appleOnDevice,
                     isTuned: true,
                     onMakeDefault: { model.use(.appleOnDevice) },
-                    state: .constant(.ready)
+                    state: .ready
                 )
 
                 ForEach(LocalModel.allCases, id: \.self) { local in
@@ -35,7 +40,8 @@ struct ModelSettingsView: View {
                         onMakeDefault: { model.use(.local, model: local) },
                         state: state(of: local),
                         onDownload: { model.download(local) },
-                        onCancel: { model.cancelDownload(of: local) }
+                        onCancel: { model.cancelDownload(of: local) },
+                        onRemove: { confirmRemoval(of: local) }
                     )
                 }
             }
@@ -52,11 +58,36 @@ struct ModelSettingsView: View {
         local.isDownloaded ? "Downloaded" : "\(local.approximateSize) download"
     }
 
-    private func state(of local: LocalModel) -> Binding<ModelRow.State> {
-        .constant(
-            model.downloads[local].map(ModelRow.State.downloading)
-                ?? (local.isDownloaded ? .ready : .notDownloaded)
-        )
+    private func state(of local: LocalModel) -> ModelRow.State {
+        if let progress = model.downloads[local] { return .downloading(progress) }
+        return local.isDownloaded ? .ready : .notDownloaded
+    }
+
+    /**
+     Asks before removing, because these are gigabytes and the cache is shared
+     with every other MLX app on this machine. Says where the files go, so the
+     answer is an informed one rather than a guess about how final this is.
+     */
+    private func confirmRemoval(of local: LocalModel) {
+        let alert = NSAlert()
+        alert.messageText = "Remove \(local.displayName)?"
+        alert.informativeText = """
+        Its \(local.approximateSize) of weights are moved to the Trash. Other apps \
+        sharing the Hugging Face cache lose them too, and downloading again is \
+        the only way back.
+        """
+        alert.addButton(withTitle: "Move to Trash")
+        alert.addButton(withTitle: "Cancel")
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        do {
+            try model.remove(local)
+        } catch {
+            let failure = NSAlert(error: error)
+            failure.messageText = "Could not remove \(local.displayName)"
+            failure.runModal()
+        }
     }
 }
 
@@ -73,9 +104,10 @@ private struct ModelRow: View {
     let isDefault: Bool
     let isTuned: Bool
     let onMakeDefault: () -> Void
-    @Binding var state: State
+    let state: State
     var onDownload: (() -> Void)?
     var onCancel: (() -> Void)?
+    var onRemove: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 10) {
@@ -108,8 +140,12 @@ private struct ModelRow: View {
                 Button("Download") { onDownload?() }
 
             case .ready:
-                if !isDefault, isSelectable {
-                    Button("Use") { onMakeDefault() }
+                /**
+                 Nothing where the button would be for Apple's model, which has
+                 no files of its own to remove.
+                 */
+                if let onRemove {
+                    Button("Remove", action: onRemove)
                 }
             }
         }

@@ -36,13 +36,8 @@ enum LocalModel: String, CaseIterable, Sendable {
      by another MLX app counts as present.
      */
     var isDownloaded: Bool {
-        let hub = FileManager.default.homeDirectoryForCurrentUser
-            .appending(path: ".cache/huggingface/hub")
-            .appending(path: "models--" + repositoryID.replacingOccurrences(of: "/", with: "--"))
-            .appending(path: "snapshots")
-
         guard let revisions = try? FileManager.default.contentsOfDirectory(
-            at: hub,
+            at: cacheDirectory.appending(path: "snapshots"),
             includingPropertiesForKeys: nil
         ) else {
             return false
@@ -57,6 +52,13 @@ enum LocalModel: String, CaseIterable, Sendable {
 
     /** The Hugging Face repository these weights come from. */
     var repositoryID: String { configuration.name }
+
+    /** Where the hub keeps this model, whether or not anything is there yet. */
+    var cacheDirectory: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: ".cache/huggingface/hub")
+            .appending(path: "models--" + repositoryID.replacingOccurrences(of: "/", with: "--"))
+    }
 
     var configuration: ModelConfiguration {
         switch self {

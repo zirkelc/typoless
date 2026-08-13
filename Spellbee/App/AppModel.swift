@@ -154,6 +154,34 @@ final class AppModel {
         }
     }
 
+    /**
+     Puts a model's weights in the Trash.
+
+     The Trash rather than a delete, because these are gigabytes and the cache
+     is shared with every other MLX app on the machine, so getting this wrong
+     silently costs someone else a download too. Recoverable is the right
+     default for that.
+     */
+    func remove(_ model: LocalModel) throws {
+        cancelDownload(of: model)
+
+        var trashed: NSURL?
+        try FileManager.default.trashItem(at: model.cacheDirectory, resultingItemURL: &trashed)
+
+        /** Pointing at weights that are gone would fail on the next keystroke. */
+        if preferences.backend == .local, preferences.localModel == model {
+            use(.appleOnDevice)
+        }
+
+        for (language, settings) in preferences.languageSettings where settings.model == model {
+            var updated = preferences.languageSettings
+            updated[language]?.model = nil
+            preferences.languageSettings = updated
+        }
+
+        Log.app.info("Removed \(model.displayName, privacy: .public)")
+    }
+
     func cancelDownload(of model: LocalModel) {
         guard let corrector = fetchers[model] else { return }
 

@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /**
- The deny-list, and the settings an app answers differently from the rest.
+ The apps Spellbee leaves alone, and the ones that answer a rule differently.
 
  Both are keyed by bundle identifier, which is stable across renames and updates
  in a way a path or a display name is not.
@@ -14,63 +14,73 @@ struct AppSettingsView: View {
     @State private var overrideSelection: String?
 
     var body: some View {
-        SettingsPage(contentWidth: 600) {
-            SettingsRow(label: "Never correct in:") {
-                List(selection: $deniedSelection) {
-                    ForEach(deniedApps, id: \.bundleID) { app in
-                        AppRow(app: app).tag(app.bundleID)
-                    }
-                }
-                .frame(height: 150)
-                .border(Color(nsColor: .separatorColor))
+        SettingsSurface {
+            Table {
+                TableHeader("Never correct in")
 
-                HStack(spacing: 8) {
-                    Button("Add…") { addApp() }
-                    Button("Remove") { removeDenied() }
-                        .disabled(deniedSelection == nil)
-                    Spacer()
-                    Button("Reset") {
-                        preferences.deniedBundleIDs = TextTargetResolver.defaultDeniedBundleIDs
-                    }
-                }
+                ForEach(deniedApps, id: \.bundleID) { app in
+                    Divider()
 
-                SettingsNote("Terminals, editors and password managers, where a \"text field\" is usually code, a command, or a secret.")
+                    AppRow(app: app, isSelected: deniedSelection == app.bundleID)
+                        .onTapGesture { deniedSelection = app.bundleID }
+                }
             }
 
-            Divider().padding(.vertical, 10)
-
-            SettingsRow(label: "Full stops:") {
-                Text("Everywhere else, each language decides for itself under Corrections. An app listed here answers differently.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                List(selection: $overrideSelection) {
-                    ForEach(overriddenApps, id: \.bundleID) { app in
-                        Toggle(isOn: overrideBinding(for: app.bundleID)) {
-                            AppRow(app: app)
-                        }
-                        .tag(app.bundleID)
-                    }
+            HStack(spacing: 8) {
+                Button("Add…") { addApp() }
+                Button("Remove") { removeDenied() }
+                    .disabled(deniedSelection == nil)
+                Spacer()
+                Button("Reset") {
+                    preferences.deniedBundleIDs = TextTargetResolver.defaultDeniedBundleIDs
+                    deniedSelection = nil
                 }
-                .frame(height: 110)
-                .border(Color(nsColor: .separatorColor))
-                .overlay {
-                    if overriddenApps.isEmpty {
-                        Text("Every app follows the setting above.")
-                            .font(.callout)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-
-                HStack(spacing: 8) {
-                    Button("Add App…") { addOverride() }
-                    Button("Remove") { removeOverride() }
-                        .disabled(overrideSelection == nil)
-                }
-
-                SettingsNote("Worth setting for a chat app when the answer above suits your email, or the other way round.")
             }
+
+            SettingsFootnote("""
+            Terminals, editors and password managers, where a "text field" is \
+            usually code, a command, or a secret.
+            """)
+
+            Divider().padding(.vertical, 6)
+
+            Table {
+                TableHeader("Sentence endings", trailing: "Add a full stop")
+
+                if overriddenApps.isEmpty {
+                    Divider()
+
+                    Text("Every app follows the rules set under Corrections.")
+                        .font(.callout)
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                ForEach(overriddenApps, id: \.bundleID) { app in
+                    Divider()
+
+                    AppRow(
+                        app: app,
+                        isSelected: overrideSelection == app.bundleID,
+                        toggle: overrideBinding(for: app.bundleID)
+                    )
+                    .onTapGesture { overrideSelection = app.bundleID }
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button("Add App…") { addOverride() }
+                Button("Remove") { removeOverride() }
+                    .disabled(overrideSelection == nil)
+                Spacer()
+            }
+
+            SettingsFootnote("""
+            Worth setting for a chat app when the answer under Corrections suits \
+            your email, or the other way round.
+            """)
         }
     }
 
@@ -92,6 +102,7 @@ struct AppSettingsView: View {
     private func addApp() {
         guard let bundleID = chooseApplication() else { return }
         preferences.deniedBundleIDs.insert(bundleID)
+        deniedSelection = bundleID
     }
 
     private func addOverride() {
@@ -99,6 +110,7 @@ struct AppSettingsView: View {
 
         /** Added in order to differ, and turning them off is why anyone does. */
         preferences.appOverrides[bundleID] = AppOverride(sentenceFinalPunctuation: false)
+        overrideSelection = bundleID
     }
 
     private func removeDenied() {
@@ -129,6 +141,8 @@ struct AppSettingsView: View {
 
 private struct AppRow: View {
     let app: InstalledApp
+    let isSelected: Bool
+    var toggle: Binding<Bool>?
 
     var body: some View {
         HStack(spacing: 8) {
@@ -136,11 +150,32 @@ private struct AppRow: View {
                 .resizable()
                 .frame(width: 16, height: 16)
 
+            /**
+             A fixed column so the identifiers line up down the page. Left to
+             size themselves they start at a different place on every row, which
+             makes a list of ten look like ten unrelated things.
+             */
             Text(app.name)
+                .lineLimit(1)
+                .frame(width: 170, alignment: .leading)
+
+            /** The identifier is what this is keyed on, so it is worth showing. */
             Text(app.bundleID)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            Spacer()
+
+            if let toggle {
+                Toggle("", isOn: toggle)
+                    .labelsHidden()
+            }
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(isSelected ? Color.accentColor.opacity(0.15) : .clear)
+        .contentShape(Rectangle())
     }
 }
 
@@ -172,5 +207,5 @@ private struct InstalledApp {
 }
 
 #Preview {
-    AppSettingsView(preferences: Preferences()).frame(width: 620)
+    AppSettingsView(preferences: Preferences())
 }

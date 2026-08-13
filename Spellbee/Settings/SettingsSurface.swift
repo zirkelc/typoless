@@ -41,6 +41,34 @@ struct Table<Content: View>: View {
     }
 }
 
+/** The first row of a table, naming what the rows below it are. */
+struct TableHeader: View {
+    let title: String
+    var trailing: String?
+
+    init(_ title: String, trailing: String? = nil) {
+        self.title = title
+        self.trailing = trailing
+    }
+
+    var body: some View {
+        HStack {
+            Text(title)
+            Spacer()
+            if let trailing {
+                Text(trailing)
+            }
+        }
+        .font(.callout)
+        .fontWeight(.medium)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+}
+
 /** The line under a table that says what it is for. */
 struct SettingsFootnote: View {
     let text: String
