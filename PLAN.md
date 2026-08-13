@@ -75,7 +75,9 @@ recent fixes as before→after, Settings…, Setup Guide, Quit.
 ## Settings
 
 - **General** — launch at login, double-⌘ on/off, conventional hotkey recorder, revert shortcut, show icon.
-- **Languages & Corrections** — one page. A language list on the left, and for the selected language a model and a table of rules, each shown with an example in that language.
+- **Models** — every model, its size, whether it is on disk, a download button, and which one is the default.
+- **Languages** — the languages added, with an Add menu, and a per-language model override.
+- **Corrections** — a table of rules per added language, each shown with an example in that language.
 - **Sentence-final punctuation** — whether a message with no closing mark gets one. Allowed today, and it is the single largest source of unrequested changes for every backend: 19 of Gemma's 32 false positives in the eval are this one habit. It stays on because finishing a sentence is a correction, but it is the setting most worth having, both globally and **per app**: a full stop is right in mail and changes the tone of a Slack line. Asking the model to handle it does not work; the eval variant that named terminal punctuation made Gemma start deleting full stops from text that was already correct. This belongs in the guardrail.
 - **Apps** — deny-list, plus per-app overrides for the settings above. Default-denied: terminals, Xcode, VS Code, password managers.
 - **Privacy** — "nothing leaves your Mac", opt-in local log.
@@ -192,6 +194,26 @@ defaults refuses the whole write in that case and says nothing, so every change
 to a language's rules was discarded the moment it was made. The key is now
 omitted rather than present and nil. Worth remembering that `as Any` on an
 optional produces a value that looks fine everywhere except a plist.
+
+**Three pages, not one.** Models, Languages and Corrections were one table that
+answered three questions: what can run, what to detect, and what to change. Which
+model is the default has nothing to do with whether a comma is wanted, and
+downloading several gigabytes should not be a side effect of choosing something.
+
+**A language is added, not switched on.** The app knows more languages than
+anyone writes in, and a page of seven checkboxes where two matter has to be read
+every time. What is not added is not detected, not corrected, and does not appear
+under Corrections.
+
+**Whether a model is downloaded is asked of the cache**, at
+`~/.cache/huggingface/hub/models--<org>--<name>/snapshots`, and a revision counts
+only if it holds `.safetensors`, since a directory can exist with the download
+half done. Remembering it in settings would go wrong the moment someone cleared
+the cache, and would miss a model another MLX app had already fetched.
+
+**One window width for every page.** Sizing each page to its own content made the
+window jump about as the toolbar was clicked, which reads as the app losing its
+place. Height still follows the page, since that never moves under the pointer.
 
 **Each language is a heading in the table, opening to show its rules.** It was a
 list of languages beside a table of rules, which left the reader to work out that

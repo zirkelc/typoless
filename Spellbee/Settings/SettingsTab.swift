@@ -3,7 +3,9 @@ import SwiftUI
 /** One page of settings, and how it appears in the window's toolbar. */
 enum SettingsTab: String, CaseIterable, Identifiable {
     case general
+    case models
     case languages
+    case corrections
     case apps
     case privacy
 
@@ -12,7 +14,9 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .general: return "General"
-        case .languages: return "Languages & Corrections"
+        case .models: return "Models"
+        case .languages: return "Languages"
+        case .corrections: return "Corrections"
         case .apps: return "Apps"
         case .privacy: return "Privacy"
         }
@@ -21,32 +25,31 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     var symbolName: String {
         switch self {
         case .general: return "gearshape"
-        case .languages: return "character.bubble"
+        case .models: return "cpu"
+        case .languages: return "globe"
+        case .corrections: return "checkmark.circle"
         case .apps: return "square.grid.2x2"
         case .privacy: return "hand.raised"
         }
     }
 
     /**
-     How wide the window is on this page.
+     One width for every page.
 
-     Each page is sized to its own content, the way the preferences windows this
-     is modelled on are: a page of checkboxes has no business being as wide as
-     the one holding a list of applications.
+     Sizing each page to its own content made the window jump about as the
+     toolbar was clicked, which reads as the app losing its place rather than as
+     a tidy fit. Height still follows the page, since that never moves under the
+     pointer.
      */
-    var width: CGFloat {
-        switch self {
-        case .languages: return 860
-        case .apps: return 700
-        default: return 620
-        }
-    }
+    var width: CGFloat { SettingsSurface<EmptyView>.width }
 
     @MainActor @ViewBuilder
     func view(model: AppModel) -> some View {
         switch self {
         case .general: GeneralSettingsView(preferences: model.preferences)
+        case .models: ModelSettingsView(model: model)
         case .languages: LanguageSettingsView(preferences: model.preferences)
+        case .corrections: CorrectionSettingsView(preferences: model.preferences)
         case .apps: AppSettingsView(preferences: model.preferences)
         case .privacy: PrivacySettingsView()
         }

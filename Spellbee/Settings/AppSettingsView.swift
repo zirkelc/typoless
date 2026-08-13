@@ -14,7 +14,7 @@ struct AppSettingsView: View {
     @State private var overrideSelection: String?
 
     var body: some View {
-        SettingsPage(contentWidth: 560) {
+        SettingsPage(contentWidth: 600) {
             SettingsRow(label: "Never correct in:") {
                 List(selection: $deniedSelection) {
                     ForEach(deniedApps, id: \.bundleID) { app in
@@ -40,7 +40,7 @@ struct AppSettingsView: View {
             Divider().padding(.vertical, 10)
 
             SettingsRow(label: "Full stops:") {
-                Text("Everywhere else, each language decides for itself under Languages & Corrections. An app listed here answers differently.")
+                Text("Everywhere else, each language decides for itself under Corrections. An app listed here answers differently.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

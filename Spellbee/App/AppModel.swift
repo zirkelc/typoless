@@ -22,8 +22,18 @@ final class AppModel {
         didSet { updateTriggers() }
     }
 
-    /** Set while weights are being fetched, from 0 to 1. */
-    private(set) var downloadProgress: Double?
+    /**
+     Fetches in flight, from 0 to 1, keyed by model.
+
+     Keyed rather than single, because the settings window can start a download
+     for a model that is not the one in use, and two can be running at once.
+     */
+    private(set) var downloads: [LocalModel: Double] = [:]
+
+    /** The one worth showing in the menu bar, which is whichever is furthest along. */
+    var downloadProgress: Double? {
+        downloads.values.max()
+    }
 
     /** Set while both backends are being run over the same samples. */
     private(set) var isComparing = false
@@ -31,6 +41,9 @@ final class AppModel {
     /** Set by whoever owns the window, so the model never touches AppKit itself. */
     @ObservationIgnored var onShowOnboarding: (() -> Void)?
     @ObservationIgnored var onShowSettings: (() -> Void)?
+
+    /** Correctors that exist only to fetch weights, discarded once they have. */
+    @ObservationIgnored private var fetchers: [LocalModel: LocalModelCorrector] = [:]
 
     @ObservationIgnored private let modifierTaps = ModifierTapMonitor()
     @ObservationIgnored private let hotKey = HotKeyMonitor()
@@ -99,8 +112,54 @@ final class AppModel {
             Task { await corrector.cancelLoading() }
         }
 
-        downloadProgress = nil
+        for fetcher in fetchers.values {
+            Task { await fetcher.cancelLoading() }
+        }
+        fetchers.removeAll()
+
+        downloads.removeAll()
         use(.appleOnDevice)
+    }
+
+    /**
+     Fetches a model's weights without selecting it.
+
+     Choosing a model and having it start downloading is one behaviour; wanting
+     the download done before it is needed is another, and the settings window
+     offers the second. Each fetch gets its own corrector so it does not disturb
+     whichever backend is actually in use.
+     */
+    func download(_ model: LocalModel) {
+        guard downloads[model] == nil, !model.isDownloaded else { return }
+
+        let corrector = LocalModelCorrector(model: model) { [weak self] progress in
+            Task { @MainActor in
+                if let progress {
+                    self?.downloads[model] = progress
+                } else {
+                    self?.downloads[model] = nil
+                    self?.fetchers[model] = nil
+                }
+            }
+        }
+
+        fetchers[model] = corrector
+        downloads[model] = 0
+
+        Task {
+            await corrector.prepare()
+
+            /** Holding the weights here would double what the machine carries. */
+            await corrector.unload()
+        }
+    }
+
+    func cancelDownload(of model: LocalModel) {
+        guard let corrector = fetchers[model] else { return }
+
+        Task { await corrector.cancelLoading() }
+        fetchers[model] = nil
+        downloads[model] = nil
     }
 
     private func rebuildCorrector() {
@@ -116,8 +175,6 @@ final class AppModel {
             }
         }
 
-        downloadProgress = nil
-
         let detector = LanguageDetector(enabled: Array(preferences.enabledLanguages))
         let appliesGuardrail = preferences.isGuardrailEnabled
 
@@ -128,12 +185,15 @@ final class AppModel {
                 appliesGuardrail: appliesGuardrail
             )
         case .local:
+            let selected = preferences.localModel
             let corrector = LocalModelCorrector(
-                model: preferences.localModel,
+                model: selected,
                 detector: detector,
                 appliesGuardrail: appliesGuardrail
             ) { [weak self] progress in
-                Task { @MainActor in self?.downloadProgress = progress }
+                Task { @MainActor in
+                    self?.downloads[selected] = progress
+                }
             }
             engine.corrector = corrector
 
@@ -162,9 +222,10 @@ final class AppModel {
          loads a second copy of the same several gigabytes of weights, so the
          machine briefly holds two.
          */
+        let selected = preferences.localModel
         let existing = engine.corrector as? LocalModelCorrector
-        let local = existing ?? LocalModelCorrector(model: preferences.localModel) { [weak self] progress in
-            Task { @MainActor in self?.downloadProgress = progress }
+        let local = existing ?? LocalModelCorrector(model: selected) { [weak self] progress in
+            Task { @MainActor in self?.downloads[selected] = progress }
         }
 
         await BackendComparison.run(

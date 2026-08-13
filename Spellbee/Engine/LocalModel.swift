@@ -28,6 +28,36 @@ enum LocalModel: String, CaseIterable, Sendable {
         }
     }
 
+    /**
+     Whether the weights are already on disk.
+
+     Asked of the cache rather than remembered in settings, so it stays true
+     when someone clears the cache behind our back, and so a model downloaded
+     by another MLX app counts as present.
+     */
+    var isDownloaded: Bool {
+        let hub = FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: ".cache/huggingface/hub")
+            .appending(path: "models--" + repositoryID.replacingOccurrences(of: "/", with: "--"))
+            .appending(path: "snapshots")
+
+        guard let revisions = try? FileManager.default.contentsOfDirectory(
+            at: hub,
+            includingPropertiesForKeys: nil
+        ) else {
+            return false
+        }
+
+        /** A directory can exist with the download half done, so look for weights. */
+        return revisions.contains { revision in
+            let files = (try? FileManager.default.contentsOfDirectory(atPath: revision.path)) ?? []
+            return files.contains { $0.hasSuffix(".safetensors") }
+        }
+    }
+
+    /** The Hugging Face repository these weights come from. */
+    var repositoryID: String { configuration.name }
+
     var configuration: ModelConfiguration {
         switch self {
         case .qwen35_2b: return LLMRegistry.qwen3_5_2b_4bit

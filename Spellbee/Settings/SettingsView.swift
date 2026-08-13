@@ -17,7 +17,7 @@ struct SettingsPage<Content: View>: View {
      the far left and leaves a ragged gap on the right, which is what a settings
      window is not supposed to look like.
      */
-    var contentWidth: CGFloat = 460
+    var contentWidth: CGFloat = 520
 
     @ViewBuilder var content: Content
 

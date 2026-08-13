@@ -1,0 +1,124 @@
+import SwiftUI
+
+/**
+ The models available, and which one corrects by default.
+
+ Downloading is offered here rather than happening as a side effect of choosing
+ a model. Those are two different intentions: picking a model is a decision
+ about quality, and fetching several gigabytes is a decision about time and
+ disk, and someone may well want the second done before they need it.
+ */
+struct ModelSettingsView: View {
+    let model: AppModel
+
+    var body: some View {
+        SettingsSurface {
+            Table {
+                ModelRow(
+                    title: CorrectorBackend.appleOnDevice.displayName,
+                    detail: "Built in, nothing to download",
+                    isDefault: model.preferences.backend == .appleOnDevice,
+                    isTuned: true,
+                    onMakeDefault: { model.use(.appleOnDevice) },
+                    state: .constant(.ready)
+                )
+
+                ForEach(LocalModel.allCases, id: \.self) { local in
+                    Divider()
+
+                    ModelRow(
+                        title: local.displayName,
+                        detail: detail(for: local),
+                        isDefault: model.preferences.backend == .local
+                            && model.preferences.localModel == local,
+                        isTuned: local == .gemma4_e4b,
+                        onMakeDefault: { model.use(.local, model: local) },
+                        state: state(of: local),
+                        onDownload: { model.download(local) },
+                        onCancel: { model.cancelDownload(of: local) }
+                    )
+                }
+            }
+
+            SettingsFootnote("""
+            Gemma leads fix recall by roughly 15 points over Apple's model in \
+            both measured languages, at about one and a half times the latency. \
+            Apple's needs no download and is the safe default.
+            """)
+        }
+    }
+
+    private func detail(for local: LocalModel) -> String {
+        local.isDownloaded ? "Downloaded" : "\(local.approximateSize) download"
+    }
+
+    private func state(of local: LocalModel) -> Binding<ModelRow.State> {
+        .constant(
+            model.downloads[local].map(ModelRow.State.downloading)
+                ?? (local.isDownloaded ? .ready : .notDownloaded)
+        )
+    }
+}
+
+/** One model: what it is, whether it is here, and whether it is the default. */
+private struct ModelRow: View {
+    enum State: Equatable {
+        case ready
+        case notDownloaded
+        case downloading(Double)
+    }
+
+    let title: String
+    let detail: String
+    let isDefault: Bool
+    let isTuned: Bool
+    let onMakeDefault: () -> Void
+    @Binding var state: State
+    var onDownload: (() -> Void)?
+    var onCancel: (() -> Void)?
+
+    var body: some View {
+        HStack(spacing: 10) {
+            /**
+             A radio rather than a checkmark, because exactly one model is the
+             default and a checkbox would suggest otherwise.
+             */
+            Image(systemName: isDefault ? "largecircle.fill.circle" : "circle")
+                .foregroundStyle(isDefault ? Color.accentColor : .secondary)
+                .onTapGesture { if isSelectable { onMakeDefault() } }
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .fontWeight(.medium)
+                Text(detail)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            switch state {
+            case .downloading(let progress):
+                ProgressView(value: progress)
+                    .progressViewStyle(.linear)
+                    .frame(width: 110)
+                Button("Stop") { onCancel?() }
+
+            case .notDownloaded:
+                Button("Download") { onDownload?() }
+
+            case .ready:
+                if !isDefault, isSelectable {
+                    Button("Use") { onMakeDefault() }
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .contentShape(Rectangle())
+        .onTapGesture { if isSelectable { onMakeDefault() } }
+    }
+
+    /** Choosing weights that are not here yet would fail on the next keystroke. */
+    private var isSelectable: Bool { state == .ready }
+}
