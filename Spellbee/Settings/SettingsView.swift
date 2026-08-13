@@ -107,6 +107,15 @@ struct GeneralSettingsView: View {
 
             Divider().padding(.vertical, 10)
 
+            SettingsRow(label: "Safety:") {
+                Toggle("Only fix, never rewrite", isOn: $preferences.isGuardrailEnabled)
+                SettingsNote(preferences.isGuardrailEnabled
+                    ? "Every change is checked first. Anything that is not spelling, punctuation, capitalisation or spacing is discarded."
+                    : "Off: whatever the model returns is applied, including rewritten or translated text. Revert Last Fix is the only way back.")
+            }
+
+            Divider().padding(.vertical, 10)
+
             SettingsRow(label: "Stopping:") {
                 Text("Press Escape while a correction is running and nothing is written.")
                     .fixedSize(horizontal: false, vertical: true)
@@ -122,96 +131,6 @@ struct GeneralSettingsView: View {
         Binding(
             get: { preferences.launchesAtLogin },
             set: { preferences.launchesAtLogin = $0 }
-        )
-    }
-}
-
-struct LanguageSettingsView: View {
-    @Bindable var preferences: Preferences
-
-    var body: some View {
-        SettingsPage {
-            SettingsRow(label: "Correct:") {
-                ForEach(CorrectionLanguage.allCases, id: \.self) { language in
-                    Toggle(language.displayName, isOn: binding(for: language))
-                }
-            }
-
-            Divider().padding(.vertical, 10)
-
-            SettingsRow(label: "") {
-                Text("""
-                The language of each paragraph is detected, and only the languages \
-                enabled here are considered. Turning one off is worth doing if your \
-                writing is never mistaken for it.
-
-                At least one language stays on.
-                """)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
-    private func binding(for language: CorrectionLanguage) -> Binding<Bool> {
-        Binding(
-            get: { preferences.enabledLanguages.contains(language) },
-            set: { isOn in
-                var languages = preferences.enabledLanguages
-                if isOn { languages.insert(language) } else { languages.remove(language) }
-                preferences.enabledLanguages = languages
-            }
-        )
-    }
-}
-
-struct CorrectionSettingsView: View {
-    @Bindable var preferences: Preferences
-
-    var body: some View {
-        SettingsPage {
-            SettingsRow(label: "Safety:") {
-                Toggle("Only fix, never rewrite", isOn: $preferences.isGuardrailEnabled)
-                SettingsNote(preferences.isGuardrailEnabled
-                    ? "Every change is checked first. Anything that is not spelling, punctuation, capitalisation or spacing is discarded."
-                    : "Off: whatever the model returns is applied, including rewritten or translated text. Revert Last Fix is the only way back.")
-            }
-
-            Divider().padding(.vertical, 10)
-
-            SettingsRow(label: "Fix:") {
-                ForEach(EditKind.allCases, id: \.self) { kind in
-                    Toggle(kind.displayName, isOn: binding(for: kind))
-                }
-            }
-            .disabled(!preferences.isGuardrailEnabled)
-
-            Divider().padding(.vertical, 10)
-
-            SettingsRow(label: "Sentence endings:") {
-                Toggle(
-                    "Add a full stop to a finished sentence",
-                    isOn: $preferences.addsSentenceFinalPunctuation
-                )
-                SettingsNote("""
-                A message that stops without a closing mark is not a mistake, and \
-                in a chat a full stop changes the tone. This is the largest single \
-                source of changes nobody asked for, so it can also be set per app.
-                """)
-            }
-            .disabled(!preferences.isGuardrailEnabled)
-        }
-    }
-
-    private func binding(for kind: EditKind) -> Binding<Bool> {
-        Binding(
-            get: { preferences.allowedKinds.contains(kind) },
-            set: { isOn in
-                var kinds = preferences.allowedKinds
-                if isOn { kinds.insert(kind) } else { kinds.remove(kind) }
-                preferences.allowedKinds = kinds
-            }
         )
     }
 }
@@ -257,6 +176,3 @@ struct PrivacySettingsView: View {
     GeneralSettingsView(preferences: Preferences()).frame(width: 560)
 }
 
-#Preview("Corrections") {
-    CorrectionSettingsView(preferences: Preferences()).frame(width: 560)
-}

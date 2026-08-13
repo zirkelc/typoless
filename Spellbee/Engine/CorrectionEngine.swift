@@ -160,8 +160,9 @@ final class CorrectionEngine {
 
         Log.app.info(
             """
-            Correcting with kinds=\(settings.allowedKinds.map(\.rawValue).sorted().joined(separator: ","), privacy: .public) \
-            fullStop=\(settings.addsSentenceFinalPunctuation, privacy: .public)
+            Correcting in \(bundleID ?? "unknown", privacy: .public), \
+            languages=\(settings.languages.filter(\.value.isEnabled).keys.map(\.rawValue).sorted().joined(separator: ","), privacy: .public) \
+            fullStops=\(settings.sentenceEndingsOverride.map(String.init) ?? "default", privacy: .public)
             """
         )
         let work = Task { try await corrector.corrections(for: text, settings: settings) }

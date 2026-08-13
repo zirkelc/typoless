@@ -20,8 +20,16 @@ actor LocalModelCorrector: Corrector {
     private let model: LocalModel
     private let detector: LanguageDetector
 
-    private var container: ModelContainer?
-    private var loading: Task<ModelContainer, Error>?
+    /**
+     One container per model actually used, loaded on demand.
+
+     A language may name a model of its own, so more than one can be live at
+     once. Each is gigabytes, so none is loaded until a correction genuinely
+     asks for it, and the usual case of every language sharing one model still
+     holds exactly one.
+     */
+    private var containers: [LocalModel: ModelContainer] = [:]
+    private var loading: [LocalModel: Task<ModelContainer, Error>] = [:]
 
     /** Reports download progress from 0 to 1, and nil once there is nothing to report. */
     private let onProgress: @Sendable (Double?) -> Void
@@ -42,7 +50,6 @@ actor LocalModelCorrector: Corrector {
     }
 
     func corrections(for text: String, settings: AppSettings) async throws -> [TextEdit] {
-        let container = try await loadedContainer()
         let protected = ProtectedSpans.find(in: text)
         var edits: [TextEdit] = []
 
@@ -54,8 +61,15 @@ actor LocalModelCorrector: Corrector {
             guard source.contains(where: \.isLetter) else { continue }
 
             let language = detector.detect(source)
+            let chosen = settings.model(for: language) ?? model
+            let container = try await loadedContainer(for: chosen)
 
-            guard let corrected = await corrected(source, language: language, using: container) else {
+            guard let corrected = await corrected(
+                source,
+                language: language,
+                model: chosen,
+                using: container
+            ) else {
                 continue
             }
 
@@ -75,9 +89,8 @@ actor LocalModelCorrector: Corrector {
             let verdict = EditGuardrail.filter(
                 chunkEdits,
                 in: text,
-                allowing: settings.allowedKinds,
-                protectedBy: protected,
-                allowsSentenceFinalPunctuation: settings.addsSentenceFinalPunctuation
+                allowing: settings.rules(for: language),
+                protectedBy: protected
             )
 
             guard verdict.isTrustworthy else {
@@ -95,7 +108,7 @@ actor LocalModelCorrector: Corrector {
     /** Fetches the weights ahead of any correction, so the wait is not a surprise. */
     func prepare() async {
         do {
-            _ = try await loadedContainer()
+            _ = try await loadedContainer(for: model)
         } catch is CancellationError {
             /** Asked for by the user, so not worth reporting as a failure. */
         } catch {
@@ -110,14 +123,14 @@ actor LocalModelCorrector: Corrector {
     }
 
     /** Downloads the weights the first time, then keeps them resident. */
-    private func loadedContainer() async throws -> ModelContainer {
-        if let container { return container }
+    private func loadedContainer(for model: LocalModel) async throws -> ModelContainer {
+        if let container = containers[model] { return container }
 
         /**
          Two calls arriving together would otherwise start two downloads of the
          same several gigabytes.
          */
-        if let loading { return try await loading.value }
+        if let existing = loading[model] { return try await existing.value }
 
         let name = model.displayName
         Log.app.info("Loading \(name, privacy: .public)")
@@ -140,7 +153,7 @@ actor LocalModelCorrector: Corrector {
                 tracker.track(progress)
             }
         }
-        loading = task
+        loading[model] = task
 
         let poller = Task {
             while !Task.isCancelled {
@@ -153,12 +166,12 @@ actor LocalModelCorrector: Corrector {
 
         defer {
             poller.cancel()
-            loading = nil
+            loading[model] = nil
             report(nil)
         }
 
         let loaded = try await task.value
-        container = loaded
+        containers[model] = loaded
         Log.app.info("Loaded \(name, privacy: .public)")
 
         return loaded
@@ -166,19 +179,20 @@ actor LocalModelCorrector: Corrector {
 
     /** Abandons a download in progress. */
     func cancelLoading() {
-        loading?.cancel()
-        loading = nil
+        for task in loading.values { task.cancel() }
+        loading.removeAll()
         Log.app.info("Cancelled loading \(self.model.displayName, privacy: .public)")
     }
 
     /** Releases the weights, which are the largest thing this app ever holds. */
     func unload() {
-        container = nil
+        containers.removeAll()
     }
 
     private func corrected(
         _ text: String,
         language: CorrectionLanguage,
+        model: LocalModel,
         using container: ModelContainer
     ) async -> String? {
         let session = ChatSession(

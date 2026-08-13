@@ -24,6 +24,7 @@ SOURCE="$SCRATCH/verify.swift"
 cat \
     Spellbee/Support/Log.swift \
     Spellbee/Engine/TextDiff.swift \
+    Spellbee/Engine/CorrectionRule.swift \
     Spellbee/Engine/EditGuardrail.swift \
     Spellbee/Engine/ProtectedSpans.swift \
     Spellbee/Engine/ModelReplyCleaner.swift \
@@ -40,17 +41,15 @@ func check(
     _ name: String,
     _ original: String,
     _ modelOutput: String,
-    allowing kinds: Set<EditKind> = Set(EditKind.allCases),
-    sentenceFinalPunctuation: Bool = true,
+    allowing rules: Set<CorrectionRule> = Set(CorrectionRule.allCases),
     expect: String
 ) {
     let protected = ProtectedSpans.find(in: original)
     let verdict = EditGuardrail.filter(
         TextDiff.edits(from: original, to: modelOutput),
         in: original,
-        allowing: kinds,
-        protectedBy: protected,
-        allowsSentenceFinalPunctuation: sentenceFinalPunctuation
+        allowing: rules,
+        protectedBy: protected
     )
     let result = verdict.isTrustworthy ? TextDiff.apply(verdict.accepted, to: original) : original
     let ok = result == expect
@@ -88,36 +87,55 @@ check("pronoun swap", "Passt dir Dienstag um 10 Uhr?", "Passt ihr Dienstag um 10
 check("word lengthened", "The deploy finished at 14:32", "The deployment finished at 14:32", expect: "The deploy finished at 14:32")
 check("different word, same first letter", "sie ist schon hier", "sie hat schon hier", expect: "sie ist schon hier")
 
-print("\n== settings change what is allowed ==")
+print("\n== every rule is told apart ==")
 
-// Turning a kind off must drop only that kind, and must not make the chunk look
-// less trustworthy: a change the user declined says nothing about the model.
-check("spelling off", "teh meeting is on monday", "the meeting is on Monday",
-      allowing: [.casing, .punctuation, .whitespace], expect: "teh meeting is on Monday")
-check("casing off", "teh meeting is on monday", "the meeting is on Monday",
-      allowing: [.spelling, .punctuation, .whitespace], expect: "the meeting is on monday")
+/// The classifier now names which question a change is, not just that it is a
+/// punctuation one, because "add a comma" and "add a full stop" are not the
+/// same decision and people want to answer them differently.
+func checkRule(_ name: String, _ original: String, _ corrected: String, expect: CorrectionRule?) {
+    let edits = TextDiff.edits(from: original, to: corrected)
+    let rules = edits.map { EditGuardrail.classify($0, in: original) }
+    let got = rules.count == 1 ? rules[0] : nil
+    let ok = got == expect
+    if !ok { failures += 1 }
+    print("\(ok ? "PASS" : "FAIL") \(name)")
+    if !ok { print("        got: \(String(describing: got))\n   expected: \(String(describing: expect))") }
+}
 
-// An edit is described by the smallest thing that explains it, and a misspelled
-// word at the start of a sentence is one edit, not two. So it counts as
-// spelling and brings its capital with it: turning capitalisation off does not
-// hold back the capital on a word that had to be respelled anyway.
-check("a respelled word carries its own capital", "teh meeting is on monday", "The meeting is on Monday",
-      allowing: [.spelling], expect: "The meeting is on monday")
-check("declining a kind does not poison the chunk", "hi anna, teh deploy ist durch", "Hi Anna, the deploy ist durch",
-      allowing: [.casing], expect: "Hi Anna, teh deploy ist durch")
+checkRule("spacing", "hello  world", "hello world", expect: .spacing)
+checkRule("sentence capital", "hello there", "Hello there", expect: .capitalisation)
+checkRule("capital after a full stop", "done. whats next", "done. Whats next", expect: .capitalisation)
+checkRule("noun capital mid-sentence", "ein test", "ein Test", expect: .nounCapitalisation)
+checkRule("comma", "well done everyone", "well done, everyone", expect: .commas)
+checkRule("apostrophe", "its ready", "it\'s ready", expect: .apostrophes)
+checkRule("curly apostrophe", "its ready", "it\u{2019}s ready", expect: .apostrophes)
+checkRule("full stop at the end", "see you tomorrow", "see you tomorrow.", expect: .sentenceEndings)
+checkRule("other punctuation", "really?!", "really?", expect: .otherPunctuation)
+checkRule("umlaut", "gruesse", "grüße", expect: .umlauts)
+checkRule("typo", "teh meeting", "the meeting", expect: .typos)
+checkRule("not a correction", "the meeting", "the appointment", expect: nil)
 
-// A full stop on the end is the one change with a setting of its own.
-check("full stop refused at the end", "see you tomorrow", "See you tomorrow.",
-      sentenceFinalPunctuation: false, expect: "See you tomorrow")
-check("full stop allowed at the end", "see you tomorrow", "See you tomorrow.",
-      sentenceFinalPunctuation: true, expect: "See you tomorrow.")
-check("mid-sentence punctuation is not a sentence ending", "if you can come let me know",
-      "If you can come, let me know", sentenceFinalPunctuation: false,
-      expect: "If you can come, let me know")
-check("a full stop between sentences still lands", "done. whats next", "Done. What's next",
-      sentenceFinalPunctuation: false, expect: "Done. What's next")
-check("trailing spacing does not hide the end", "see you tomorrow  ", "See you tomorrow.  ",
-      sentenceFinalPunctuation: false, expect: "See you tomorrow  ")
+print("\n== a language turns off the rules it does not want ==")
+
+check("commas off", "well done everyone", "Well done, everyone",
+      allowing: [.capitalisation, .typos], expect: "Well done everyone")
+check("noun capitals off, sentence capitals on", "hallo, das ist ein test", "Hallo, das ist ein Test",
+      allowing: [.capitalisation], expect: "Hallo, das ist ein test")
+check("umlauts off does not stop typos", "gruesse aus muenchen", "grüße aus münchen",
+      allowing: [.typos], expect: "gruesse aus muenchen")
+check("sentence endings off", "see you tomorrow", "See you tomorrow.",
+      allowing: [.capitalisation, .typos, .commas], expect: "See you tomorrow")
+check("sentence endings on", "see you tomorrow", "See you tomorrow.",
+      allowing: [.capitalisation, .sentenceEndings], expect: "See you tomorrow.")
+check("declining a rule does not poison the chunk", "hi anna, teh deploy ist durch", "Hi Anna, the deploy ist durch",
+      allowing: [.capitalisation, .nounCapitalisation], expect: "Hi Anna, teh deploy ist durch")
+
+// A name in the middle of a sentence is a noun capital as far as this can tell,
+// because position is the only evidence it has: nothing here knows "Anna" is a
+// person and "test" is not. So turning noun capitals off in German also stops
+// proper nouns being capitalised mid-sentence. Pinned rather than hidden.
+check("a name mid-sentence counts as a noun capital", "hi anna", "Hi Anna",
+      allowing: [.capitalisation], expect: "Hi anna")
 
 print("\n== known gap, pinned so it cannot change unnoticed ==")
 

@@ -1,23 +1,5 @@
 import Foundation
 
-/** The only kinds of change this app is allowed to make. */
-enum EditKind: String, CaseIterable, Sendable {
-    case whitespace
-    case punctuation
-    case casing
-    case spelling
-
-    /** Named for what the user recognises, not for what the code calls it. */
-    var displayName: String {
-        switch self {
-        case .whitespace: return "Spacing"
-        case .punctuation: return "Punctuation"
-        case .casing: return "Capitalisation"
-        case .spelling: return "Spelling"
-        }
-    }
-}
-
 /**
  Decides which of the model's changes are allowed to happen.
 
@@ -61,15 +43,14 @@ enum EditGuardrail {
     static func filter(
         _ edits: [TextEdit],
         in text: String,
-        allowing kinds: Set<EditKind> = Set(EditKind.allCases),
-        protectedBy protected: [Range<String.Index>] = [],
-        allowsSentenceFinalPunctuation: Bool = true
+        allowing rules: Set<CorrectionRule> = Set(CorrectionRule.allCases),
+        protectedBy protected: [Range<String.Index>] = []
     ) -> Verdict {
         var accepted: [TextEdit] = []
         var rejected = 0
 
         for edit in edits {
-            guard let kind = classify(edit) else {
+            guard let rule = classify(edit, in: text) else {
                 Log.app.info("Rejected an edit that was not a correction")
                 rejected += 1
                 continue
@@ -84,17 +65,10 @@ enum EditGuardrail {
              counting it would make a well-behaved model look like a rewriting
              one and throw away its other corrections.
              */
-            guard kinds.contains(kind) else { continue }
-
-            guard
-                allowsSentenceFinalPunctuation
-                    || !addsSentenceFinalPunctuation(edit, in: text)
-            else {
-                continue
-            }
+            guard rules.contains(rule) else { continue }
 
             guard !protected.contains(where: { $0.overlaps(edit.range) }) else {
-                Log.app.info("Rejected a \(kind.rawValue, privacy: .public) edit inside protected text")
+                Log.app.info("Rejected a \(rule.rawValue, privacy: .public) edit inside protected text")
                 rejected += 1
                 continue
             }
@@ -111,7 +85,7 @@ enum EditGuardrail {
      The order matters: the checks run from least invasive to most, so a change
      is described by the smallest thing that explains it.
      */
-    static func classify(_ edit: TextEdit) -> EditKind? {
+    static func classify(_ edit: TextEdit, in text: String) -> CorrectionRule? {
         let original = edit.original
         let replacement = edit.replacement
 
@@ -119,7 +93,7 @@ enum EditGuardrail {
 
         /** Same characters once spacing is ignored: only the spacing moved. */
         if withoutWhitespace(original) == withoutWhitespace(replacement) {
-            return .whitespace
+            return .spacing
         }
 
         let strippedOriginal = withoutPunctuation(withoutWhitespace(original))
@@ -127,12 +101,17 @@ enum EditGuardrail {
 
         /** Same letters and case once punctuation is ignored. */
         if strippedOriginal == strippedReplacement {
-            return .punctuation
+            return punctuationRule(for: edit, in: text)
         }
 
-        /** Same letters, different case. */
+        /**
+         Same letters, different case. Which capital it is depends on where it
+         sits: the first word of a sentence is one question and a noun in the
+         middle of a German sentence is a different one, and someone may well
+         want the first and not the second.
+         */
         if strippedOriginal.lowercased() == strippedReplacement.lowercased() {
-            return .casing
+            return startsASentence(edit, in: text) ? .capitalisation : .nounCapitalisation
         }
 
         /**
@@ -146,10 +125,65 @@ enum EditGuardrail {
          it back settles the question exactly rather than by distance.
          */
         if foldingUmlauts(strippedOriginal) == foldingUmlauts(strippedReplacement) {
-            return .spelling
+            return .umlauts
         }
 
-        return isSpellingFix(from: original, to: replacement) ? .spelling : nil
+        return isSpellingFix(from: original, to: replacement) ? .typos : nil
+    }
+
+    /**
+     Which punctuation question this edit is, once it is known to be one.
+
+     Named by the marks that actually moved rather than by the marks present, so
+     adding a comma to a sentence that already ends in a full stop is still a
+     comma question.
+     */
+    private static func punctuationRule(for edit: TextEdit, in text: String) -> CorrectionRule {
+        if addsSentenceFinalPunctuation(edit, in: text) { return .sentenceEndings }
+
+        let changed = changedPunctuation(from: edit.original, to: edit.replacement)
+
+        if !changed.isEmpty, changed.isSubset(of: apostrophes) { return .apostrophes }
+        if !changed.isEmpty, changed.isSubset(of: [","]) { return .commas }
+
+        return .otherPunctuation
+    }
+
+    /**
+     Every mark whose count differs between the two, in either direction.
+
+     A count rather than a set membership, so replacing `?!` with `?` is seen as
+     a change to `!` even though both sides still contain a `?`.
+     */
+    private static func changedPunctuation(from original: String, to replacement: String) -> Set<Character> {
+        var counts: [Character: Int] = [:]
+
+        for character in original where character.isPunctuation || character.isSymbol {
+            counts[character, default: 0] += 1
+        }
+        for character in replacement where character.isPunctuation || character.isSymbol {
+            counts[character, default: 0] -= 1
+        }
+
+        return Set(counts.filter { $0.value != 0 }.keys)
+    }
+
+    /** Straight and curly, since a keyboard produces one and a model returns the other. */
+    private static let apostrophes: Set<Character> = ["'", "\u{2019}", "\u{02BC}"]
+
+    /**
+     Whether this edit is at the start of a sentence.
+
+     Judged from what precedes it in the text rather than from the edit alone,
+     because the same word is a sentence opening in one place and an ordinary
+     noun in another.
+     */
+    static func startsASentence(_ edit: TextEdit, in text: String) -> Bool {
+        let before = text[..<edit.range.lowerBound].reversed().drop(while: \.isWhitespace)
+
+        guard let previous = before.first else { return true }
+
+        return sentenceFinalMarks.contains(previous)
     }
 
     /** Rewrites umlauts and eszett to their two-letter forms, lowercased. */

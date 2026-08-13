@@ -4,7 +4,6 @@ import SwiftUI
 enum SettingsTab: String, CaseIterable, Identifiable {
     case general
     case languages
-    case corrections
     case apps
     case privacy
 
@@ -13,8 +12,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .general: return "General"
-        case .languages: return "Languages"
-        case .corrections: return "Corrections"
+        case .languages: return "Languages & Corrections"
         case .apps: return "Apps"
         case .privacy: return "Privacy"
         }
@@ -23,8 +21,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     var symbolName: String {
         switch self {
         case .general: return "gearshape"
-        case .languages: return "globe"
-        case .corrections: return "checkmark.circle"
+        case .languages: return "character.bubble"
         case .apps: return "square.grid.2x2"
         case .privacy: return "hand.raised"
         }
@@ -39,6 +36,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
      */
     var width: CGFloat {
         switch self {
+        case .languages: return 860
         case .apps: return 700
         default: return 620
         }
@@ -49,7 +47,6 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         switch self {
         case .general: GeneralSettingsView(preferences: model.preferences)
         case .languages: LanguageSettingsView(preferences: model.preferences)
-        case .corrections: CorrectionSettingsView(preferences: model.preferences)
         case .apps: AppSettingsView(preferences: model.preferences)
         case .privacy: PrivacySettingsView()
         }

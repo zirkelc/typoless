@@ -75,8 +75,7 @@ recent fixes as before→after, Settings…, Setup Guide, Quit.
 ## Settings
 
 - **General** — launch at login, double-⌘ on/off, conventional hotkey recorder, revert shortcut, show icon.
-- **Languages** — English / German toggles, auto-detect on/off.
-- **Corrections** — per-kind toggles (spelling, punctuation, capitalization, whitespace), strictness slider mapping to guardrail thresholds, preserve-list (emoji, markdown, code, mentions, URLs).
+- **Languages & Corrections** — one page. A language list on the left, and for the selected language a model and a table of rules, each shown with an example in that language.
 - **Sentence-final punctuation** — whether a message with no closing mark gets one. Allowed today, and it is the single largest source of unrequested changes for every backend: 19 of Gemma's 32 false positives in the eval are this one habit. It stays on because finishing a sentence is a correction, but it is the setting most worth having, both globally and **per app**: a full stop is right in mail and changes the tone of a Slack line. Asking the model to handle it does not work; the eval variant that named terminal punctuation made Gemma start deleting full stops from text that was already correct. This belongs in the guardrail.
 - **Apps** — deny-list, plus per-app overrides for the settings above. Default-denied: terminals, Xcode, VS Code, password managers.
 - **Privacy** — "nothing leaves your Mac", opt-in local log.
@@ -184,6 +183,42 @@ for updates. The same way Raycast, Alfred, Karabiner and Cotypist ship.
 M0-M5 is the app. M6 is shipping it.
 
 ### M5 notes
+
+**Languages and corrections are one page, because they were one question.**
+Which corrections make sense is a property of the language, not of the app:
+capitalised nouns and umlauts mean something in German and nothing in English,
+and a single global list of rules could only ever offer both to everybody. Rules
+are now per language, each shown with an example in that language, because "noun
+capitals" is an abstraction and `ein test` becoming `ein Test` is not.
+
+**Nine rules replace four kinds.** The four described what the classifier could
+tell apart rather than anything a person wants to decide: "punctuation" bundled
+the comma someone forgot with the full stop they left off on purpose. Commas,
+sentence endings, apostrophes, other punctuation, sentence capitals, noun
+capitals, umlauts, typos and spacing are each their own answer.
+
+**Two of them are told apart by position rather than by content.** A capital is
+a sentence capital if what precedes it is nothing or a full stop, and a noun
+capital otherwise. The consequence is worth knowing: nothing here knows that
+`Anna` is a person and `test` is not, so turning noun capitals off in German
+also stops a name being capitalised mid-sentence. Pinned in `verify-engine.sh`.
+
+**The global full stop switch is gone**, because the per-language rule replaced
+it. Leaving both in place was a real bug for the hour it existed: `settings(for:)`
+passed the global answer as an override, which put full stops back into a
+language that had just switched them off. An app override is now genuinely an
+override, nil unless that app disagrees.
+
+**A model can be chosen per language**, defaulting to the one under Corrections.
+Containers are held per model and loaded on demand, so the usual case of one
+model everywhere still holds exactly one, and a second is only ever loaded if a
+language actually names it.
+
+**Five languages are offered untuned.** French, Spanish, Italian, Dutch and
+Portuguese use the English wording with the language named, and have never been
+scored. `isTuned` records that, the list shows it, and the page says so, rather
+than leaving someone to find out. Adding a dataset for one of them is what would
+change it.
 
 **One `Preferences` object owns every setting.** They used to be read out of
 `UserDefaults` wherever they were wanted, which is fine for two and unworkable

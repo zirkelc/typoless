@@ -40,11 +40,10 @@ struct AppSettingsView: View {
             Divider().padding(.vertical, 10)
 
             SettingsRow(label: "Full stops:") {
-                Text(preferences.addsSentenceFinalPunctuation
-                    ? "Everywhere else, a finished sentence gets a full stop."
-                    : "Everywhere else, no full stop is added.")
+                Text("Everywhere else, each language decides for itself under Languages & Corrections. An app listed here answers differently.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 List(selection: $overrideSelection) {
                     ForEach(overriddenApps, id: \.bundleID) { app in
@@ -85,10 +84,7 @@ struct AppSettingsView: View {
 
     private func overrideBinding(for bundleID: String) -> Binding<Bool> {
         Binding(
-            get: {
-                preferences.appOverrides[bundleID]?.sentenceFinalPunctuation
-                    ?? preferences.addsSentenceFinalPunctuation
-            },
+            get: { preferences.appOverrides[bundleID]?.sentenceFinalPunctuation ?? false },
             set: { preferences.appOverrides[bundleID] = AppOverride(sentenceFinalPunctuation: $0) }
         )
     }
@@ -101,10 +97,8 @@ struct AppSettingsView: View {
     private func addOverride() {
         guard let bundleID = chooseApplication() else { return }
 
-        /** Added to differ, so it starts as the opposite of the global answer. */
-        preferences.appOverrides[bundleID] = AppOverride(
-            sentenceFinalPunctuation: !preferences.addsSentenceFinalPunctuation
-        )
+        /** Added in order to differ, and turning them off is why anyone does. */
+        preferences.appOverrides[bundleID] = AppOverride(sentenceFinalPunctuation: false)
     }
 
     private func removeDenied() {

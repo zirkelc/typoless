@@ -14,9 +14,7 @@ enum DefaultsKey {
     static let hotKeyEnabled = "hotKeyEnabled"
     static let hotKeyCode = "hotKeyCode"
     static let hotKeyModifiers = "hotKeyModifiers"
-    static let enabledLanguages = "enabledLanguages"
-    static let allowedEditKinds = "allowedEditKinds"
-    static let sentenceFinalPunctuation = "sentenceFinalPunctuation"
+    static let languageSettings = "languageSettings"
     static let deniedBundleIDs = "deniedBundleIDs"
     static let appOverrides = "appOverrides"
 }
@@ -99,13 +97,27 @@ final class Preferences {
 
     // MARK: Languages
 
-    var enabledLanguages: Set<CorrectionLanguage> {
+    /**
+     Everything each language is allowed to do, and which model does it.
+
+     Keyed by language rather than held as one global set, because the rules are
+     not the same everywhere: an umlaut is a German question and an apostrophe
+     is mostly an English one, and someone who wants their German nouns
+     capitalised may well not want that anywhere else.
+     */
+    var languageSettings: [CorrectionLanguage: LanguageSettings] {
         didSet {
             /** No languages at all would mean correcting nothing, forever. */
-            if enabledLanguages.isEmpty { enabledLanguages = oldValue }
-            write(enabledLanguages.map(\.rawValue), DefaultsKey.enabledLanguages)
+            if !languageSettings.values.contains(where: \.isEnabled) {
+                languageSettings = oldValue
+            }
+            writeLanguageSettings()
             onCorrectorChanged?()
         }
+    }
+
+    var enabledLanguages: [CorrectionLanguage] {
+        CorrectionLanguage.allCases.filter { languageSettings[$0]?.isEnabled ?? false }
     }
 
     // MARK: Corrections
@@ -122,15 +134,6 @@ final class Preferences {
             write(isGuardrailEnabled, DefaultsKey.guardrailEnabled)
             onCorrectorChanged?()
         }
-    }
-
-    var allowedKinds: Set<EditKind> {
-        didSet { write(allowedKinds.map(\.rawValue), DefaultsKey.allowedEditKinds) }
-    }
-
-    /** Whether a message with no closing mark is given one. See `appOverrides`. */
-    var addsSentenceFinalPunctuation: Bool {
-        didSet { write(addsSentenceFinalPunctuation, DefaultsKey.sentenceFinalPunctuation) }
     }
 
     // MARK: Backend
@@ -186,19 +189,10 @@ final class Preferences {
             modifiers: UInt32(storedModifiers ?? Int(Shortcut.default.modifiers))
         )
 
-        let languages = (defaults.array(forKey: DefaultsKey.enabledLanguages) as? [String])?
-            .compactMap(CorrectionLanguage.init)
-        enabledLanguages = Set(languages ?? CorrectionLanguage.allCases)
+        languageSettings = Self.readLanguageSettings(from: defaults)
 
         /** Absent means never set, which should mean on rather than off. */
         isGuardrailEnabled = defaults.object(forKey: DefaultsKey.guardrailEnabled) as? Bool ?? true
-
-        let kinds = (defaults.array(forKey: DefaultsKey.allowedEditKinds) as? [String])?
-            .compactMap(EditKind.init)
-        allowedKinds = Set(kinds ?? EditKind.allCases)
-
-        addsSentenceFinalPunctuation = defaults
-            .object(forKey: DefaultsKey.sentenceFinalPunctuation) as? Bool ?? true
 
         backend = defaults.string(forKey: DefaultsKey.correctorBackend)
             .flatMap(CorrectorBackend.init) ?? .appleOnDevice
@@ -221,13 +215,52 @@ final class Preferences {
 
     /** What applies in a given app, once its own answers are taken into account. */
     func settings(for bundleID: String?) -> AppSettings {
-        let override = bundleID.flatMap { appOverrides[$0] }
-
+        /**
+         Nil unless this app genuinely disagrees. Passing the global answer here
+         would override the per-language rule with it every time, which silently
+         put full stops back into a language that had them switched off.
+         */
         return AppSettings(
-            allowedKinds: allowedKinds,
-            addsSentenceFinalPunctuation: override?.sentenceFinalPunctuation
-                ?? addsSentenceFinalPunctuation
+            languages: languageSettings,
+            sentenceEndingsOverride: bundleID.flatMap { appOverrides[$0]?.sentenceFinalPunctuation }
         )
+    }
+
+    /**
+     Stored as one dictionary per language rather than as separate keys, so a
+     language added later needs no migration: an absent entry simply falls back
+     to that language's own defaults.
+     */
+    private func writeLanguageSettings() {
+        let encoded = languageSettings.reduce(into: [String: [String: Any]]()) { result, entry in
+            result[entry.key.rawValue] = [
+                "enabled": entry.value.isEnabled,
+                "model": entry.value.model?.rawValue as Any,
+                "rules": entry.value.allowedRules.map(\.rawValue),
+            ].compactMapValues { $0 }
+        }
+
+        write(encoded, DefaultsKey.languageSettings)
+    }
+
+    private static func readLanguageSettings(from defaults: UserDefaults) -> [CorrectionLanguage: LanguageSettings] {
+        let stored = defaults.dictionary(forKey: DefaultsKey.languageSettings) as? [String: [String: Any]] ?? [:]
+
+        return Dictionary(uniqueKeysWithValues: CorrectionLanguage.allCases.map { language in
+            guard let entry = stored[language.rawValue] else {
+                return (language, LanguageSettings.default(for: language))
+            }
+
+            let rules = (entry["rules"] as? [String])?.compactMap(CorrectionRule.init)
+
+            return (language, LanguageSettings(
+                isEnabled: entry["enabled"] as? Bool ?? language.isEnabledByDefault,
+                model: (entry["model"] as? String).flatMap(LocalModel.init),
+                /** Only rules the language has, so a stored set cannot resurrect one. */
+                allowedRules: Set(rules ?? Array(language.applicableRules))
+                    .intersection(language.applicableRules)
+            ))
+        })
     }
 
     /**

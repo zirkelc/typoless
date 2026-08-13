@@ -79,9 +79,8 @@ actor FoundationModelsCorrector: Corrector {
             let verdict = EditGuardrail.filter(
                 chunkEdits,
                 in: text,
-                allowing: settings.allowedKinds,
-                protectedBy: protected,
-                allowsSentenceFinalPunctuation: settings.addsSentenceFinalPunctuation
+                allowing: settings.rules(for: language),
+                protectedBy: protected
             )
 
             guard verdict.isTrustworthy else {

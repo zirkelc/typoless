@@ -83,6 +83,12 @@ extension PromptVariant {
                 fehlende Kommas vor Nebensaetzen), Gross- und Kleinschreibung und \
                 Abstaende. Aendere sonst nichts.
                 """
+            /**
+             Variants compare wordings for the two languages that have
+             datasets. Anything else keeps the shipping instructions, so
+             adding a language does not enrol it in an experiment.
+             */
+            default: return language.instructions
             }
         },
         userPrompt: { language, text in language.prompt(for: text) },
@@ -138,6 +144,12 @@ extension PromptVariant {
                 fuegst kein Wort hinzu und entfernst keines. Du aenderst weder Ton \
                 noch Bedeutung.
                 """
+            /**
+             Variants compare wordings for the two languages that have
+             datasets. Anything else keeps the shipping instructions, so
+             adding a language does not enrol it in an experiment.
+             */
+            default: return language.instructions
             }
         },
         userPrompt: { language, text in language.prompt(for: text) },
@@ -175,6 +187,12 @@ extension PromptVariant {
                 Backticks, Dateinamen, Emojis und Produktnamen mit ungewoehnlicher \
                 Schreibweise.
                 """
+            /**
+             Variants compare wordings for the two languages that have
+             datasets. Anything else keeps the shipping instructions, so
+             adding a language does not enrol it in an experiment.
+             */
+            default: return language.instructions
             }
         },
         userPrompt: { language, text in language.prompt(for: text) },
@@ -212,6 +230,12 @@ extension PromptVariant {
                 Beispiel. Text: `Danke für die schnelle Rückmeldung.` \
                 Antwort: `Danke für die schnelle Rückmeldung.`
                 """
+            /**
+             Variants compare wordings for the two languages that have
+             datasets. Anything else keeps the shipping instructions, so
+             adding a language does not enrol it in an experiment.
+             */
+            default: return language.instructions
             }
         },
         userPrompt: { language, text in language.prompt(for: text) },
@@ -247,6 +271,12 @@ extension PromptVariant {
                 endet, setze keines. Eine Nachricht ohne Schlusszeichen ist kein \
                 Fehler.
                 """
+            /**
+             Variants compare wordings for the two languages that have
+             datasets. Anything else keeps the shipping instructions, so
+             adding a language does not enrol it in an experiment.
+             */
+            default: return language.instructions
             }
         },
         userPrompt: { language, text in language.prompt(for: text) },
@@ -294,6 +324,12 @@ extension PromptVariant {
                 Jeder Satz beginnt trotzdem mit einem Grossbuchstaben, und jedes \
                 Substantiv wird grossgeschrieben.
                 """
+            /**
+             Variants compare wordings for the two languages that have
+             datasets. Anything else keeps the shipping instructions, so
+             adding a language does not enrol it in an experiment.
+             */
+            default: return language.instructions
             }
         },
         userPrompt: { language, text in language.prompt(for: text) },
@@ -344,6 +380,12 @@ extension PromptVariant {
                 fuegst kein Wort hinzu und entfernst keines. Du aenderst weder Ton \
                 noch Bedeutung.
                 """
+            /**
+             Variants compare wordings for the two languages that have
+             datasets. Anything else keeps the shipping instructions, so
+             adding a language does not enrol it in an experiment.
+             */
+            default: return language.instructions
             }
         },
         userPrompt: { language, text in language.prompt(for: text) },
