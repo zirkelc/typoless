@@ -68,22 +68,44 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
         window.title = tab.title
         window.toolbar?.selectedItemIdentifier = NSToolbarItem.Identifier(tab.rawValue)
 
-        let hosting = NSHostingView(rootView: tab.view(model: model).frame(width: tab.width))
-        hosting.layoutSubtreeIfNeeded()
+        /**
+         The page reports its own height rather than being measured once.
 
-        let size = NSSize(width: tab.width, height: hosting.fittingSize.height)
+         A page whose content can grow, such as a language opening to show its
+         rules, would otherwise be clipped by a window sized before it did.
+         */
+        let root = tab.view(model: model)
+            .frame(width: tab.width)
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.onChange(of: proxy.size.height, initial: true) { _, height in
+                        MainActor.assumeIsolated { [weak self] in
+                            self?.resize(toContentHeight: height, animated: true)
+                        }
+                    }
+                }
+            )
+
+        let hosting = NSHostingView(rootView: root)
+        hosting.layoutSubtreeIfNeeded()
         window.contentView = hosting
 
-        /**
-         Grown from the top edge rather than the centre, so the title bar stays
-         put and only the bottom of the window moves.
-         */
-        var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: size))
-        frame.origin = NSPoint(
-            x: window.frame.origin.x,
-            y: window.frame.maxY - frame.height
-        )
+        resize(toContentHeight: hosting.fittingSize.height, animated: animated)
+    }
 
+    /**
+     Grows from the top edge rather than the centre, so the title bar stays put
+     and only the bottom of the window moves.
+     */
+    private func resize(toContentHeight height: CGFloat, animated: Bool) {
+        guard let window, height > 0 else { return }
+
+        let size = NSSize(width: selected.width, height: height)
+        var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: size))
+
+        guard abs(frame.height - window.frame.height) > 0.5 else { return }
+
+        frame.origin = NSPoint(x: window.frame.origin.x, y: window.frame.maxY - frame.height)
         window.setFrame(frame, display: true, animate: animated)
     }
 

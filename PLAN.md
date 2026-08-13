@@ -184,6 +184,21 @@ M0-M5 is the app. M6 is shipping it.
 
 ### M5 notes
 
+**A settings write that is not a property list fails silently.** Each language's
+entry was built with `["model": value.model?.rawValue as Any]` and then run
+through `compactMapValues { $0 }`, which does not strip it: the closure returns a
+non-optional `Any`, so a boxed `Optional.none` survived into the dictionary. User
+defaults refuses the whole write in that case and says nothing, so every change
+to a language's rules was discarded the moment it was made. The key is now
+omitted rather than present and nil. Worth remembering that `as Any` on an
+optional produces a value that looks fine everywhere except a plist.
+
+**Each language is a heading in the table, opening to show its rules.** It was a
+list of languages beside a table of rules, which left the reader to work out that
+one drove the other. The window measures itself from the page rather than once at
+selection, since a section opening makes the page taller than the window it was
+sized for.
+
 **Languages and corrections are one page, because they were one question.**
 Which corrections make sense is a property of the language, not of the app:
 capitalised nouns and umlauts mean something in German and nothing in English,

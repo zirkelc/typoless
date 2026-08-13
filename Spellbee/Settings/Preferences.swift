@@ -233,11 +233,23 @@ final class Preferences {
      */
     private func writeLanguageSettings() {
         let encoded = languageSettings.reduce(into: [String: [String: Any]]()) { result, entry in
-            result[entry.key.rawValue] = [
+            var value: [String: Any] = [
                 "enabled": entry.value.isEnabled,
-                "model": entry.value.model?.rawValue as Any,
                 "rules": entry.value.allowedRules.map(\.rawValue),
-            ].compactMapValues { $0 }
+            ]
+
+            /**
+             Added only when there is one. An absent model has to be absent from
+             the dictionary rather than present and nil: user defaults stores
+             property lists, a boxed `Optional.none` is not one, and the whole
+             write is refused when it contains one. That is silent, so every
+             change to these settings was being discarded.
+             */
+            if let model = entry.value.model {
+                value["model"] = model.rawValue
+            }
+
+            result[entry.key.rawValue] = value
         }
 
         write(encoded, DefaultsKey.languageSettings)
