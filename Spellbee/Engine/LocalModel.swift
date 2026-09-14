@@ -43,10 +43,23 @@ enum LocalModel: String, CaseIterable, Sendable {
             return false
         }
 
-        /** A directory can exist with the download half done, so look for weights. */
+        /**
+         A part-finished fetch leaves whole shards behind as ordinary files, and
+         these models come in several. One `.safetensors` therefore proves
+         nothing: it reported a third of Gemma as fully downloaded, which made
+         the app refuse to resume the download and then hang on the first
+         correction while the rest arrived with no progress shown at all.
+         */
+        let blobs = (try? FileManager.default.contentsOfDirectory(
+            atPath: cacheDirectory.appending(path: "blobs").path
+        )) ?? []
+
+        guard !blobs.contains(where: { $0.hasSuffix(".incomplete") }) else { return false }
+
         return revisions.contains { revision in
             let files = (try? FileManager.default.contentsOfDirectory(atPath: revision.path)) ?? []
-            return files.contains { $0.hasSuffix(".safetensors") }
+
+            return files.contains { $0.hasSuffix(".safetensors") } && files.contains("config.json")
         }
     }
 
@@ -91,6 +104,25 @@ enum CorrectorBackend: String, CaseIterable, Sendable {
         switch self {
         case .appleOnDevice: return "Apple on-device"
         case .local: return "Downloaded model"
+        }
+    }
+}
+
+/**
+ One pickable model, named in a single value.
+
+ A backend plus a separate local model says the same thing in two places, which
+ leaves "Apple's model is in use, and also Gemma is the selected one"
+ representable and forces every reader to combine them. This does not.
+ */
+enum ModelChoice: Equatable, Hashable, Sendable {
+    case appleOnDevice
+    case local(LocalModel)
+
+    var displayName: String {
+        switch self {
+        case .appleOnDevice: return CorrectorBackend.appleOnDevice.displayName
+        case .local(let model): return model.displayName
         }
     }
 }
