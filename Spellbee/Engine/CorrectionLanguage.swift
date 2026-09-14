@@ -69,6 +69,14 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
             return [
                 RuleExample(rule: .typos, before: "teh meeting", after: "the meeting"),
                 RuleExample(rule: .capitalisation, before: "hello there", after: "Hello there"),
+                /**
+                 English does not capitalise nouns as a class, so this was left
+                 out. But the classifier judges a capital by *where* it sits,
+                 not by knowing what the word is, and every mid-sentence capital
+                 lands under this rule. Without it English could never capitalise
+                 a name, a weekday, a month or a place.
+                 */
+                RuleExample(rule: .nounCapitalisation, before: "i work at google", after: "I work at Google"),
                 RuleExample(rule: .apostrophes, before: "its ready", after: "it's ready"),
                 RuleExample(rule: .commas, before: "well done everyone", after: "well done, everyone"),
                 RuleExample(rule: .sentenceEndings, before: "see you tomorrow", after: "see you tomorrow."),
@@ -138,6 +146,26 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
     }
 
     /** The rules this language has anything to say about. */
+    /**
+     What a rule is called in this language.
+
+     The same test answers a different question depending on the language. A
+     capital in the middle of a German sentence is usually an ordinary noun,
+     which is a rule German has and some people do not want applied. In English
+     it is almost always a name or a place. Calling both "noun capitals" was
+     accurate for German and meaningless everywhere else.
+
+     Asked of the language rather than of the rule, so the rule does not have to
+     know every language there is.
+     */
+    func label(for rule: CorrectionRule) -> String {
+        switch (rule, self) {
+        case (.nounCapitalisation, .german): return "Noun capitals"
+        case (.nounCapitalisation, _): return "Names and places"
+        default: return rule.displayName
+        }
+    }
+
     var applicableRules: Set<CorrectionRule> {
         Set(rules.map(\.rule))
     }
@@ -169,77 +197,75 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
      the model's behaviour more than they look like they should. The rest are
      built from the English wording and have never been scored.
      */
-    var instructions: String {
+    /**
+     What the model is told before it sees the text.
+
+     Short on purpose, and the shortness is the finding rather than a matter of
+     taste. Fourteen wordings were scored against 168 real messages: the two
+     briefest came first and second, and the wording this replaces came last of
+     the fourteen. Every long rule list did worse at the very rule it spelled
+     out most carefully. One candidate gave a whole bullet to capitalising the
+     opening word and managed it four times in forty-one, half of what the old
+     wording achieved without mentioning it at all. For a model this small a
+     rule buried among thirty others is worse than no rule, so anything added
+     here has to earn its place against `Eval/`, not against intuition.
+
+     Nothing is said about links, handles or code any more. `MaskedText`
+     replaces them with markers before the model is asked, so there is nothing
+     left for an instruction to protect.
+
+     - Parameter startsText: Whether this chunk opens the field. A long message
+       is corrected chunk by chunk, and the opening-capital rule read as true of
+       every chunk, so the second paragraph of a German letter had `anbei`
+       capitalised mid-sentence. Only the chunk that really is the beginning is
+       told about the beginning.
+     */
+    func instructions(startsText: Bool = true) -> String {
         switch self {
         case .english:
             return """
-            Web addresses, email addresses, @handles, #channels, text in \
-            backticks and emoji are copied across character for character, \
-            however wrong they look.
-
-            You correct text that someone has already written.
-
-            You fix only these things: spelling mistakes, missing or wrong \
-            punctuation, capitalisation, and spacing.
-
-            You never rephrase, reword, translate, shorten, expand, or improve \
-            the writing. You never add or remove a word. You never change the \
-            tone or the meaning. If the text is already correct, you return it \
-            exactly as it is.
-            """
+            Fix spelling, punctuation, capitalisation and spacing. Change \
+            nothing else.
+            """ + (startsText ? " Capitalise the first word of the text." : "")
         case .german:
             return """
-            Internetadressen, E-Mail-Adressen, @Namen, #Kanaele, Text in \
-            Backticks und Emojis uebernimmst du Zeichen fuer Zeichen, egal \
-            wie falsch sie aussehen.
-
-            Du korrigierst Texte, die jemand bereits geschrieben hat.
-
-            Du korrigierst ausschliesslich:
-            - Rechtschreibfehler, auch fehlende Umlaute (ae, oe, ue, ss werden \
-            zu ä, ö, ü, ß, wenn das Wort es verlangt)
-            - fehlende oder falsche Satzzeichen, besonders das Komma vor \
-            Nebensaetzen (dass, ob, weil, wenn, der, die, das)
-            - Gross- und Kleinschreibung: jeder Satz beginnt gross, und jedes \
-            Substantiv wird grossgeschrieben
-            - Abstaende
-
-            Du formulierst nichts um, uebersetzt nichts, kuerzt nichts und \
-            fuegst kein Wort hinzu und entfernst keines. Du aenderst weder Ton \
-            noch Bedeutung.
-            """
+            Korrigiere Rechtschreibung, Satzzeichen, Gross- und \
+            Kleinschreibung und Abstaende. Aendere sonst nichts.
+            """ + (startsText ? " Das erste Wort des Textes wird grossgeschrieben." : "")
+        /**
+         Built from the English wording and never scored, since only English and
+         German have datasets. Naming the language is worth several points in
+         German, so the same is assumed here.
+         */
         case .french, .spanish, .italian, .dutch, .portuguese:
-            /**
-             Built from the English wording, in English, and never scored. The
-             German result says instructing a model in the text's own language
-             is worth several points, so this is the weaker of the two options,
-             and it is used only because writing the other one well needs
-             someone who speaks the language.
-             */
             return """
-            Web addresses, email addresses, @handles, #channels, text in \
-            backticks and emoji are copied across character for character, \
-            however wrong they look.
-
-            You correct \(displayName) text that someone has already written.
-
-            You fix only these things: spelling mistakes, missing or wrong \
-            accents, missing or wrong punctuation, capitalisation, and spacing.
-
-            You never rephrase, reword, translate, shorten, expand, or improve \
-            the writing. You never add or remove a word. You never change the \
-            tone or the meaning. If the text is already correct, you return it \
-            exactly as it is.
-            """
+            Fix spelling, accents, punctuation, capitalisation and spacing in \
+            this \(displayName) text. Change nothing else.
+            """ + (startsText ? " Capitalise the first word of the text." : "")
         }
     }
 
+    /**
+     The turn that carries the text.
+
+     The two languages want opposite things here, which is why they no longer
+     share a shape. German gains seven cases from the bare imperative and
+     English loses four from it, measured twice: once on the tuning set and
+     again on all 168 with the same size and sign. Naming the language in the
+     turn buys nothing once the instructions are already in that language,
+     which is where German gets the signal from.
+
+     Anything that is not a plain imperative is best avoided. A field label, a
+     fenced block and a "here is a message" framing were all tried, and all
+     three sent the model into a runaway generation on some inputs, taking p95
+     from under two seconds to about fifty.
+     */
     func prompt(for text: String) -> String {
         switch self {
+        case .german:
+            return "Korrigiere:\n\n\(text)"
         case .english:
             return "Correct this English text, keeping every word:\n\n\(text)"
-        case .german:
-            return "Korrigiere diesen deutschen Text und behalte jedes Wort:\n\n\(text)"
         default:
             return "Correct this \(displayName) text, keeping every word:\n\n\(text)"
         }
@@ -261,20 +287,30 @@ struct LanguageDetector: Sendable {
         self.enabled = enabled.isEmpty ? [.english] : enabled
     }
 
-    func detect(_ text: String) -> CorrectionLanguage {
-        guard enabled.count > 1 else { return enabled[0] }
+    /**
+     Which language this text is in, or nil if it is not one being corrected.
 
+     Detection deliberately ranges over every language the app knows rather than
+     only the enabled ones. Constraining it to the enabled set did not make
+     Spellbee ignore the others, it made it mislabel them: with only English
+     added, a German line came back as English and was corrected under English
+     rules by an app the user believed was not set up for German. Worse, with a
+     single language enabled the recogniser was skipped entirely and everything
+     was declared to be that language without being read at all.
+     */
+    func detect(_ text: String) -> CorrectionLanguage? {
         let recognizer = NLLanguageRecognizer()
-        recognizer.languageConstraints = enabled.map(\.nlLanguage)
+        recognizer.languageConstraints = CorrectionLanguage.allCases.map(\.nlLanguage)
         recognizer.processString(text)
 
         guard
             let dominant = recognizer.dominantLanguage,
-            let match = enabled.first(where: { $0.nlLanguage == dominant })
+            let match = CorrectionLanguage.allCases.first(where: { $0.nlLanguage == dominant })
         else {
-            return enabled[0]
+            /** Nothing recognisable, so treat it as the first language asked for. */
+            return enabled.first
         }
 
-        return match
+        return enabled.contains(match) ? match : nil
     }
 }
