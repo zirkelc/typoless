@@ -27,10 +27,12 @@ final class OverlayPanel: NSPanel {
         isReleasedWhenClosed = false
 
         /**
-         Above normal windows and full-screen apps, but deliberately below the
-         menu bar's own panels so it never covers system UI.
+         Above normal windows and full-screen apps, but below the menu bar and
+         its panels so it never covers system UI. `.screenSaver` is far above
+         both, so a field near the top of the screen had its overlay drawn over
+         the menu bar, and over this app's own message panel.
          */
-        level = .screenSaver
+        level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1)
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle, .stationary]
     }
 

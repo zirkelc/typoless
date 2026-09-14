@@ -40,16 +40,13 @@ struct OnboardingView: View {
             footer
         }
         .frame(width: 520)
-        .onAppear {
-            permissions.startMonitoring()
-            NSApp.activate(ignoringOtherApps: true)
-        }
-        .onDisappear {
-            permissions.stopMonitoring()
-        }
-        .onChange(of: permissions.isReady) {
-            model.updateTriggers()
-        }
+        /**
+         Starting and stopping the poller belongs to the window controller, which
+         is told when it closes; this view is not. Re-arming the triggers is
+         already wired through `PermissionsModel.onChange`, so doing it here as
+         well only made it look as though it happened solely while setup was open.
+         */
+        .onAppear { NSApp.activate(ignoringOtherApps: true) }
     }
 
     private var accessibilityRow: PermissionRow {

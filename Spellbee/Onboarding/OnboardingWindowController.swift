@@ -9,18 +9,30 @@ import SwiftUI
  action that only exists inside a SwiftUI view hierarchy.
  */
 @MainActor
-final class OnboardingWindowController {
+final class OnboardingWindowController: NSObject, NSWindowDelegate {
     private let model: AppModel
     private var window: NSWindow?
 
     init(model: AppModel) {
         self.model = model
+        super.init()
     }
 
     func show() {
         if window == nil {
             window = makeWindow()
         }
+
+        /**
+         Started here rather than by the view.
+
+         The window is kept rather than released and is only ordered out, so
+         SwiftUI is never told the view disappeared and the poller was never
+         stopped: an accessibility check and a model availability query, once a
+         second, for the rest of the app's life, after a window the user opened
+         once on first launch. The window knows when it closes; the view does not.
+         */
+        model.permissions.startMonitoring()
 
         /** An accessory app has to ask, or the window opens behind everything. */
         NSApp.activate(ignoringOtherApps: true)
@@ -29,7 +41,13 @@ final class OnboardingWindowController {
     }
 
     func close() {
+        model.permissions.stopMonitoring()
         window?.orderOut(nil)
+    }
+
+    /** The red button does not go through `close`, so it needs its own hook. */
+    func windowWillClose(_ notification: Notification) {
+        model.permissions.stopMonitoring()
     }
 
     private func makeWindow() -> NSWindow {
@@ -43,6 +61,7 @@ final class OnboardingWindowController {
             backing: .buffered,
             defer: false
         )
+        window.delegate = self
         window.title = "Set Up Spellbee"
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
