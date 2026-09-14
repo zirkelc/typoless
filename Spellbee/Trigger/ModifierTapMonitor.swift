@@ -33,12 +33,14 @@ final class ModifierTapMonitor {
     private var lastTapAt: Date?
 
     /**
-     Set when the mouse is used between taps.
+     When the mouse was last used, so an interruption can be placed in time.
 
      Without this, releasing a modifier at the end of an unrelated action counts
-     as a tap.
+     as a tap. A plain flag could not express *when*, so clearing it on each
+     press guarded only the inside of one press and release, which is not where
+     the risk is, and not clearing it made every click eat the following tap.
      */
-    private var wasInterrupted = false
+    private var interruptedAt: Date?
 
     /**
      How many keys the session had seen at each point of interest.
@@ -60,8 +62,14 @@ final class ModifierTapMonitor {
             self?.handleFlagsChanged(event)
         }
 
-        add(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel]) { [weak self] _ in
-            self?.wasInterrupted = true
+        /**
+         Scrolling is deliberately not watched. It woke this process on every
+         scroll event anywhere on the system to set a flag that only matters
+         while a modifier is held, and scrolling with a modifier down is an
+         ordinary zoom rather than a sign the user has moved on.
+         */
+        add(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
+            self?.interruptedAt = event.timestampDate
         }
     }
 
@@ -87,15 +95,44 @@ final class ModifierTapMonitor {
         }
     }
 
+    /**
+     The modifiers a tap can be made of.
+
+     Deliberately not `deviceIndependentFlagsMask`, which also carries Caps
+     Lock, Fn, the numeric keypad and Help. Caps Lock is the one that mattered:
+     while it is on it rides along on every event, so the chord test below saw a
+     second modifier that the user had not pressed and abandoned every sequence.
+     The trigger simply stopped working, silently, until Caps Lock went off.
+     */
+    private static let tappableModifiers: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
+
+    /** Set while a chord is being unwound, so its tail is not read as a tap. */
+    private var isChording = false
+
     private func handleFlagsChanged(_ event: NSEvent) {
-        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let flags = event.modifierFlags.intersection(Self.tappableModifiers)
         let isWatchedDown = flags.contains(modifier.flag)
         let others = flags.subtracting(modifier.flag)
 
         /** A chord is not a tap, and it ends any sequence in progress. */
         if !others.isEmpty {
             reset()
+            /**
+             Held until every modifier is off again. Without it, releasing the
+             extra modifier while still holding the watched one looked exactly
+             like a fresh press, so letting go afterwards recorded a tap the
+             user never made, and the next real tap fired a correction they were
+             not aiming at. No key is pressed in that sequence, so the keystroke
+             counter cannot catch it either.
+             */
+            isChording = true
             return
+        }
+
+        if isChording {
+            guard flags.isEmpty else { return }
+
+            isChording = false
         }
 
         defer { isDown = isWatchedDown }
@@ -103,7 +140,6 @@ final class ModifierTapMonitor {
         if isWatchedDown, !isDown {
             pressedAt = event.timestampDate
             keysAtPress = Self.keyDownCount
-            wasInterrupted = false
             return
         }
 
@@ -112,10 +148,11 @@ final class ModifierTapMonitor {
         let releasedAt = event.timestampDate
 
         guard
-            !wasInterrupted,
+            let pressedAt,
+            /** A click while it was held means the modifier was part of that click. */
+            !wasInterrupted(since: pressedAt),
             /** A key pressed while it was held makes it a modifier, not a tap. */
             Self.keyDownCount == keysAtPress,
-            let pressedAt,
             releasedAt.timeIntervalSince(pressedAt) <= holdLimit
         else {
             reset()
@@ -125,6 +162,8 @@ final class ModifierTapMonitor {
         if
             let lastTapAt,
             releasedAt.timeIntervalSince(lastTapAt) <= gapLimit,
+            /** A click between the two taps means the user moved on in between. */
+            !wasInterrupted(since: lastTapAt),
             /** Typing between the taps means this was writing, not a trigger. */
             Self.keyDownCount == keysAtLastTap
         {
@@ -141,11 +180,16 @@ final class ModifierTapMonitor {
         UInt32(CGEventSource.counterForEventType(.combinedSessionState, eventType: .keyDown))
     }
 
+    private func wasInterrupted(since moment: Date) -> Bool {
+        guard let interruptedAt else { return false }
+
+        return interruptedAt >= moment
+    }
+
     private func reset() {
         isDown = false
         pressedAt = nil
         lastTapAt = nil
-        wasInterrupted = false
     }
 }
 

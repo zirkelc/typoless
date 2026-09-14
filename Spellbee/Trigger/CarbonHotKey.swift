@@ -83,6 +83,19 @@ final class CarbonHotKey {
         return true
     }
 
+    /**
+     Releases the Carbon registrations without going through the main actor.
+
+     The installed handler holds this object as an untyped pointer and
+     dereferences it on every matching key press, so an instance released while
+     still registered would be read after it was freed. Nothing transient owns
+     one today, which is exactly why this is easy to get wrong later.
+     */
+    isolated deinit {
+        if let hotKeyRef { UnregisterEventHotKey(hotKeyRef) }
+        if let handlerRef { RemoveEventHandler(handlerRef) }
+    }
+
     func unregister() {
         if let hotKeyRef {
             UnregisterEventHotKey(hotKeyRef)

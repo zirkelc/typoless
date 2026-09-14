@@ -13,16 +13,20 @@ final class HotKeyMonitor {
 
     private let hotKey = CarbonHotKey(identifier: HotKeyIdentifier.correct)
 
-    func start(_ shortcut: Shortcut = .default) {
+    /** False when the combination belongs to another app, which is worth saying. */
+    @discardableResult
+    func start(_ shortcut: Shortcut = .default) -> Bool {
         guard hotKey.register(
             keyCode: shortcut.keyCode,
             modifiers: shortcut.modifiers,
             onFire: { [weak self] in self?.onFire?() }
         ) else {
-            return
+            return false
         }
 
         self.shortcut = shortcut
+
+        return true
     }
 
     func stop() {
