@@ -138,8 +138,16 @@ enum TextDiff {
      describes each difference separately, which is what an edit wants.
      */
     static func differingSpan(from before: String, to after: String) -> (range: CFRange, replacement: String)? {
-        let source = Array(before.utf16)
-        let target = Array(after.utf16)
+        /**
+         Compared character by character, not UTF-16 unit by unit.
+
+         Trimming over raw units left the boundary inside a surrogate pair
+         whenever two non-BMP characters shared a lead unit, and decoding the
+         orphaned half produced U+FFFD. Undo hands this span straight to the
+         writer, so the replacement character went into the user's live field.
+         */
+        let source = Array(before)
+        let target = Array(after)
 
         var head = 0
         while head < source.count, head < target.count, source[head] == target[head] {
@@ -154,14 +162,20 @@ enum TextDiff {
             tail += 1
         }
 
-        let length = source.count - head - tail
-        let replacement = target[head..<(target.count - tail)]
+        let removed = source.count - head - tail
+        let replacement = String(target[head..<(target.count - tail)])
 
-        guard length > 0 || !replacement.isEmpty else { return nil }
+        guard removed > 0 || !replacement.isEmpty else { return nil }
+
+        /** Offsets are handed to the accessibility API, which counts in UTF-16. */
+        let start = before.index(before.startIndex, offsetBy: head)
+        let end = before.index(before.endIndex, offsetBy: -tail)
+
+        let location = start.utf16Offset(in: before)
 
         return (
-            CFRange(location: head, length: length),
-            String(decoding: replacement, as: UTF16.self)
+            CFRange(location: location, length: end.utf16Offset(in: before) - location),
+            replacement
         )
     }
 

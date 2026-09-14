@@ -34,11 +34,39 @@ enum TextChunker {
                 end = text.index(after: end)
             }
 
-            chunks.append(contentsOf: split(text, in: index..<end))
+            chunks.append(contentsOf: split(text, in: index..<end).compactMap { trimming(text, $0) })
             index = end
         }
 
         return chunks
+    }
+
+    /**
+     Narrows a chunk so it owns no whitespace at either end.
+
+     A chunk must never contain the whitespace that separates it from the next
+     one. `NLTokenizer` does not clamp its tokens to the range it is asked
+     about, so a sentence token routinely runs past the end of the line and
+     takes the newline with it, and its tokens carry their trailing space in any
+     case. Either way the model is handed a separator, replies without it, and
+     the diff reads the loss as ordinary spacing, which the guardrail allows.
+     The result was two words glued together and a paragraph break deleted.
+
+     Nil where a chunk is nothing but whitespace, which is not worth a request.
+     */
+    private static func trimming(_ text: String, _ range: Range<String.Index>) -> Range<String.Index>? {
+        var lower = range.lowerBound
+        var upper = range.upperBound
+
+        while lower < upper, text[lower].isWhitespace {
+            lower = text.index(after: lower)
+        }
+
+        while lower < upper, text[text.index(before: upper)].isWhitespace {
+            upper = text.index(before: upper)
+        }
+
+        return lower < upper ? lower..<upper : nil
     }
 
     /** Breaks an over-long line on sentence boundaries rather than mid-thought. */
@@ -53,7 +81,12 @@ enum TextChunker {
         var chunks: [Range<String.Index>] = []
         var current: Range<String.Index>?
 
-        tokenizer.enumerateTokens(in: range) { sentence, _ in
+        tokenizer.enumerateTokens(in: range) { token, _ in
+            /** The tokenizer answers about the string, not about the range it was given. */
+            let sentence = token.clamped(to: range)
+
+            guard !sentence.isEmpty else { return true }
+
             guard let existing = current else {
                 current = sentence
                 return true
@@ -74,6 +107,42 @@ enum TextChunker {
             chunks.append(current)
         }
 
-        return chunks.isEmpty ? [range] : chunks
+        /**
+         A line with no sentence marks at all yields one token the size of the
+         line, so the budget bounded nothing: a long run-on chat message went to
+         the model in a single request and overflowed its context, which comes
+         back as a truncated correction. Anything still over budget is cut on
+         word boundaries.
+         */
+        return (chunks.isEmpty ? [range] : chunks).flatMap { splitOnWords(text, in: $0) }
+    }
+
+    private static func splitOnWords(_ text: String, in range: Range<String.Index>) -> [Range<String.Index>] {
+        guard text.distance(from: range.lowerBound, to: range.upperBound) > characterBudget else {
+            return [range]
+        }
+
+        var chunks: [Range<String.Index>] = []
+        var start = range.lowerBound
+
+        while start < range.upperBound {
+            var end = text.index(start, offsetBy: characterBudget, limitedBy: range.upperBound)
+                ?? range.upperBound
+
+            /** Back up to a space so a word is never cut in half. */
+            if end < range.upperBound {
+                var candidate = end
+                while candidate > start, !text[text.index(before: candidate)].isWhitespace {
+                    candidate = text.index(before: candidate)
+                }
+
+                if candidate > start { end = candidate }
+            }
+
+            chunks.append(start..<end)
+            start = end
+        }
+
+        return chunks
     }
 }
