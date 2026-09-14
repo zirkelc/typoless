@@ -35,7 +35,7 @@ extension EvalBackend {
 /** Every backend the app can be configured with, in a fixed order. */
 enum Backends {
     static func all() -> [any EvalBackend] {
-        [AppleBackend()] + LocalModel.allCases.map(MLXBackend.init)
+        SchemaMode.allCases.map { AppleBackend(schema: $0) } + LocalModel.allCases.map(MLXBackend.init)
     }
 
     static func named(_ id: String) -> (any EvalBackend)? {
@@ -51,26 +51,89 @@ enum Backends {
  under test is still the real one; keeping a second copy here avoids widening
  the app's own declaration for the benefit of a tool.
  */
-struct AppleBackend: EvalBackend {
-    let id = CorrectorBackend.appleOnDevice.rawValue
-    let displayName = CorrectorBackend.appleOnDevice.displayName
+/**
+ How the reply is shaped, which is a second prompt hiding as a type.
 
-    private let model = SystemLanguageModel(guardrails: .permissiveContentTransformations)
+ Guided generation constrains the model to a schema instead of free text, and
+ the schema's `@Guide` description goes into the model's context. That
+ description is 143 characters of instruction that no prompt variant can reach,
+ restating the allowed changes and adding a rule the tuned wording does not
+ carry at all. With the wording now down to 267 characters, a third of what the
+ model reads about its task lives there, so it is worth measuring rather than
+ assuming.
+ */
+enum SchemaMode: String, Sendable, CaseIterable {
+    /** Guided generation with the description the app ships. */
+    case described
+    /** Guided generation with no description at all, leaving only the wording. */
+    case bare
+    /** No schema. The reply is free text and the preamble sits in the instructions. */
+    case freeInstructions
+    /** No schema. The preamble sits at the end of the user turn instead. */
+    case freePrompt
+
+    var suffix: String {
+        switch self {
+        case .described: return ""
+        case .bare: return "-bare"
+        case .freeInstructions: return "-free"
+        case .freePrompt: return "-free-suffix"
+        }
+    }
+
+    var isGuided: Bool { self == .described || self == .bare }
+}
+
+/**
+ Apple's on-device model.
+
+ `CorrectedText` repeats the shape the app declares privately in
+ `FoundationModelsCorrector`, so the thing under test is the real one. Note that
+ its description is not merely a schema: the model reads it, so it is part of
+ the prompt whether or not it is written like one. `PlainText` is the same
+ shape with that description removed, which is what makes the two comparable.
+ */
+struct AppleBackend: EvalBackend {
+    let schema: SchemaMode
+
+    init(schema: SchemaMode = .described) { self.schema = schema }
+
+    var id: String { CorrectorBackend.appleOnDevice.rawValue + schema.suffix }
+    var displayName: String { CorrectorBackend.appleOnDevice.displayName + schema.suffix }
+
+    private var model: SystemLanguageModel {
+        SystemLanguageModel(guardrails: .permissiveContentTransformations)
+    }
 
     func prepare() async throws {
         guard model.isAvailable else { throw EvalError.backendUnavailable(displayName) }
     }
 
     func reply(instructions: String, prompt: String, freeTextSuffix: String) async -> String? {
-        let session = LanguageModelSession(model: model, instructions: instructions)
+        let preamble = "\n\nReturn only the corrected text, nothing else."
+        let session = LanguageModelSession(
+            model: model,
+            instructions: schema == .freeInstructions ? instructions + preamble : instructions
+        )
+        let asked = schema == .freePrompt ? prompt + freeTextSuffix : prompt
+        let options = GenerationOptions(sampling: .greedy)
 
         do {
-            let response = try await session.respond(
-                to: prompt,
-                generating: CorrectedText.self,
-                options: GenerationOptions(sampling: .greedy)
-            )
-            return response.content.text
+            switch schema {
+            case .described:
+                return try await session.respond(to: asked, generating: CorrectedText.self, options: options).content.text
+            case .bare:
+                return try await session.respond(to: asked, generating: PlainText.self, options: options).content.text
+            case .freeInstructions, .freePrompt:
+                /**
+                 Free text arrives with whatever packaging the model felt like
+                 adding, which the guided path never had to deal with. Cleaned
+                 exactly as the MLX backend cleans it, or the comparison would
+                 be between two shapes rather than two schemas.
+                 */
+                let raw = try await session.respond(to: asked, options: options).content
+                return ModelReplyCleaner.clean(raw, of: prompt)
+            }
         } catch {
             return nil
         }
@@ -85,6 +148,12 @@ private struct CorrectedText {
         corrected. Every original word must still be present, in the same order.
         """
     )
+    let text: String
+}
+
+/** The same shape with the description taken away, so the schema says nothing. */
+@Generable
+private struct PlainText {
     let text: String
 }
 

@@ -13,9 +13,26 @@ struct Options: Sendable {
     var models: [String] = Backends.all().map(\.id)
     var variants: [PromptVariant] = PromptVariant.all
     var guardrails: [Bool] = [true, false]
+
+    /**
+     Whether protected spans are hidden from the model.
+
+     A sweep of its own rather than a fixed choice, because the question it
+     answers is a paired one: the same cases, the same replies scored both
+     ways, is a link in the sentence costing corrections elsewhere in it.
+     */
+    var masking: [Bool] = [true]
     var limit: Int?
     var output: URL?
     var datasets: URL?
+
+    /**
+     Candidate wordings to sweep alongside the built-in ones.
+
+     The shipping wording is always added back in `EvalMain`, since a sweep
+     with no control in it cannot say whether anything improved.
+     */
+    var variantsFile: URL?
     var showsFailures = false
 
     static func parse(_ arguments: [String]) throws -> Options {
@@ -65,11 +82,23 @@ struct Options: Sendable {
                 default: throw EvalError.unknownArgument("--guardrail \(value)")
                 }
 
+            case "--masking":
+                let value = try next(argument)
+                switch value {
+                case "on": options.masking = [true]
+                case "off": options.masking = [false]
+                case "both": options.masking = [true, false]
+                default: throw EvalError.unknownArgument("--masking \(value)")
+                }
+
             case "--limit", "-n":
                 options.limit = Int(try next(argument))
 
             case "--out", "-o":
                 options.output = URL(fileURLWithPath: try next(argument))
+
+            case "--variants-file":
+                options.variantsFile = URL(fileURLWithPath: try next(argument))
 
             case "--datasets":
                 options.datasets = URL(fileURLWithPath: try next(argument))

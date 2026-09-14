@@ -19,6 +19,8 @@ import Foundation
 struct EvalPipeline: Sendable {
     let backend: any EvalBackend
     let variant: PromptVariant
+    /** False shows the model the links and handles, which is what the app used to do. */
+    let masks: Bool
     let detector = LanguageDetector()
 
     struct Outcome: Sendable {
@@ -29,6 +31,8 @@ struct EvalPipeline: Sendable {
         var editsRejected = 0
         /** Chunks the model would not answer at all, which are left as written. */
         var modelDeclined = 0
+        /** Chunks asked about twice because the markers did not survive the first reply. */
+        var maskRetries = 0
     }
 
     struct Pass: Sendable {
@@ -50,11 +54,36 @@ struct EvalPipeline: Sendable {
 
         for chunk in TextChunker.chunks(of: text) {
             let source = String(text[chunk])
-            guard source.contains(where: \.isLetter) else { continue }
 
-            let language = detector.detect(source)
+            /** Only the opening chunk is told about an opening capital, as the app does. */
+            let startsText = chunk.lowerBound == text.startIndex
 
-            guard let corrected = await answer(for: source, language: language) else {
+            /** Same masking the app does, so the numbers describe the app. */
+            let masked = MaskedText.mask(source, protecting: masks ? ProtectedSpans.find(in: source) : [])
+
+            guard masked.text.contains(where: \.isLetter) else { continue }
+
+            /**
+             The detector answers only with languages the run has enabled, so a
+             chunk it cannot place is one the app would leave exactly as
+             written. Counted as a decline, since nothing came back for it.
+             */
+            guard let language = detector.detect(masked.text) else {
+                guarded.modelDeclined += 1
+                unguarded.modelDeclined += 1
+                continue
+            }
+
+            /** Masked first, then as written if the markers did not survive, as the app does. */
+            var answered = await answer(for: masked.text, language: language, startsText: startsText).flatMap(masked.restore)
+
+            if answered == nil, !masked.hidesNothing {
+                answered = await answer(for: source, language: language, startsText: startsText)
+                guarded.maskRetries += 1
+                unguarded.maskRetries += 1
+            }
+
+            guard let corrected = answered else {
                 guarded.modelDeclined += 1
                 unguarded.modelDeclined += 1
                 continue
@@ -88,9 +117,9 @@ struct EvalPipeline: Sendable {
         return Pass(guarded: guarded, unguarded: unguarded)
     }
 
-    private func answer(for source: String, language: CorrectionLanguage) async -> String? {
+    private func answer(for source: String, language: CorrectionLanguage, startsText: Bool) async -> String? {
         let first = await backend.reply(
-            instructions: variant.instructions(language),
+            instructions: variant.instructions(language, startsText),
             prompt: variant.userPrompt(language, source),
             freeTextSuffix: variant.freeTextSuffix
         )
@@ -99,7 +128,7 @@ struct EvalPipeline: Sendable {
         guard language != .english else { return nil }
 
         return await backend.reply(
-            instructions: variant.retryInstructions(),
+            instructions: variant.retryInstructions(startsText: startsText),
             prompt: variant.retryPrompt(language, source),
             freeTextSuffix: variant.freeTextSuffix
         )

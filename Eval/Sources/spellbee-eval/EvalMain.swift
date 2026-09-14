@@ -56,14 +56,22 @@ struct EvalMain {
 
             print(String(format: "  ready in %.1fs\n", seconds(since: loadStarted)))
 
-            for variant in options.variants {
+            /** Always with the shipping wording first, as the control. */
+            var variants = options.variants
+            if let file = options.variantsFile {
+                variants = try [PromptVariant.shipping] + PromptVariant.loaded(from: file)
+            }
+
+            for variant in variants {
+              for masks in options.masking {
                 for language in options.languages {
                     guard let dataset = datasets[language] else { continue }
 
                     let cases = options.limit.map { Array(dataset.cases.prefix($0)) } ?? dataset.cases
-                    let pipeline = EvalPipeline(backend: backend, variant: variant)
+                    let pipeline = EvalPipeline(backend: backend, variant: variant, masks: masks)
 
-                    print("running \(backend.id) \(language.code) \(variant.id) (\(cases.count) cases)")
+                    let maskLabel = masks ? "masked" : "unmasked"
+                    print("running \(backend.id) \(language.code) \(variant.id) \(maskLabel) (\(cases.count) cases)")
 
                     /** One pass over the model, scored twice, once for each guardrail setting. */
                     var scored: [Bool: [Scoring.CaseResult]] = [:]
@@ -85,12 +93,12 @@ struct EvalMain {
                         let summary = Summary(
                             model: backend.id,
                             language: language.code,
-                            variant: variant.id,
+                            variant: masks ? variant.id : variant.id + "/raw",
                             guardrail: guardrail,
                             results: results
                         )
                         summaries.append(summary)
-                        perConfiguration["\(backend.id) \(language.code) \(variant.id) guardrail=\(guardrail ? "on" : "off")"] = results
+                        perConfiguration["\(backend.id) \(language.code) \(variant.id) \(maskLabel) guardrail=\(guardrail ? "on" : "off")"] = results
 
                         print("  guardrail \(guardrail ? "on " : "off"): "
                             + "exact \(Report.percent(summary.exactMatchRate)), "
@@ -103,6 +111,7 @@ struct EvalMain {
                         }
                     }
                 }
+              }
             }
 
             await backend.release()

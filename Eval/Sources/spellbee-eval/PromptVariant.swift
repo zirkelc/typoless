@@ -16,8 +16,14 @@ struct PromptVariant: Sendable {
     let id: String
     let summary: String
 
-    /** What the model is told before it sees the text. */
-    let instructions: @Sendable (CorrectionLanguage) -> String
+    /**
+     What the model is told before it sees the text.
+
+     Takes whether the chunk opens the field, because the shipping wording says
+     something about the opening word and must not say it about a chunk that is
+     not the opening. Variants with no such rule ignore the flag.
+     */
+    let instructions: @Sendable (CorrectionLanguage, Bool) -> String
 
     /** The turn that carries the text. */
     let userPrompt: @Sendable (CorrectionLanguage, String) -> String
@@ -38,7 +44,7 @@ struct PromptVariant: Sendable {
      for a given wording, so repeating the same request is pointless. Asking in
      English gets an answer often enough to be worth the round trip.
      */
-    func retryInstructions() -> String { instructions(.english) }
+    func retryInstructions(startsText: Bool) -> String { instructions(.english, startsText) }
     func retryPrompt(_ language: CorrectionLanguage, _ text: String) -> String {
         "Correct this \(language.displayName) text, keeping every word:\n\n\(text)"
     }
@@ -64,7 +70,7 @@ extension PromptVariant {
     static let shipping = PromptVariant(
         id: "shipping",
         summary: "The wording the app ships",
-        instructions: { $0.instructions },
+        instructions: { $0.instructions(startsText: $1) },
         userPrompt: { language, text in language.prompt(for: text) },
         freeTextSuffix: defaultFreeTextSuffix
     )
@@ -73,7 +79,7 @@ extension PromptVariant {
     static let terse = PromptVariant(
         id: "terse",
         summary: "One sentence, no elaboration",
-        instructions: { language in
+        instructions: { language, _ in
             switch language {
             case .english:
                 return "Fix spelling, punctuation, capitalisation and spacing. Change nothing else."
@@ -88,7 +94,7 @@ extension PromptVariant {
              datasets. Anything else keeps the shipping instructions, so
              adding a language does not enrol it in an experiment.
              */
-            default: return language.instructions
+            default: return language.instructions(startsText: true)
             }
         },
         userPrompt: { language, text in language.prompt(for: text) },
@@ -104,7 +110,7 @@ extension PromptVariant {
     static let noOp = PromptVariant(
         id: "no-op",
         summary: "Earlier wording, with returning the text unchanged made the expected answer",
-        instructions: { language in
+        instructions: { language, _ in
             switch language {
             case .english:
                 return """
@@ -149,7 +155,7 @@ extension PromptVariant {
              datasets. Anything else keeps the shipping instructions, so
              adding a language does not enrol it in an experiment.
              */
-            default: return language.instructions
+            default: return language.instructions(startsText: true)
             }
         },
         userPrompt: { language, text in language.prompt(for: text) },
@@ -167,10 +173,10 @@ extension PromptVariant {
     static let protective = PromptVariant(
         id: "protective",
         summary: "Earlier wording plus the protection list, said after the rules",
-        instructions: { language in
+        instructions: { language, _ in
             switch language {
             case .english:
-                return previous.instructions(language) + """
+                return previous.instructions(language, true) + """
 
 
                 Leave these exactly as they are, even when they look wrong: web \
@@ -179,7 +185,7 @@ extension PromptVariant {
                 unusual case.
                 """
             case .german:
-                return previous.instructions(language) + """
+                return previous.instructions(language, true) + """
 
 
                 Folgendes bleibt unveraendert, auch wenn es falsch aussieht: \
@@ -192,7 +198,7 @@ extension PromptVariant {
              datasets. Anything else keeps the shipping instructions, so
              adding a language does not enrol it in an experiment.
              */
-            default: return language.instructions
+            default: return language.instructions(startsText: true)
             }
         },
         userPrompt: { language, text in language.prompt(for: text) },
@@ -208,10 +214,10 @@ extension PromptVariant {
     static let examples = PromptVariant(
         id: "examples",
         summary: "Earlier wording plus two worked examples, one of them a no-op",
-        instructions: { language in
+        instructions: { language, _ in
             switch language {
             case .english:
-                return previous.instructions(language) + """
+                return previous.instructions(language, true) + """
 
 
                 Example. Text: `i think its ready, can you take a look` \
@@ -221,7 +227,7 @@ extension PromptVariant {
                 Answer: `Thanks for the quick turnaround on that.`
                 """
             case .german:
-                return previous.instructions(language) + """
+                return previous.instructions(language, true) + """
 
 
                 Beispiel. Text: `koenntest du das nochmal pruefen bevor wir es abschicken` \
@@ -235,7 +241,7 @@ extension PromptVariant {
              datasets. Anything else keeps the shipping instructions, so
              adding a language does not enrol it in an experiment.
              */
-            default: return language.instructions
+            default: return language.instructions(startsText: true)
             }
         },
         userPrompt: { language, text in language.prompt(for: text) },
@@ -253,10 +259,10 @@ extension PromptVariant {
     static let terminal = PromptVariant(
         id: "terminal",
         summary: "Earlier wording plus a rule against adding a mark at the end",
-        instructions: { language in
+        instructions: { language, _ in
             switch language {
             case .english:
-                return previous.instructions(language) + """
+                return previous.instructions(language, true) + """
 
 
                 If the text does not end with a full stop, question mark or \
@@ -264,7 +270,7 @@ extension PromptVariant {
                 is not a mistake.
                 """
             case .german:
-                return previous.instructions(language) + """
+                return previous.instructions(language, true) + """
 
 
                 Wenn der Text nicht mit Punkt, Fragezeichen oder Ausrufezeichen \
@@ -276,7 +282,7 @@ extension PromptVariant {
              datasets. Anything else keeps the shipping instructions, so
              adding a language does not enrol it in an experiment.
              */
-            default: return language.instructions
+            default: return language.instructions(startsText: true)
             }
         },
         userPrompt: { language, text in language.prompt(for: text) },
@@ -295,10 +301,10 @@ extension PromptVariant {
     static let bounded = PromptVariant(
         id: "bounded",
         summary: "Terminal-mark rule, a narrow protection list, and the capitalisation rule restated",
-        instructions: { language in
+        instructions: { language, _ in
             switch language {
             case .english:
-                return previous.instructions(language) + """
+                return previous.instructions(language, true) + """
 
 
                 If the text does not end with a full stop, question mark or \
@@ -311,7 +317,7 @@ extension PromptVariant {
                 The first word of every sentence still starts with a capital letter.
                 """
             case .german:
-                return previous.instructions(language) + """
+                return previous.instructions(language, true) + """
 
 
                 Wenn der Text nicht mit Punkt, Fragezeichen oder Ausrufezeichen \
@@ -329,7 +335,7 @@ extension PromptVariant {
              datasets. Anything else keeps the shipping instructions, so
              adding a language does not enrol it in an experiment.
              */
-            default: return language.instructions
+            default: return language.instructions(startsText: true)
             }
         },
         userPrompt: { language, text in language.prompt(for: text) },
@@ -349,7 +355,7 @@ extension PromptVariant {
     static let previous = PromptVariant(
         id: "previous",
         summary: "The instructions as they were before the eval",
-        instructions: { language in
+        instructions: { language, _ in
             switch language {
             case .english:
                 return """
@@ -385,10 +391,81 @@ extension PromptVariant {
              datasets. Anything else keeps the shipping instructions, so
              adding a language does not enrol it in an experiment.
              */
-            default: return language.instructions
+            default: return language.instructions(startsText: true)
             }
         },
         userPrompt: { language, text in language.prompt(for: text) },
         freeTextSuffix: defaultFreeTextSuffix
     )
+}
+
+extension PromptVariant {
+    /**
+     A candidate wording read from a file.
+
+     Sweeping wordings by editing this file and rebuilding is fine for the
+     handful kept here permanently, and hopeless for the dozen or so thrown at
+     the model in an afternoon of tuning. A definition carries exactly what a
+     variant needs and nothing else, so candidates can be generated, scored and
+     discarded without touching Swift at all.
+     */
+    struct Definition: Decodable, Sendable {
+        let id: String
+        var rationale: String?
+        let enInstructions: String
+        let deInstructions: String
+        let enUserPrompt: String
+        let deUserPrompt: String
+
+        /**
+         Appended only for the chunk that opens the field.
+
+         Without this a loaded candidate carried its opening-capital rule into
+         every chunk while the shipping wording dropped it after the first, so
+         the two were not being asked the same thing on any message with more
+         than one line. Omit both to say nothing about openings at all.
+         */
+        var enOpening: String?
+        var deOpening: String?
+    }
+
+    /** Where the user's text is spliced into a loaded user turn. */
+    static let textPlaceholder = "{TEXT}"
+
+    static func loaded(from url: URL) throws -> [PromptVariant] {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+        let definitions = try decoder.decode([Definition].self, from: Data(contentsOf: url))
+
+        for definition in definitions {
+            guard
+                definition.enUserPrompt.contains(textPlaceholder),
+                definition.deUserPrompt.contains(textPlaceholder)
+            else {
+                throw EvalError.unknownArgument(
+                    "\(definition.id): both user prompts must contain \(textPlaceholder)"
+                )
+            }
+        }
+
+        return definitions.map { definition in
+            PromptVariant(
+                id: definition.id,
+                summary: definition.rationale ?? "loaded from a file",
+                instructions: { language, startsText in
+                    let german = language == .german
+                    let body = german ? definition.deInstructions : definition.enInstructions
+                    let opening = german ? definition.deOpening : definition.enOpening
+
+                    return startsText ? body + (opening ?? "") : body
+                },
+                userPrompt: { language, text in
+                    let template = language == .german ? definition.deUserPrompt : definition.enUserPrompt
+                    return template.replacingOccurrences(of: textPlaceholder, with: text)
+                },
+                freeTextSuffix: defaultFreeTextSuffix
+            )
+        }
+    }
 }

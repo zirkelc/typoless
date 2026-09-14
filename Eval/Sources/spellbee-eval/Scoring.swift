@@ -43,6 +43,8 @@ enum Scoring {
         let chunksDropped: Int
         let editsRejected: Int
         let modelDeclined: Int
+        /** Chunks asked about twice because the markers did not survive. */
+        let maskRetries: Int
     }
 
     static func score(
@@ -85,7 +87,8 @@ enum Scoring {
             seconds: seconds,
             chunksDropped: output.chunksDropped,
             editsRejected: output.editsRejected,
-            modelDeclined: output.modelDeclined
+            modelDeclined: output.modelDeclined,
+            maskRetries: output.maskRetries
         )
     }
 
@@ -144,6 +147,8 @@ struct Summary: Codable, Sendable {
     let chunksDropped: Int
     let editsRejected: Int
     let modelDeclined: Int
+    /** Chunks asked about twice because the markers did not survive the first reply. */
+    let maskRetries: Int
 
     var exactMatchRate: Double { cases == 0 ? 0 : Double(exactMatches) / Double(cases) }
     var fixRecall: Double { requiredTotal == 0 ? 0 : Double(fixedTotal) / Double(requiredTotal) }
@@ -180,6 +185,7 @@ struct Summary: Codable, Sendable {
         chunksDropped = results.reduce(0) { $0 + $1.chunksDropped }
         editsRejected = results.reduce(0) { $0 + $1.editsRejected }
         modelDeclined = results.reduce(0) { $0 + $1.modelDeclined }
+        maskRetries = results.reduce(0) { $0 + $1.maskRetries }
     }
 }
 
