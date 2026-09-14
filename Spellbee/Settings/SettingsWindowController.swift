@@ -21,13 +21,40 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
     private var window: NSWindow?
     private var selected: SettingsTab = .general
 
+    /**
+     One hosting view per page, built once and kept.
+
+     Rebuilding it on every click threw away the whole SwiftUI graph and laid it
+     out again from nothing, which is most of what made switching tabs feel
+     slow. Six pages of settings are cheap to keep, and a page that is off
+     screen still tracks the preferences it observes, so none of them go stale.
+     */
+    private var pages: [SettingsTab: NSView] = [:]
+
+    /**
+     Whether a height change should animate.
+
+     False while a page is being put on screen, because `setFrame(animate:)`
+     blocks the main thread for as long as the animation runs, and AppKit scales
+     that with the distance: a third of a second for the drop from the tallest
+     page to the shortest. Paid on every click, that is the lag. Growth that
+     happens later, such as a language opening to show its rules, still animates
+     since nothing is waiting on it.
+     */
+    private var animatesResize = false
+
     init(model: AppModel) {
         self.model = model
     }
 
-    func show() {
+    /** A named tab is for callers sending the user to one specific setting. */
+    func show(_ tab: SettingsTab? = nil) {
         if window == nil {
             window = makeWindow()
+        }
+
+        if let tab, tab != selected {
+            select(tab)
         }
 
         /** An accessory app has to ask, or the window opens behind everything. */
@@ -55,19 +82,31 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
         window.toolbarStyle = .preference
 
         self.window = window
-        select(selected, animated: false)
+        select(selected)
         window.center()
 
         return window
     }
 
-    private func select(_ tab: SettingsTab, animated: Bool) {
+    private func select(_ tab: SettingsTab) {
         guard let window else { return }
 
         selected = tab
         window.title = tab.title
         window.toolbar?.selectedItemIdentifier = NSToolbarItem.Identifier(tab.rawValue)
 
+        let page = pages[tab] ?? makePage(for: tab)
+        pages[tab] = page
+
+        animatesResize = false
+        window.contentView = page
+        resize(toContentHeight: page.fittingSize.height, animated: false)
+
+        /** Once the switch has settled, later growth is free to animate again. */
+        Task { @MainActor in animatesResize = true }
+    }
+
+    private func makePage(for tab: SettingsTab) -> NSView {
         /**
          The page reports its own height rather than being measured once.
 
@@ -77,10 +116,19 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
         let root = tab.view(model: model)
             .frame(width: tab.width)
             .background(
-                GeometryReader { proxy in
+                GeometryReader { [weak self] proxy in
                     Color.clear.onChange(of: proxy.size.height, initial: true) { _, height in
-                        MainActor.assumeIsolated { [weak self] in
-                            self?.resize(toContentHeight: height, animated: true)
+                        MainActor.assumeIsolated {
+                            guard let self else { return }
+
+                            /**
+                             Kept pages stay laid out while off screen, so a
+                             change on one of those must not resize the window
+                             around whichever page is actually showing.
+                             */
+                            guard self.selected == tab else { return }
+
+                            self.resize(toContentHeight: height, animated: self.animatesResize)
                         }
                     }
                 }
@@ -88,9 +136,8 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
 
         let hosting = NSHostingView(rootView: root)
         hosting.layoutSubtreeIfNeeded()
-        window.contentView = hosting
 
-        resize(toContentHeight: hosting.fittingSize.height, animated: animated)
+        return hosting
     }
 
     /**
@@ -109,9 +156,20 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
         window.setFrame(frame, display: true, animate: animated)
     }
 
+    /**
+     Ends anything the window was in the middle of.
+
+     The window is kept rather than released, so its pages are never told they
+     disappeared and cannot clean up after themselves. A shortcut recorder left
+     listening swallows every key press in the app until the next launch.
+     */
+    func windowWillClose(_ notification: Notification) {
+        ShortcutListener.shared.stopAll()
+    }
+
     @objc private func toolbarItemSelected(_ sender: NSToolbarItem) {
         guard let tab = SettingsTab(rawValue: sender.itemIdentifier.rawValue) else { return }
-        select(tab, animated: true)
+        select(tab)
     }
 
     // MARK: NSToolbarDelegate

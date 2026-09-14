@@ -18,7 +18,8 @@ enum DefaultsKey {
     static let cancelKeyModifiers = "cancelKeyModifiers"
     static let languageSettings = "languageSettings"
     static let deniedBundleIDs = "deniedBundleIDs"
-    static let appOverrides = "appOverrides"
+    static let allowedBundleIDs = "allowedBundleIDs"
+    static let historyRetention = "historyRetention"
 }
 
 /**
@@ -45,6 +46,9 @@ final class Preferences {
 
     /** Called when a change means the corrector has to be rebuilt. */
     @ObservationIgnored var onCorrectorChanged: (() -> Void)?
+
+    /** Called when how much history to keep has changed. */
+    @ObservationIgnored var onHistoryRetentionChanged: (() -> Void)?
 
     // MARK: Triggers
 
@@ -127,9 +131,29 @@ final class Preferences {
             if !languageSettings.values.contains(where: \.isEnabled) {
                 languageSettings = oldValue
             }
+
             writeLanguageSettings()
-            onCorrectorChanged?()
+
+            /**
+             Only when the corrector would actually be built differently.
+
+             Which rules a language allows, and which model it prefers, are read
+             afresh at the start of every correction, so changing one takes
+             effect on the next keystroke with nothing to rebuild. Only the set
+             of enabled languages is baked in, by the detector. Firing on every
+             change meant that ticking a single correction checkbox evicted
+             several gigabytes of weights and loaded them again, five times over
+             if you ticked five boxes, with the old copy unloading while the new
+             one loaded.
+             */
+            if Self.enabledLanguages(in: oldValue) != Self.enabledLanguages(in: languageSettings) {
+                onCorrectorChanged?()
+            }
         }
+    }
+
+    private static func enabledLanguages(in settings: [CorrectionLanguage: LanguageSettings]) -> Set<CorrectionLanguage> {
+        Set(settings.filter(\.value.isEnabled).keys)
     }
 
     var enabledLanguages: [CorrectionLanguage] {
@@ -168,24 +192,33 @@ final class Preferences {
 
     // MARK: Apps
 
-    /** Apps Spellbee will not touch, by bundle identifier. */
+    /** Apps Spellbee will not touch, by bundle identifier. Always applies. */
     var deniedBundleIDs: Set<String> {
         didSet { write(Array(deniedBundleIDs), DefaultsKey.deniedBundleIDs) }
     }
 
-    /**
-     Per-app answers that differ from the global one.
+    /** If any are named, the only apps Spellbee will touch. Empty means everywhere. */
+    var allowedBundleIDs: Set<String> {
+        didSet { write(Array(allowedBundleIDs), DefaultsKey.allowedBundleIDs) }
+    }
 
-     A full stop is right in an email and changes the tone of a chat line, so
-     the same setting has to be able to say different things in different apps.
-     Absent means "whatever the global setting says", which is why the value is
-     optional rather than a copy of the default.
-     */
-    var appOverrides: [String: AppOverride] {
+    var appPolicy: AppPolicy {
+        AppPolicy(denied: deniedBundleIDs, allowed: allowedBundleIDs)
+    }
+
+    // MARK: Safety
+
+    /** How long a correction stays recoverable, or whether it is kept at all. */
+    var historyRetention: HistoryRetention {
         didSet {
-            let encoded = appOverrides.compactMapValues { $0.sentenceFinalPunctuation }
-            write(encoded, DefaultsKey.appOverrides)
+            write(historyRetention.rawValue, DefaultsKey.historyRetention)
+            onHistoryRetentionChanged?()
         }
+    }
+
+    /** Nil for a missing value and for one that cannot be a key code at all. */
+    private static func storedCode(_ defaults: UserDefaults, _ key: String) -> UInt32? {
+        (defaults.object(forKey: key) as? Int).flatMap(UInt32.init(exactly:))
     }
 
     private let defaults: UserDefaults
@@ -198,16 +231,21 @@ final class Preferences {
             .flatMap(TapModifier.init) ?? .command
         isHotKeyEnabled = defaults.object(forKey: DefaultsKey.hotKeyEnabled) as? Bool ?? true
 
-        let storedCode = defaults.object(forKey: DefaultsKey.hotKeyCode) as? Int
-        let storedModifiers = defaults.object(forKey: DefaultsKey.hotKeyModifiers) as? Int
+        /**
+         `exactly:` rather than `UInt32(_:)`, which traps on a negative or
+         oversized value. This runs before the app finishes launching, so a
+         defaults file damaged by an unclean shutdown, or a mistyped `defaults
+         write`, would abort every launch with no way to reach settings and undo
+         it. Every other value here already falls back rather than crashing.
+         */
         hotKey = Shortcut(
-            keyCode: UInt32(storedCode ?? Int(Shortcut.default.keyCode)),
-            modifiers: UInt32(storedModifiers ?? Int(Shortcut.default.modifiers))
+            keyCode: Self.storedCode(defaults, DefaultsKey.hotKeyCode) ?? Shortcut.default.keyCode,
+            modifiers: Self.storedCode(defaults, DefaultsKey.hotKeyModifiers) ?? Shortcut.default.modifiers
         )
 
         cancelKey = Shortcut(
-            keyCode: UInt32(defaults.object(forKey: DefaultsKey.cancelKeyCode) as? Int ?? Int(Shortcut.cancel.keyCode)),
-            modifiers: UInt32(defaults.object(forKey: DefaultsKey.cancelKeyModifiers) as? Int ?? Int(Shortcut.cancel.modifiers))
+            keyCode: Self.storedCode(defaults, DefaultsKey.cancelKeyCode) ?? Shortcut.cancel.keyCode,
+            modifiers: Self.storedCode(defaults, DefaultsKey.cancelKeyModifiers) ?? Shortcut.cancel.modifiers
         )
 
         languageSettings = Self.readLanguageSettings(from: defaults)
@@ -228,23 +266,19 @@ final class Preferences {
             .flatMap(LocalModel.init) ?? .gemma4_e4b
 
         let denied = defaults.array(forKey: DefaultsKey.deniedBundleIDs) as? [String]
-        deniedBundleIDs = Set(denied ?? Array(TextTargetResolver.defaultDeniedBundleIDs))
+        deniedBundleIDs = Set(denied ?? Array(AppPolicy.defaultDenied))
 
-        let overrides = defaults.dictionary(forKey: DefaultsKey.appOverrides) as? [String: Bool] ?? [:]
-        appOverrides = overrides.mapValues { AppOverride(sentenceFinalPunctuation: $0) }
+        /** Empty means everywhere, which is the right thing to start with. */
+        allowedBundleIDs = Set(defaults.array(forKey: DefaultsKey.allowedBundleIDs) as? [String] ?? [])
+
+        historyRetention = defaults.string(forKey: DefaultsKey.historyRetention)
+            .flatMap(HistoryRetention.init) ?? .threeHours
+
     }
 
     /** What applies in a given app, once its own answers are taken into account. */
     func settings(for bundleID: String?) -> AppSettings {
-        /**
-         Nil unless this app genuinely disagrees. Passing the global answer here
-         would override the per-language rule with it every time, which silently
-         put full stops back into a language that had them switched off.
-         */
-        return AppSettings(
-            languages: languageSettings,
-            sentenceEndingsOverride: bundleID.flatMap { appOverrides[$0]?.sentenceFinalPunctuation }
-        )
+        return AppSettings(languages: languageSettings)
     }
 
     /**
@@ -305,13 +339,19 @@ final class Preferences {
      anything being rebuilt.
      */
     private func write(_ value: Any, _ key: String) {
+        /**
+         A value that is not a property list does not fail quietly: `set` raises
+         and the process dies. An optional boxed inside a dictionary is the easy
+         way to produce one, which has happened here before, so the assertion
+         names the setting rather than leaving a stack trace inside Foundation.
+         */
+        assert(
+            PropertyListSerialization.propertyList([key: value], isValidFor: .binary),
+            "Not a property list: \(key)"
+        )
+
         defaults.set(value, forKey: key)
     }
-}
-
-/** One app's departures from the global settings. Nil means it does not depart. */
-struct AppOverride: Equatable, Sendable {
-    var sentenceFinalPunctuation: Bool?
 }
 
 /** A key and its modifiers, in the Carbon values `RegisterEventHotKey` wants. */

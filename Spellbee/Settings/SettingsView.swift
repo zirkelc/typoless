@@ -51,7 +51,14 @@ struct SettingsRow<Content: View>: View {
     }
 }
 
-/** An explanation of the control above it, indented to sit under its text. */
+/**
+ An explanation of the control above it.
+
+ Flush with the control rather than indented under its label. Indenting lines a
+ sentence up with the words of a checkbox but leaves it out of step with a
+ picker or a button, which have no label of their own to sit under, so the notes
+ on one page started at three different places.
+ */
 struct SettingsNote: View {
     let text: String
 
@@ -64,7 +71,6 @@ struct SettingsNote: View {
             .font(.callout)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.leading, 20)
             .padding(.bottom, 2)
     }
 }
@@ -121,15 +127,6 @@ struct GeneralSettingsView: View {
                 SettingsNote("Pressed while a correction is running, nothing is written. Claimed only for those few seconds, so a bare key is safe here.")
             }
 
-            Divider().padding(.vertical, 10)
-
-            SettingsRow(label: "Safety:") {
-                Toggle("Only fix, never rewrite", isOn: $preferences.isGuardrailEnabled)
-                SettingsNote(preferences.isGuardrailEnabled
-                    ? "Every change is checked first. Anything that is not spelling, punctuation, capitalisation or spacing is discarded."
-                    : "Off: whatever the model returns is applied, including rewritten or translated text. Revert Last Fix is the only way back.")
-            }
-
         }
     }
 
@@ -172,11 +169,30 @@ struct PrivacySettingsView: View {
 
             Divider().padding(.vertical, 10)
 
+            SettingsRow(label: "History:") {
+                Text("""
+                History is the one place that keeps the text itself, so that a \
+                bad correction can be undone after the fact. It is held in memory \
+                only and never written to disk, and quitting Spellbee clears it. \
+                How long it is kept, or whether it is kept at all, is set under \
+                Safety.
+                """)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider().padding(.vertical, 10)
+
             SettingsRow(label: "Never read:") {
-                Text("Password fields, and every app in the list under Apps.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                Text("""
+                Password fields, always. Every app excluded under Apps, always. \
+                And if you have named the apps to correct in, everything else \
+                as well.
+                """)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

@@ -29,22 +29,8 @@ struct LanguageSettings: Equatable, Sendable {
 struct AppSettings: Equatable, Sendable {
     var languages: [CorrectionLanguage: LanguageSettings]
 
-    /**
-     Set when the app being typed into disagrees with the global answer on
-     sentence endings, which is the one rule people want to vary by app.
-     */
-    var sentenceEndingsOverride: Bool?
-
     func rules(for language: CorrectionLanguage) -> Set<CorrectionRule> {
-        var rules = languages[language]?.allowedRules ?? language.applicableRules
-
-        switch sentenceEndingsOverride {
-        case true: rules.insert(.sentenceEndings)
-        case false: rules.remove(.sentenceEndings)
-        case nil: break
-        }
-
-        return rules
+        languages[language]?.allowedRules ?? language.applicableRules
     }
 
     func model(for language: CorrectionLanguage) -> LocalModel? {
@@ -57,7 +43,6 @@ struct AppSettings: Equatable, Sendable {
             uniqueKeysWithValues: CorrectionLanguage.allCases.map {
                 ($0, LanguageSettings(isEnabled: true, model: nil, allowedRules: $0.applicableRules))
             }
-        ),
-        sentenceEndingsOverride: nil
+        )
     )
 }

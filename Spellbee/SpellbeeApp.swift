@@ -33,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: StatusItemController?
     private var onboarding: OnboardingWindowController?
     private var settings: SettingsWindowController?
+    private var historyWindow: HistoryWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let onboarding = OnboardingWindowController(model: model)
@@ -41,8 +42,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let settings = SettingsWindowController(model: model)
         self.settings = settings
 
+        let historyWindow = HistoryWindowController(history: model.history) { [weak model] in
+            model?.showSettings(.safety)
+        }
+        self.historyWindow = historyWindow
+
         model.onShowOnboarding = { [weak onboarding] in onboarding?.show() }
-        model.onShowSettings = { [weak settings] in settings?.show() }
+        model.onShowSettings = { [weak settings] tab in settings?.show(tab) }
+        model.onShowHistory = { [weak historyWindow] in historyWindow?.show() }
         statusItem = StatusItemController(model: model)
 
         if !UserDefaults.standard.bool(forKey: DefaultsKey.hasCompletedOnboarding) {
@@ -56,6 +63,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
          */
         if ProcessInfo.processInfo.arguments.contains("--compare-backends") {
             Task { await model.compareBackends() }
+        }
+
+        /** Starts the typing spike without a menu click, so a run can be scripted. */
+        if ProcessInfo.processInfo.arguments.contains("--observe-typing") {
+            model.typingObserver.start()
         }
 
         /**

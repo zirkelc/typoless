@@ -35,6 +35,8 @@ struct LanguageSettingsView: View {
                         language: language,
                         isSelected: selection == language,
                         model: modelBinding(for: language),
+                        /** Only a local backend can hand a paragraph to a different model. */
+                        canOverrideModel: preferences.backend == .local,
                         onSelect: { selection = language }
                     )
                 }
@@ -80,11 +82,18 @@ struct LanguageSettingsView: View {
                 Spacer()
             }
 
-            SettingsFootnote("""
-            The language of each paragraph is detected, and only the languages \
-            listed here are considered. A model set here overrides the default \
-            under Models for that language alone.
-            """)
+            SettingsFootnote(preferences.backend == .appleOnDevice
+                ? """
+                The language of each paragraph is detected, and anything written \
+                in a language not listed here is left alone. Per-language models \
+                need a downloaded model as the default under Models; Apple's \
+                cannot hand a paragraph to another one.
+                """
+                : """
+                The language of each paragraph is detected, and anything written \
+                in a language not listed here is left alone. A model set here \
+                overrides the default under Models for that language alone.
+                """)
         }
     }
 
@@ -128,6 +137,7 @@ private struct LanguageRow: View {
     let language: CorrectionLanguage
     let isSelected: Bool
     @Binding var model: LocalModel?
+    var canOverrideModel = true
     let onSelect: () -> Void
 
     var body: some View {
@@ -152,6 +162,12 @@ private struct LanguageRow: View {
             }
             .labelsHidden()
             .fixedSize()
+            /**
+             Apple's model has no way to hand a paragraph to a different one, so
+             offering the choice against that backend stored a setting that was
+             then ignored, while the page said it was honoured.
+             */
+            .disabled(!canOverrideModel)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)

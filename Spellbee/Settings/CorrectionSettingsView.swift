@@ -17,6 +17,7 @@ struct CorrectionSettingsView: View {
 
     /** Nil when every language is collapsed, which is a normal state to be in. */
     @State private var expanded: CorrectionLanguage?
+    @State private var hasSeeded = false
 
     var body: some View {
         SettingsSurface {
@@ -47,7 +48,16 @@ struct CorrectionSettingsView: View {
             SettingsFootnote("Turning a rule off drops that change and keeps the rest of the correction.")
         }
         .onAppear {
-            /** Opening on a collapsed list would hide the thing the page is for. */
+            /**
+             Once only. Opening on a collapsed list would hide the thing the
+             page is for, but unlike a window that is merely ordered out, a
+             settings tab really is rebuilt on every visit, so re-seeding here
+             kept re-expanding the first language after the user had
+             deliberately collapsed them all.
+             */
+            guard !hasSeeded else { return }
+
+            hasSeeded = true
             expanded = expanded ?? added.first
         }
     }
@@ -95,7 +105,7 @@ private struct LanguageRules: View {
                         Divider().padding(.leading, 34)
                     }
 
-                    RuleRow(example: example, isOn: rule(example.rule))
+                    RuleRow(example: example, language: language, isOn: rule(example.rule))
                 }
             }
         }
@@ -137,12 +147,14 @@ private struct LanguageRules: View {
 /** One rule, with the change it makes shown rather than described. */
 private struct RuleRow: View {
     let example: RuleExample
+    /** The same rule answers a different question depending on the language. */
+    let language: CorrectionLanguage
     @Binding var isOn: Bool
 
     var body: some View {
         HStack(spacing: 6) {
             Toggle(isOn: $isOn) {
-                Text(example.rule.displayName)
+                Text(language.label(for: example.rule))
                     .frame(width: 132, alignment: .leading)
             }
 

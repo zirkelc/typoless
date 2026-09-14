@@ -28,7 +28,9 @@ struct ShortcutRecorder: View {
     var fallback: Shortcut = .default
 
     @State private var isRecording = false
-    @State private var monitor: Any?
+
+    /** Identifies this recorder to the shared listener, so it knows whose turn ended. */
+    @State private var token = UUID()
 
     var body: some View {
         HStack(spacing: 8) {
@@ -55,10 +57,11 @@ struct ShortcutRecorder: View {
     }
 
     private func startRecording() {
-        guard monitor == nil else { return }
+        guard !isRecording else { return }
 
         isRecording = true
-        monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
+
+        ShortcutListener.shared.start(for: token, onCancel: { isRecording = false }) { event in
             /** Modifiers on their own are held down on the way to a real key. */
             guard event.type == .keyDown else { return nil }
 
@@ -83,11 +86,65 @@ struct ShortcutRecorder: View {
 
     private func stopRecording() {
         isRecording = false
+        ShortcutListener.shared.stop(for: token)
+    }
+}
 
+/**
+ The one key listener a recorder may have, shared by all of them.
+
+ Two problems, both from every recorder owning its own monitor. A monitor that
+ swallows every key press was torn down by SwiftUI telling the view it had
+ disappeared, which never happens for a window that is kept rather than
+ released: closing the settings window mid-recording left it installed, and from
+ then on Spellbee ate every key in its own windows, including the ⌘W that would
+ have closed the window and the ⌘Q that would have quit. And nothing stopped two
+ recorders listening at once, in which case only the first-installed one sees
+ the key, so the shortcut lands on the wrong setting and the other stays armed.
+
+ One listener, owned here, ended by whoever closes the window.
+ */
+@MainActor
+final class ShortcutListener {
+    static let shared = ShortcutListener()
+
+    private var monitor: Any?
+    private var owner: UUID?
+    private var onCancel: (() -> Void)?
+
+    private init() {}
+
+    func start(for token: UUID, onCancel: @escaping () -> Void, handler: @escaping (NSEvent) -> NSEvent?) {
+        /** Whoever was listening has been interrupted, and needs to know. */
+        stopAll()
+
+        owner = token
+        self.onCancel = onCancel
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged], handler: handler)
+    }
+
+    func stop(for token: UUID) {
+        guard owner == token else { return }
+
+        remove()
+    }
+
+    /** Ends any recording in progress, whoever owns it. */
+    func stopAll() {
+        let interrupted = onCancel
+
+        remove()
+        interrupted?()
+    }
+
+    private func remove() {
         if let monitor {
             NSEvent.removeMonitor(monitor)
             self.monitor = nil
         }
+
+        owner = nil
+        onCancel = nil
     }
 }
 
