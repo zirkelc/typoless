@@ -32,7 +32,15 @@ actor LocalModelCorrector: Corrector {
     private var loading: [LocalModel: Task<ModelContainer, Error>] = [:]
 
     /** Reports download progress from 0 to 1, and nil once there is nothing to report. */
-    private let onProgress: @Sendable (Double?) -> Void
+    /**
+     Says which model the progress is about.
+
+     Without the model this reported a per-language download as progress on the
+     default one, so the menu bar and the settings row both named a model that
+     was already on disk and idle, while the one actually downloading appeared
+     nowhere.
+     */
+    private let onProgress: @Sendable (LocalModel, Double?) -> Void
 
     /** See `FoundationModelsCorrector.appliesGuardrail`. */
     private let appliesGuardrail: Bool
@@ -41,7 +49,7 @@ actor LocalModelCorrector: Corrector {
         model: LocalModel,
         detector: LanguageDetector = LanguageDetector(),
         appliesGuardrail: Bool = true,
-        onProgress: @escaping @Sendable (Double?) -> Void = { _ in }
+        onProgress: @escaping @Sendable (LocalModel, Double?) -> Void = { _, _ in }
     ) {
         self.model = model
         self.detector = detector
@@ -50,60 +58,20 @@ actor LocalModelCorrector: Corrector {
     }
 
     func corrections(for text: String, settings: AppSettings) async throws -> [TextEdit] {
-        let protected = ProtectedSpans.find(in: text)
-        var edits: [TextEdit] = []
+        try await ChunkedCorrection.run(
+            over: text,
+            settings: settings,
+            detector: detector,
+            appliesGuardrail: appliesGuardrail
+        ) { source, language, startsText in
+            /** A language may prefer a different model from the default. */
+            let chosen = settings.model(for: language) ?? self.model
+            let container = try await self.loadedContainer(for: chosen)
 
-        for chunk in TextChunker.chunks(of: text) {
-            /** The user can give up mid-pass, and a long field is several chunks. */
-            try Task.checkCancellation()
-
-            let source = String(text[chunk])
-            guard source.contains(where: \.isLetter) else { continue }
-
-            let language = detector.detect(source)
-            let chosen = settings.model(for: language) ?? model
-            let container = try await loadedContainer(for: chosen)
-
-            guard let corrected = await corrected(
-                source,
-                language: language,
-                model: chosen,
-                using: container
-            ) else {
-                continue
-            }
-
-            if appliesGuardrail, detector.detect(corrected) != language {
-                Log.app.info("Dropped a chunk whose language changed")
-                continue
-            }
-
-            let chunkEdits = TextDiff.edits(from: source, to: corrected)
-                .map { rebase($0, from: source, into: text, at: chunk) }
-
-            guard appliesGuardrail else {
-                edits += chunkEdits
-                continue
-            }
-
-            let verdict = EditGuardrail.filter(
-                chunkEdits,
-                in: text,
-                allowing: settings.rules(for: language),
-                protectedBy: protected
-            )
-
-            guard verdict.isTrustworthy else {
-                Log.app.info("Dropped a chunk the local model rewrote rather than corrected")
-                continue
-            }
-
-            edits += verdict.accepted
+            return await self.corrected(source, language: language, startsText: startsText, model: chosen, using: container)
         }
-
-        Log.app.info("Found \(edits.count, privacy: .public) edits from \(self.model.displayName, privacy: .public)")
-        return edits
     }
+
 
     /** Fetches the weights ahead of any correction, so the wait is not a surprise. */
     func prepare() async {
@@ -130,9 +98,16 @@ actor LocalModelCorrector: Corrector {
          Two calls arriving together would otherwise start two downloads of the
          same several gigabytes.
          */
-        if let existing = loading[model] { return try await existing.value }
+        if let existing = loading[model] {
+            return try await withTaskCancellationHandler {
+                try await existing.value
+            } onCancel: {
+                existing.cancel()
+            }
+        }
 
         let name = model.displayName
+        let startedAt = generation
         Log.app.info("Loading \(name, privacy: .public)")
 
         let report = onProgress
@@ -146,7 +121,7 @@ actor LocalModelCorrector: Corrector {
          from in here; the difference is whether the files exist.
          */
         let isFetching = !model.isDownloaded
-        if isFetching { report(0) }
+        if isFetching { report(model, 0) }
 
         /**
          The hub client hands over its `Progress` once and then updates that
@@ -165,22 +140,56 @@ actor LocalModelCorrector: Corrector {
         }
         loading[model] = task
 
+        /**
+         The poller emits the closing nil itself, and is awaited below.
+
+         Cancelling it and reporting nil from here raced: a poller already
+         inside `report` cannot be preempted, so its fraction could land *after*
+         the nil and pin the badge at 98% with nothing left to move it. Progress
+         then comes from exactly one task, in order, with the nil always last.
+         */
         let poller = Task {
+            defer { if isFetching { report(model, nil) } }
+
             while !Task.isCancelled, isFetching {
                 if let fraction = tracker.fraction {
-                    report(fraction)
+                    report(model, fraction)
                 }
                 try? await Task.sleep(for: .milliseconds(400))
             }
         }
 
+        /** Only clear the slot if it is still this load, not a newer one. */
         defer {
-            poller.cancel()
-            loading[model] = nil
-            if isFetching { report(nil) }
+            if loading[model] == task { loading[model] = nil }
         }
 
-        let loaded = try await task.value
+        /**
+         Awaiting another task's value does not throw when *this* task is
+         cancelled, so Escape during a first-run download reached nothing: the
+         key was claimed system-wide for the whole fetch, did nothing anywhere
+         on the machine for the minutes it took, and the correction ran at the
+         end regardless. The cancellation has to be handed on explicitly.
+         */
+        let loaded = try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            task.cancel()
+        }
+        poller.cancel()
+        await poller.value
+
+        /**
+         Only if this corrector still wants the model. `unload` may have run
+         while these gigabytes were arriving, and storing them afterwards left a
+         copy resident in an object nothing references and which can never be
+         asked to release it.
+         */
+        guard generation == startedAt else {
+            Log.app.info("Discarded \(name, privacy: .public), no longer wanted")
+            throw CancellationError()
+        }
+
         containers[model] = loaded
         Log.app.info("Loaded \(name, privacy: .public)")
 
@@ -189,6 +198,8 @@ actor LocalModelCorrector: Corrector {
 
     /** Abandons a download in progress. */
     func cancelLoading() {
+        generation += 1
+
         for task in loading.values { task.cancel() }
         loading.removeAll()
         Log.app.info("Cancelled loading \(self.model.displayName, privacy: .public)")
@@ -196,18 +207,36 @@ actor LocalModelCorrector: Corrector {
 
     /** Releases the weights, which are the largest thing this app ever holds. */
     func unload() {
+        /**
+         Bumped so a load already in flight knows not to store its result here.
+         Emptying the dictionary alone did nothing to stop several gigabytes
+         arriving a moment later and being put straight back in.
+         */
+        generation += 1
+
+        for task in loading.values { task.cancel() }
+        loading.removeAll()
         containers.removeAll()
     }
+
+    /**
+     Incremented whenever the corrector is told to let go of everything.
+
+     A load that finishes after that belongs to a corrector nobody is using, and
+     storing its weights would leave a copy resident with no way to reach it.
+     */
+    private var generation = 0
 
     private func corrected(
         _ text: String,
         language: CorrectionLanguage,
+        startsText: Bool,
         model: LocalModel,
         using container: ModelContainer
     ) async -> String? {
         let session = ChatSession(
             container,
-            instructions: language.instructions,
+            instructions: language.instructions(startsText: startsText),
             generateParameters: GenerateParameters(temperature: 0)
         )
 
@@ -217,14 +246,27 @@ actor LocalModelCorrector: Corrector {
          guardrail catches it when that fails.
          */
         var prompt = language.prompt(for: text)
-        prompt += "\n\nReply with the corrected text only, on a single line, with no explanation and no quotation marks."
+        prompt += "\n\nReply with the corrected text only, on a single line, with no explanation."
         if model.usesThinkingBlocks {
             prompt += " /no_think"
         }
 
         do {
             let reply = try await session.respond(to: prompt)
-            return ModelReplyCleaner.clean(reply)
+            let cleaned = ModelReplyCleaner.clean(reply, of: text)
+
+            /**
+             An empty reply is a failure, not an instruction to delete the line.
+             With the guardrail on it was refused; with it off, which is a
+             setting the user can reach, the whole chunk was removed from their
+             text.
+             */
+            guard cleaned.contains(where: \.isLetter) else {
+                Log.app.info("Model returned nothing usable")
+                return nil
+            }
+
+            return cleaned
         } catch {
             Log.app.info("Local model failed a chunk: \(String(describing: error), privacy: .public)")
             return nil
@@ -256,18 +298,4 @@ actor LocalModelCorrector: Corrector {
         }
     }
 
-    private func rebase(
-        _ edit: TextEdit,
-        from chunk: String,
-        into text: String,
-        at range: Range<String.Index>
-    ) -> TextEdit {
-        let start = chunk.distance(from: chunk.startIndex, to: edit.range.lowerBound)
-        let length = chunk.distance(from: edit.range.lowerBound, to: edit.range.upperBound)
-
-        let lower = text.index(range.lowerBound, offsetBy: start)
-        let upper = text.index(lower, offsetBy: length)
-
-        return TextEdit(range: lower..<upper, original: edit.original, replacement: edit.replacement)
-    }
 }

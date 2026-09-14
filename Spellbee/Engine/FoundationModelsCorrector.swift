@@ -44,60 +44,29 @@ actor FoundationModelsCorrector: Corrector {
     func corrections(for text: String, settings: AppSettings) async throws -> [TextEdit] {
         guard model.isAvailable else { throw CorrectorError.modelUnavailable }
 
-        let protected = ProtectedSpans.find(in: text)
-        var edits: [TextEdit] = []
+        return try await ChunkedCorrection.run(
+            over: text,
+            settings: settings,
+            detector: detector,
+            appliesGuardrail: appliesGuardrail
+        ) { source, language, startsText in
+            guard self.isWorthCorrecting(source) else { return nil }
 
-        for chunk in TextChunker.chunks(of: text) {
-            /** The user can give up mid-pass, and a long field is several chunks. */
-            try Task.checkCancellation()
-
-            let source = String(text[chunk])
-            guard isWorthCorrecting(source) else { continue }
-
-            let language = detector.detect(source)
-
-            guard let corrected = await corrected(source, language: language) else { continue }
-
-            /**
-             The language check catches the one failure the difference-based
-             guardrail cannot: a fluent translation, where every word changes
-             legitimately as far as spelling is concerned.
-             */
-            if appliesGuardrail, detector.detect(corrected) != language {
-                Log.app.info("Dropped a chunk whose language changed")
-                continue
-            }
-
-            let chunkEdits = TextDiff.edits(from: source, to: corrected)
-                .map { rebase($0, from: source, into: text, at: chunk) }
-
-            guard appliesGuardrail else {
-                edits += chunkEdits
-                continue
-            }
-
-            let verdict = EditGuardrail.filter(
-                chunkEdits,
-                in: text,
-                allowing: settings.rules(for: language),
-                protectedBy: protected
-            )
-
-            guard verdict.isTrustworthy else {
-                Log.app.info("Dropped a chunk the model rewrote rather than corrected")
-                continue
-            }
-
-            edits += verdict.accepted
+            return await self.corrected(source, language: language, startsText: startsText)
         }
-
-        Log.app.info("Found \(edits.count, privacy: .public) edits")
-        return edits
     }
 
     /** Nil when the model declines or fails, which leaves the chunk untouched. */
-    private func corrected(_ text: String, language: CorrectionLanguage) async -> String? {
-        if let result = await respond(to: text, using: language.instructions, asking: language.prompt(for: text)) {
+    private func corrected(
+        _ text: String,
+        language: CorrectionLanguage,
+        startsText: Bool
+    ) async -> String? {
+        if let result = await respond(
+            to: text,
+            using: language.instructions(startsText: startsText),
+            asking: language.prompt(for: text)
+        ) {
             return result
         }
 
@@ -113,7 +82,7 @@ actor FoundationModelsCorrector: Corrector {
         Log.app.info("Retrying a declined chunk with English instructions")
         return await respond(
             to: text,
-            using: CorrectionLanguage.english.instructions,
+            using: CorrectionLanguage.english.instructions(startsText: startsText),
             asking: "Correct this \(language.displayName) text, keeping every word:\n\n\(text)"
         )
     }
@@ -127,6 +96,12 @@ actor FoundationModelsCorrector: Corrector {
                 generating: CorrectedText.self,
                 options: GenerationOptions(sampling: .greedy)
             )
+            /** An empty reply is a failure, not an instruction to delete the line. */
+            guard response.content.text.contains(where: \.isLetter) else {
+                Log.app.info("Model returned nothing usable")
+                return nil
+            }
+
             return response.content.text
         } catch {
             Log.app.info("Model declined a chunk: \(String(describing: error), privacy: .public)")
@@ -145,20 +120,6 @@ actor FoundationModelsCorrector: Corrector {
      Both strings hold the same characters over that span, so counting from the
      chunk's start gives the same position in either.
      */
-    private func rebase(
-        _ edit: TextEdit,
-        from chunk: String,
-        into text: String,
-        at range: Range<String.Index>
-    ) -> TextEdit {
-        let start = chunk.distance(from: chunk.startIndex, to: edit.range.lowerBound)
-        let length = chunk.distance(from: edit.range.lowerBound, to: edit.range.upperBound)
-
-        let lower = text.index(range.lowerBound, offsetBy: start)
-        let upper = text.index(lower, offsetBy: length)
-
-        return TextEdit(range: lower..<upper, original: edit.original, replacement: edit.replacement)
-    }
 }
 
 /** The shape the model is asked to fill in, which keeps preamble out of the reply. */
