@@ -55,6 +55,13 @@ struct TextTarget {
     }
 
     var selectedText: String {
+        /**
+         The resolver clamps `range` to `text`, so this cannot fail. It used to
+         fall back to the whole field while leaving `range.location` alone, and
+         the engine then added the selection's start to offsets that were
+         already whole-field offsets, putting every edit in an arbitrary wrong
+         place.
+         */
         guard let swiftRange = Range(NSRange(location: range.location, length: range.length), in: text) else {
             return text
         }
@@ -71,6 +78,8 @@ enum TextTargetError: Error, Equatable {
     case empty
     case tooLong(count: Int)
     case appDenied(bundleID: String)
+    /** Correcting is limited to a list of apps, and this is not one of them. */
+    case appNotListed(bundleID: String)
     /** The user moved to another app while the correction was being worked out. */
     case focusMoved
 
@@ -84,7 +93,15 @@ enum TextTargetError: Error, Equatable {
         case .tooLong(let count):
             return "That field is too long to correct (\(count) characters)."
         case .appDenied:
+            /** Naming an app to leave alone is a decision; repeating it back is noise. */
             return nil
+        case .appNotListed:
+            /**
+             Said out loud, unlike a denied app, because this one is a silence by
+             omission: every app not on the list behaves this way, and the usual
+             cause is forgetting to add the one you are in.
+             */
+            return "Spellbee only corrects in the apps you listed."
         case .focusMoved:
             return "Spellbee stopped because you switched apps."
         case .noFocusedElement, .notEditable, .unreadable, .empty:
@@ -103,33 +120,22 @@ enum TextTargetResolver {
      */
     static let characterLimit = 8_000
 
-    /**
-     Apps where correcting text is more likely to cause harm than help: shells,
-     editors and password managers, where the "text field" is usually code, a
-     command, or a secret. Seeds the deny-list the user can then edit.
-     */
-    static let defaultDeniedBundleIDs: Set<String> = [
-        "com.apple.Terminal",
-        "com.googlecode.iterm2",
-        "com.mitchellh.ghostty",
-        "dev.warp.Warp-Stable",
-        "com.apple.dt.Xcode",
-        "com.microsoft.VSCode",
-        "com.todesktop.230313mzl4w4u92", // Cursor
-        "com.jetbrains.intellij",
-        "com.1password.1password",
-        "com.agilebits.onepassword7",
-    ]
-
-    static func resolve(denying denied: Set<String> = defaultDeniedBundleIDs) throws -> TextTarget {
+    static func resolve(in policy: AppPolicy = AppPolicy()) throws -> TextTarget {
         guard AXIsProcessTrusted() else { throw TextTargetError.notTrusted }
 
         guard let frontmost = NSWorkspace.shared.frontmostApplication else {
             throw TextTargetError.noFocusedElement
         }
 
-        if let bundleID = frontmost.bundleIdentifier, denied.contains(bundleID) {
-            throw TextTargetError.appDenied(bundleID: bundleID)
+        let bundleID = frontmost.bundleIdentifier
+
+        switch policy.decision(for: bundleID) {
+        case .allowed:
+            break
+        case .excluded:
+            throw TextTargetError.appDenied(bundleID: bundleID ?? "unknown")
+        case .notIncluded:
+            throw TextTargetError.appNotListed(bundleID: bundleID ?? "unknown")
         }
 
         let systemWide = AXUIElementCreateSystemWide()
@@ -166,11 +172,29 @@ enum TextTargetResolver {
             throw TextTargetError.notEditable
         }
 
-        let selection = focused.range(kAXSelectedTextRangeAttribute)
+        /**
+         Clamped to what the field actually holds. Some apps, web content
+         especially, report a selection against a different representation from
+         the one `kAXValue` returns, and a range past the end made every offset
+         derived from it land somewhere arbitrary.
+         */
+        let whole = CFRange(location: 0, length: text.utf16.count)
+        let reported = focused.range(kAXSelectedTextRangeAttribute)
+        let selection = reported.flatMap { candidate -> CFRange? in
+            guard
+                candidate.location >= 0,
+                candidate.length >= 0,
+                candidate.location + candidate.length <= whole.length
+            else {
+                Log.app.info("Ignored a selection that does not fit the field")
+                return nil
+            }
+
+            return candidate
+        }
+
         let hasUserSelection = (selection?.length ?? 0) > 0
-        let range = hasUserSelection
-            ? selection!
-            : CFRange(location: 0, length: text.utf16.count)
+        let range = hasUserSelection ? selection! : whole
 
         /**
          Enough to identify a field that misbehaves, without ever recording what

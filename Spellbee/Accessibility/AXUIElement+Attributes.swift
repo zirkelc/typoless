@@ -102,10 +102,27 @@ extension AXUIElement {
         AXUIElementSetAttributeValue(self, attribute as CFString, value)
     }
 
+    @discardableResult
     func setRange(_ attribute: String, to range: CFRange) -> AXError {
         var mutableRange = range
         guard let value = AXValueCreate(.cfRange, &mutableRange) else { return .failure }
         return set(attribute, to: value)
+    }
+
+    /**
+     Whether the system's keyboard focus is still on this exact element.
+
+     Everything else here addresses an element directly, so aiming at the wrong
+     one merely fails. Pasting does not: it is a keystroke, and it lands on
+     whatever is focused at that moment, in whatever application. Anything about
+     to paste has to ask this first.
+     */
+    var hasSystemFocus: Bool {
+        guard let focused = AXUIElementCreateSystemWide().element(kAXFocusedUIElementAttribute) else {
+            return false
+        }
+
+        return CFEqual(focused, self)
     }
 
     private func value(_ attribute: String) -> CFTypeRef? {

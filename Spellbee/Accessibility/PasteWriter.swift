@@ -17,15 +17,33 @@ enum PasteWriter {
     /** Let the app finish handling the trigger keystrokes before sending more. */
     private static let settleDelay: Duration = .milliseconds(60)
 
-    /** Time for the paste to land before the clipboard is taken back. */
-    private static let pasteDelay: Duration = .milliseconds(180)
+    /**
+     Presses the keys and hands the clipboard back once the paste has landed.
 
-    static func replace(selectingAll: Bool, with text: String) async {
+     `settled` is polled by the caller, which is the only party that can tell
+     whether the field took the text. Restoring on a fixed timer instead was a
+     race the app could not win: the paste is asynchronous in the target
+     application, so a busy app could service the ⌘V *after* the clipboard had
+     been put back, pasting whatever the user had copied over the selection the
+     ⌘A had just made. Returns whether the paste was confirmed.
+     */
+    @discardableResult
+    static func replace(
+        selectingAll: Bool,
+        with text: String,
+        settled: () async -> Bool
+    ) async -> Bool {
         let pasteboard = NSPasteboard.general
         let snapshot = PasteboardSnapshot(capturing: pasteboard)
 
         pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
+
+        /** No point pressing anything if the text never reached the pasteboard. */
+        guard pasteboard.setString(text, forType: .string) else {
+            snapshot.restore(to: pasteboard)
+            Log.app.error("Could not put the correction on the pasteboard")
+            return false
+        }
 
         try? await Task.sleep(for: settleDelay)
 
@@ -34,9 +52,11 @@ enum PasteWriter {
         }
         press(CGKeyCode(kVK_ANSI_V))
 
-        try? await Task.sleep(for: pasteDelay)
+        let landed = await settled()
 
         snapshot.restore(to: pasteboard)
+
+        return landed
     }
 
     /** Sends one Command-modified keystroke to whichever app is frontmost. */
@@ -67,13 +87,34 @@ enum PasteWriter {
 private struct PasteboardSnapshot {
     private let items: [[NSPasteboard.PasteboardType: Data]]
 
+    /**
+     Some representations cannot be copied at all: file promises and another
+     app's deferred rich content are handed over lazily, so `data(forType:)`
+     returns nil and assigning that nil to the dictionary *removes the key*.
+     Those types were disappearing silently, which is the one thing a snapshot
+     must not do, so anything unreadable is now said out loud.
+     */
     init(capturing pasteboard: NSPasteboard) {
+        var missed: [NSPasteboard.PasteboardType] = []
+
         items = (pasteboard.pasteboardItems ?? []).map { item in
             var contents: [NSPasteboard.PasteboardType: Data] = [:]
+
             for type in item.types {
-                contents[type] = item.data(forType: type)
+                if let data = item.data(forType: type) {
+                    contents[type] = data
+                } else {
+                    missed.append(type)
+                }
             }
+
             return contents
+        }
+
+        if !missed.isEmpty {
+            Log.app.info(
+                "Could not preserve \(missed.count, privacy: .public) clipboard representations"
+            )
         }
     }
 

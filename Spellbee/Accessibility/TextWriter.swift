@@ -54,19 +54,34 @@ enum TextWriter {
     static func apply(
         _ edits: [FieldEdit],
         in element: AXUIElement,
+        expecting before: String,
         replacing range: CFRange,
         with corrected: String,
         isUserSelection: Bool
     ) async throws -> Strategy {
         guard !edits.isEmpty else { throw TextWriteError.ineffective }
 
-        let before = element.string(kAXValueAttribute)
+        /**
+         Every offset below was worked out against `before`, a second or two ago
+         while the model was thinking. If the field has moved since, they point
+         at the wrong characters and every safety check in this file is
+         worthless: each one used to re-read the field for itself, so they
+         compared the write against the text *after* the user kept typing, and
+         confirmed a corrupting write as a success. Refusing here is the only
+         place that can tell.
+         */
+        guard element.string(kAXValueAttribute) == before else {
+            throw TextWriteError.diverged
+        }
+
         var attemptedEdits = false
+        /** Kept so a refusal can explain itself rather than reading as a plain failure. */
+        var declinedWholeValue = false
 
         if element.isSettable(kAXSelectedTextAttribute) {
             attemptedEdits = true
 
-            if let applied = try await applyIndividually(edits, in: element) {
+            if let applied = try await applyIndividually(edits, in: element, from: before) {
                 Log.app.info(
                     "Wrote \(applied, privacy: .public) of \(edits.count, privacy: .public) edits in place"
                 )
@@ -86,7 +101,7 @@ enum TextWriter {
             element.setRange(kAXSelectedTextRangeAttribute, to: range)
         }
 
-        if element.isSettable(kAXValueAttribute), let before {
+        if element.isSettable(kAXValueAttribute), WriteScope.coversWholeField(range, of: before) {
             guard let spliced = splice(corrected, into: before, at: range) else {
                 throw TextWriteError.ineffective
             }
@@ -97,19 +112,58 @@ enum TextWriter {
                 return .wholeValue
             }
             Log.app.info("Whole-value write was accepted but changed nothing, falling back")
+        } else if element.isSettable(kAXValueAttribute) {
+            declinedWholeValue = true
+            Log.app.info(
+                """
+                Declined a whole-value write: correcting \(range.length, privacy: .public) \
+                of \(before.utf16.count, privacy: .public) characters
+                """
+            )
         }
+
+        /**
+         Pasting is a keystroke, not a message to this element, so unlike every
+         tier above it this one cannot miss quietly: it types into whatever the
+         system has focused right now. Undo in particular could reach a document
+         in another application entirely, select all of it, and replace it.
+         */
+        guard element.hasSystemFocus else {
+            throw TextWriteError.focusMoved
+        }
+
+        /**
+         Put the user's own selection back. Setting the value above collapses it
+         in most fields, and pasting into a collapsed selection inserts the
+         correction alongside the original instead of replacing it.
+         */
+        element.setRange(kAXSelectedTextRangeAttribute, to: range)
 
         /**
          The user's own selection is already in place, so only a whole-field
          pass needs to select first.
          */
-        await PasteWriter.replace(selectingAll: !isUserSelection, with: corrected)
+        let pasted = await PasteWriter.replace(selectingAll: !isUserSelection, with: corrected) {
+            await didChange(from: before, in: element)
+        }
 
-        if await didChange(from: before, in: element) {
+        if pasted {
             return .paste
         }
 
-        throw TextWriteError.ineffective
+        /**
+         The select-all was ours. Leaving the whole field selected after a
+         failure means the next character the user types replaces everything
+         they had written.
+         */
+        if !isUserSelection {
+            element.setRange(
+                kAXSelectedTextRangeAttribute,
+                to: CFRange(location: range.location + range.length, length: 0)
+            )
+        }
+
+        throw declinedWholeValue ? TextWriteError.wouldFlattenField : TextWriteError.ineffective
     }
 
     /**
@@ -124,7 +178,11 @@ enum TextWriter {
      reported and the rest carry on: they sit at lower offsets and are
      unaffected by the one that failed.
      */
-    private static func applyIndividually(_ edits: [FieldEdit], in element: AXUIElement) async throws -> Int? {
+    private static func applyIndividually(
+        _ edits: [FieldEdit],
+        in element: AXUIElement,
+        from snapshot: String
+    ) async throws -> Int? {
         #if DEBUG
         /**
          Forces the fallback, so the damage this tier avoids can be seen rather
@@ -138,8 +196,7 @@ enum TextWriter {
         }
         #endif
 
-        guard var expected = element.string(kAXValueAttribute) else { return nil }
-
+        var expected = snapshot
         var applied = 0
 
         for edit in edits.inTextOrder.reversed() {
@@ -171,7 +228,15 @@ enum TextWriter {
             }
 
             guard applied > 0 else { return nil }
-            Log.app.info("A field ignored one edit, keeping the rest")
+
+            /**
+             The field has now refused an edit while accepting an earlier one,
+             which means it will refuse the rest as well. Trying them anyway
+             costs the full confirmation timeout apiece, so twenty remaining
+             edits stalled the app for four seconds to learn nothing.
+             */
+            Log.app.info("Field stopped accepting edits after \(applied, privacy: .public)")
+            break
         }
 
         return applied > 0 ? applied : nil
@@ -209,7 +274,7 @@ enum TextWriter {
      not ours to predict: an app may normalise what it receives from the
      clipboard, so only the fact of a change can be checked.
      */
-    private static func didChange(from before: String?, in element: AXUIElement) async -> Bool {
+    private static func didChange(from before: String, in element: AXUIElement) async -> Bool {
         var waited: Duration = .zero
 
         while waited < confirmationTimeout {
@@ -223,7 +288,17 @@ enum TextWriter {
 
     private static func splice(_ replacement: String, into text: String, at range: CFRange) -> String? {
         let nsRange = NSRange(location: range.location, length: range.length)
+
         guard let swiftRange = Range(nsRange, in: text) else { return nil }
+
+        /**
+         `Range(_:in:)` does not refuse a boundary that falls inside a character;
+         it silently rounds both ends down to the nearest one. The prediction
+         made here would then describe a different edit from the one handed to
+         the field, so the two disagree and the write is reported as diverged
+         after the field has already been changed. Refusing is the honest answer.
+         */
+        guard NSRange(swiftRange, in: text) == nsRange else { return nil }
 
         return text.replacingCharacters(in: swiftRange, with: replacement)
     }
@@ -236,12 +311,28 @@ enum TextWriteError: Error {
     /** The field's contents moved in a way this code cannot account for. */
     case diverged
 
+    /**
+     The only way left to write would have replaced the whole field, losing
+     everything in it that is not plain characters, to land a smaller fix.
+     */
+    case wouldFlattenField
+
+    /** The field is no longer focused, and the last tier types rather than addresses. */
+    case focusMoved
+
     var userMessage: String {
         switch self {
         case .ineffective:
             return "Spellbee could not write the correction back into that field."
         case .diverged:
             return "Spellbee stopped because that field changed while it was being corrected."
+        case .wouldFlattenField:
+            return """
+            Spellbee left that text alone. This field only accepts being rewritten \
+            whole, which would have stripped its formatting to land a small fix.
+            """
+        case .focusMoved:
+            return "Spellbee stopped because that text field is no longer focused."
         }
     }
 }
