@@ -25,6 +25,8 @@ enum EditGuardrail {
     struct Verdict {
         let accepted: [TextEdit]
         let rejectedCount: Int
+        /** Edits refused for sitting inside protected text, which is not straying. */
+        var protectedCount = 0
 
         /**
          Whether the changes are worth applying at all.
@@ -48,9 +50,10 @@ enum EditGuardrail {
     ) -> Verdict {
         var accepted: [TextEdit] = []
         var rejected = 0
+        var protectedCount = 0
 
         for edit in edits {
-            guard let rule = classify(edit, in: text) else {
+            guard let kinds = classify(edit, in: text) else {
                 Log.app.info("Rejected an edit that was not a correction")
                 rejected += 1
                 continue
@@ -65,54 +68,112 @@ enum EditGuardrail {
              counting it would make a well-behaved model look like a rewriting
              one and throw away its other corrections.
              */
-            guard rules.contains(rule) else { continue }
+            guard rules.isSuperset(of: kinds) else { continue }
 
-            guard !protected.contains(where: { $0.overlaps(edit.range) }) else {
-                Log.app.info("Rejected a \(rule.rawValue, privacy: .public) edit inside protected text")
-                rejected += 1
+            /**
+             An insertion has an empty range, and `overlaps` is false for an
+             empty range however it sits, so protection used to be blind to
+             every insertion: a comma could be dropped into the middle of a URL
+             or a code span and nothing would stop it. Containment has to be
+             asked separately.
+             */
+            let isProtected = protected.contains { span in
+                span.overlaps(edit.range)
+                    || (span.lowerBound < edit.range.lowerBound && edit.range.lowerBound < span.upperBound)
+            }
+
+            /**
+             Counted apart from `rejectedCount`, which measures how far the
+             model strayed from correcting. A model that tidied a URL or
+             lowercased a handle has not rewritten the user's prose, and letting
+             those votes decide trustworthiness meant that two @names in one
+             Slack line threw away the real typo fix alongside them.
+             */
+            guard !isProtected else {
+                Log.app.info("Rejected an edit inside protected text")
+                protectedCount += 1
                 continue
             }
 
             accepted.append(edit)
         }
 
-        return Verdict(accepted: accepted, rejectedCount: rejected)
+        return Verdict(accepted: accepted, rejectedCount: rejected, protectedCount: protectedCount)
     }
 
     /**
-     What kind of change this is, or nil if it is not one we permit.
+     Every question this edit raises, or nil if it is not a correction at all.
 
-     The order matters: the checks run from least invasive to most, so a change
-     is described by the smallest thing that explains it.
+     A set rather than one label, which was the important thing to get right.
+     The checks used to run least-invasive first and return the first one that
+     explained the change, so an edit that restored an umlaut *and* added a
+     comma was filed as "umlaut" and the user's answer on commas was never
+     consulted. Each dimension is now judged on its own, with the ones below it
+     normalised away, so `buero` to `Büro` reports both the umlaut and the
+     capital and needs permission for both.
      */
-    static func classify(_ edit: TextEdit, in text: String) -> CorrectionRule? {
+    static func classify(_ edit: TextEdit, in text: String) -> Set<CorrectionRule>? {
         let original = edit.original
         let replacement = edit.replacement
 
         guard original != replacement else { return nil }
 
-        /** Same characters once spacing is ignored: only the spacing moved. */
-        if withoutWhitespace(original) == withoutWhitespace(replacement) {
-            return .spacing
+        /**
+         Nothing may bring in a mark that writing does not use. Unicode's idea
+         of punctuation is far wider than writing's: `*`, `_`, `#`, backtick
+         and the brackets are all punctuation to `isPunctuation`, so a model
+         that wrapped the letters it had changed in Markdown bold turned
+         `evals` into `**E**vals`, and every test below read that as a capital
+         plus a punctuation change and waved it through. Markup is not a
+         correction of what someone wrote, whichever category its characters
+         happen to fall in.
+         */
+        guard changedPunctuation(from: original, to: replacement).isSubset(of: correctableMarks) else {
+            Log.app.info("Rejected an edit that brought in a mark corrections do not use")
+            return nil
         }
 
-        let strippedOriginal = withoutPunctuation(withoutWhitespace(original))
-        let strippedReplacement = withoutPunctuation(withoutWhitespace(replacement))
-
-        /** Same letters and case once punctuation is ignored. */
-        if strippedOriginal == strippedReplacement {
-            return punctuationRule(for: edit, in: text)
+        guard !addsListMarker(edit, in: text) else {
+            Log.app.info("Rejected an edit that opened a line with a list marker")
+            return nil
         }
 
         /**
-         Same letters, different case. Which capital it is depends on where it
-         sits: the first word of a sentence is one question and a noun in the
-         middle of a German sentence is a different one, and someone may well
-         want the first and not the second.
+         A line break is not spacing, whatever Unicode says about it.
+
+         Both are whitespace, so turning a space into a newline had the same
+         letters on each side and was filed as a spacing fix and waved through.
+         What it actually does is restructure the message: one model, asked to
+         correct a chat line, returned `i will` then each of `take a look
+         tomorrow` on a line of its own, and every one of those breaks counted
+         as tidying the spacing. Where the lines fall is the writer's decision,
+         not a spelling question.
          */
-        if strippedOriginal.lowercased() == strippedReplacement.lowercased() {
-            return startsASentence(edit, in: text) ? .capitalisation : .nounCapitalisation
+        guard original.count(where: \.isNewline) == replacement.count(where: \.isNewline) else {
+            Log.app.info("Rejected an edit that added or removed a line break")
+            return nil
         }
+
+        var kinds: Set<CorrectionRule> = []
+
+        let bareOriginal = withoutWhitespace(original)
+        let bareReplacement = withoutWhitespace(replacement)
+
+        /** Either only the spacing moved, or the spacing moved along with something else. */
+        if bareOriginal == bareReplacement || onlyWhitespace(original) != onlyWhitespace(replacement) {
+            kinds.insert(.spacing)
+        }
+
+        if onlyPunctuation(original) != onlyPunctuation(replacement) {
+            guard !changesMeaning(edit, in: text) else { return nil }
+
+            kinds.insert(punctuationRule(for: edit, in: text))
+        }
+
+        let strippedOriginal = withoutPunctuation(bareOriginal)
+        let strippedReplacement = withoutPunctuation(bareReplacement)
+        let foldedOriginal = foldingUmlauts(strippedOriginal, lowercased: false)
+        let foldedReplacement = foldingUmlauts(strippedReplacement, lowercased: false)
 
         /**
          The same word written with and without its umlauts.
@@ -124,11 +185,121 @@ enum EditGuardrail {
          typo and got it thrown away. Since the expansion is lossless, folding
          it back settles the question exactly rather than by distance.
          */
-        if foldingUmlauts(strippedOriginal) == foldingUmlauts(strippedReplacement) {
-            return .umlauts
+        if strippedOriginal.lowercased() != strippedReplacement.lowercased(),
+           foldedOriginal.lowercased() == foldedReplacement.lowercased() {
+            /**
+             One direction only. The rule exists to restore letters a keyboard
+             makes awkward, `ue` to `ü` and `ss` to `ß`, and folding compares
+             the two forms as equal, so it read the reverse as an umlaut fix
+             too. A model handed a correctly written German sign-off returned
+             `Viele Grüße` as `Viele grüsse`, and every test here agreed it was
+             a correction. Taking a letter the user typed and spelling it the
+             long way round is never one.
+             */
+            guard umlautCount(in: replacement) >= umlautCount(in: original) else {
+                Log.app.info("Rejected an edit that spelled an umlaut away")
+                return nil
+            }
+
+            kinds.insert(.umlauts)
         }
 
-        return isSpellingFix(from: original, to: replacement) ? .typos : nil
+        /**
+         Same letters, different case, judged with any umlaut folded away so a
+         capital cannot hide behind one. Which capital it is depends on where it
+         sits: the first word of a sentence is one question and a noun in the
+         middle of a German sentence is a different one, and someone may well
+         want the first and not the second.
+         */
+        if foldedOriginal != foldedReplacement,
+           foldedOriginal.lowercased() == foldedReplacement.lowercased() {
+            kinds.insert(startsASentence(edit, in: text) ? .capitalisation : .nounCapitalisation)
+        }
+
+        /** Anything still different is a change of letters, which has to look like a typo. */
+        if foldedOriginal.lowercased() != foldedReplacement.lowercased() {
+            guard isSpellingFix(from: original, to: replacement) else { return nil }
+
+            kinds.insert(.typos)
+
+            /**
+             A typo fix may also change a capital, and then it is both.
+
+             `teh` to `The` is one change to one word, so the capital used to
+             ride along on the spelling fix and land even with capitalisation
+             switched off. Someone who turns that off writes in lower case
+             deliberately, and for them an unwanted capital is a worse outcome
+             than a typo left alone, so the setting has to be asked.
+             */
+            if changesWordInitialCase(from: original, to: replacement) {
+                kinds.insert(startsASentence(edit, in: text) ? .capitalisation : .nounCapitalisation)
+            }
+        }
+
+        return kinds.isEmpty ? nil : kinds
+    }
+
+    /**
+     Punctuation changes that alter meaning rather than tidy it.
+
+     A mark between digits is arithmetic, not punctuation: `1,500` and `1.500`
+     are different numbers under different conventions, and `10:30` is a time,
+     so a German-tuned model "fixing the separators" silently multiplies a price
+     by a thousand. And swapping one sentence-final mark for a different one
+     turns a question into a statement, which is a change of meaning wearing
+     punctuation's clothes. Trimming `?!` down to `?` is not that, so the test
+     is disjointness rather than mere difference.
+     */
+    /**
+     Whether any word starts with a different case in one than in the other.
+
+     Word-initial only, which is where capitalisation rules live. The word
+     counts already match, since this is only asked of a change that has passed
+     the spelling test.
+     */
+    private static func changesWordInitialCase(from original: String, to replacement: String) -> Bool {
+        let originalWords = original.split(whereSeparator: \.isWhitespace)
+        let replacementWords = replacement.split(whereSeparator: \.isWhitespace)
+
+        guard originalWords.count == replacementWords.count else { return false }
+
+        return zip(originalWords, replacementWords).contains { before, after in
+            guard let opening = before.first, let corrected = after.first else { return false }
+
+            return opening.isUppercase != corrected.isUppercase
+        }
+    }
+
+    /** Whether any mark in this text sits directly between two digits. */
+    private static func separatesDigits(_ text: String) -> Bool {
+        let characters = Array(text)
+
+        guard characters.count > 2 else { return false }
+
+        return characters.indices.dropFirst().dropLast().contains { index in
+            characters[index].isPunctuation
+                && characters[index - 1].isNumber
+                && characters[index + 1].isNumber
+        }
+    }
+
+    private static func changesMeaning(_ edit: TextEdit, in text: String) -> Bool {
+        /**
+         Framed with one character of context, because the diff may hand over
+         either the bare mark or the whole word around it, and a separator is
+         only recognisable from its neighbours.
+         */
+        let lead = text[..<edit.range.lowerBound].last.map(String.init) ?? ""
+        let trail = text[edit.range.upperBound...].first.map(String.init) ?? ""
+
+        if separatesDigits(lead + edit.original + trail) || separatesDigits(lead + edit.replacement + trail) {
+            return true
+        }
+
+        let before = Set(edit.original.filter(sentenceFinalMarks.contains))
+        let after = Set(edit.replacement.filter(sentenceFinalMarks.contains))
+
+        return !before.isEmpty && !after.isEmpty && before.isDisjoint(with: after)
     }
 
     /**
@@ -172,6 +343,23 @@ enum EditGuardrail {
     private static let apostrophes: Set<Character> = ["'", "\u{2019}", "\u{02BC}"]
 
     /**
+     Every mark a correction is allowed to put in or take out.
+
+     A closed list rather than a test, because the tests all say yes too often.
+     These are the marks that separate and end sentences, quote speech and join
+     words, in the straight and curly forms a keyboard and a model each produce.
+     Everything outside it is markup, arithmetic or decoration: the model may
+     still echo one back untouched, since only a change of count is measured
+     here, but it may not introduce one.
+     */
+    private static let correctableMarks: Set<Character> = [
+        ".", ",", ";", ":", "!", "?", "\u{2026}",
+        "'", "\u{2019}", "\u{02BC}", "\u{2018}",
+        "\"", "\u{201C}", "\u{201D}", "\u{201E}", "\u{201A}", "\u{00AB}", "\u{00BB}",
+        "-", "\u{2010}", "\u{2013}", "\u{2014}",
+    ]
+
+    /**
      Whether this edit is at the start of a sentence.
 
      Judged from what precedes it in the text rather than from the edit alone,
@@ -179,19 +367,35 @@ enum EditGuardrail {
      noun in another.
      */
     static func startsASentence(_ edit: TextEdit, in text: String) -> Bool {
-        let before = text[..<edit.range.lowerBound].reversed().drop(while: \.isWhitespace)
+        let preceding = text[..<edit.range.lowerBound]
+        let skipped = preceding.reversed().prefix(while: \.isWhitespace)
 
-        guard let previous = before.first else { return true }
+        /**
+         A line break opens a sentence as surely as a full stop does. Skipping
+         backwards over it meant the first word of every line was judged by the
+         previous line, which in chat and email rarely ends in a mark, so those
+         capitals were filed as noun capitals. English does not carry that rule,
+         so the opening word of a line could never be capitalised at all.
+         */
+        if skipped.contains(where: \.isNewline) { return true }
+
+        guard let previous = preceding.reversed().drop(while: \.isWhitespace).first else { return true }
 
         return sentenceFinalMarks.contains(previous)
     }
 
-    /** Rewrites umlauts and eszett to their two-letter forms, lowercased. */
-    private static func foldingUmlauts(_ text: String) -> String {
-        var folded = text.lowercased()
+    /**
+     Rewrites umlauts and eszett to their two-letter forms.
+
+     Case is preserved on request, because folding and lowercasing at once hid
+     a capital behind an umlaut: `buero` to `Büro` compared equal, so the edit
+     was called an umlaut change and the capitalisation setting never saw it.
+     */
+    private static func foldingUmlauts(_ text: String, lowercased: Bool = true) -> String {
+        var folded = lowercased ? text.lowercased() : text
 
         for (umlaut, expansion) in [("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")] {
-            folded = folded.replacingOccurrences(of: umlaut, with: expansion)
+            folded = folded.replacingOccurrences(of: umlaut, with: expansion, options: .caseInsensitive)
         }
 
         return folded
@@ -256,6 +460,40 @@ enum EditGuardrail {
         }
     }
 
+    /**
+     Whether this edit opens a line with a bullet.
+
+     The dash has to stay in `correctableMarks`, since joining two words with
+     one is an everyday fix, so a model that returned its answer as a list item
+     walked straight past that guard and put a bullet on the front of the
+     user's message. Position settles what the character cannot: prose does not
+     begin a line with a dash and a space.
+     */
+    private static func addsListMarker(_ edit: TextEdit, in text: String) -> Bool {
+        guard
+            let opening = edit.replacement.first,
+            listMarkers.contains(opening),
+            edit.original.first != opening,
+            edit.replacement.dropFirst().first?.isWhitespace == true
+        else {
+            return false
+        }
+
+        return text[..<edit.range.lowerBound].last.map(\.isNewline) ?? true
+    }
+
+    /** Characters a model reaches for when it answers in a list. */
+    private static let listMarkers: Set<Character> = ["-", "*", "\u{2022}", "\u{2013}", "\u{2014}"]
+
+    /** Letters German writes with a diacritic, which a correction may add but never remove. */
+    private static let umlautCharacters: Set<Character> = [
+        "\u{E4}", "\u{F6}", "\u{FC}", "\u{DF}", "\u{C4}", "\u{D6}", "\u{DC}", "\u{1E9E}",
+    ]
+
+    private static func umlautCount(in text: String) -> Int {
+        text.count { umlautCharacters.contains($0) }
+    }
+
     /** Marks that close a sentence, and nothing else. */
     private static let sentenceFinalMarks: Set<Character> = [".", "!", "?", "…"]
 
@@ -269,8 +507,18 @@ enum EditGuardrail {
      off the end of what the user wrote is in question.
      */
     static func addsSentenceFinalPunctuation(_ edit: TextEdit, in text: String) -> Bool {
-        /** Anything but spacing after this edit means it is not the end. */
-        guard text[edit.range.upperBound...].allSatisfy(\.isWhitespace) else { return false }
+        /**
+         Anything but spacing after this edit, on this line, means it is not the
+         end. The line rather than the whole field: text is corrected line by
+         line, and judging by the end of the field meant that on any message
+         with more than one line every line but the last failed this test. The
+         full stop then fell through to the catch-all punctuation rule, so the
+         one setting the product offers for exactly this question did nothing
+         wherever it mattered most.
+         */
+        let restOfLine = text[edit.range.upperBound...].prefix { !$0.isNewline }
+
+        guard restOfLine.allSatisfy(\.isWhitespace) else { return false }
 
         var stripped = Substring(edit.replacement)
         while let last = stripped.last, sentenceFinalMarks.contains(last) {
@@ -315,6 +563,16 @@ enum EditGuardrail {
 
     private static func withoutWhitespace(_ text: String) -> String {
         text.filter { !$0.isWhitespace }
+    }
+
+    /** Just the spacing, so a change to it can be spotted alongside other changes. */
+    private static func onlyWhitespace(_ text: String) -> String {
+        text.filter(\.isWhitespace)
+    }
+
+    /** Just the punctuation, judged the same way and by the same definition as below. */
+    private static func onlyPunctuation(_ text: String) -> String {
+        text.filter(\.isPunctuation)
     }
 
     /**
