@@ -25,6 +25,7 @@ final class CorrectionEngine {
 
     private let overlay: OverlayController
     private let preferences: Preferences
+    private let history: CorrectionHistory
     private let escape = EscapeMonitor()
 
     private(set) var isRunning = false
@@ -32,6 +33,16 @@ final class CorrectionEngine {
     private(set) var canRevert = false
 
     private var lastFix: Fix?
+
+    /**
+     Set when the user abandons the pass, and checked again just before writing.
+
+     The cancel key used to be released the moment the model returned, but a
+     pass is not over then: the overlay is still up while the minimum display
+     time elapses and the text is written back. Pressing Escape during that
+     window went to the app underneath and the correction landed anyway.
+     */
+    private var wasCancelled = false
 
     /** Everything needed to put a field back the way the user left it. */
     private struct Fix {
@@ -41,16 +52,23 @@ final class CorrectionEngine {
         let after: String
     }
 
-    init(corrector: any Corrector, overlay: OverlayController, preferences: Preferences) {
+    init(
+        corrector: any Corrector,
+        overlay: OverlayController,
+        preferences: Preferences,
+        history: CorrectionHistory
+    ) {
         self.corrector = corrector
         self.overlay = overlay
         self.preferences = preferences
+        self.history = history
     }
 
     func run() async {
         guard !isRunning else { return }
 
         isRunning = true
+        wasCancelled = false
         defer {
             isRunning = false
             escape.stop()
@@ -59,7 +77,7 @@ final class CorrectionEngine {
 
         let target: TextTarget
         do {
-            target = try TextTargetResolver.resolve(denying: preferences.deniedBundleIDs)
+            target = try TextTargetResolver.resolve(in: preferences.appPolicy)
         } catch let error as TextTargetError {
             report(error.userMessage, log: "Could not resolve a text target: \(error)")
             return
@@ -112,6 +130,12 @@ final class CorrectionEngine {
             return
         }
 
+        /** The last moment at which giving up is still free. */
+        guard !wasCancelled else {
+            report(nil, log: "Cancelled before anything was written")
+            return
+        }
+
         let fieldEdits = self.fieldEdits(from: edits, in: original, offsetBy: target.range.location)
 
         let strategy: TextWriter.Strategy
@@ -119,6 +143,7 @@ final class CorrectionEngine {
             strategy = try await TextWriter.apply(
                 fieldEdits,
                 in: target.element,
+                expecting: target.text,
                 replacing: target.range,
                 with: corrected,
                 isUserSelection: target.isUserSelection
@@ -129,14 +154,14 @@ final class CorrectionEngine {
              still needs an undo. Offering it costs nothing when nothing landed,
              since the record is only kept if the field actually moved.
              */
-            recordForRevert(target: target)
+            recordForRevert(target: target, editCount: fieldEdits.count)
 
             let message = (error as? TextWriteError)?.userMessage
             report(message, log: "Write failed: \(error)")
             return
         }
 
-        recordForRevert(target: target)
+        recordForRevert(target: target, editCount: fieldEdits.count)
         restoreCaret(for: target, after: fieldEdits, corrected: corrected)
 
         report(
@@ -161,19 +186,23 @@ final class CorrectionEngine {
         Log.app.info(
             """
             Correcting in \(bundleID ?? "unknown", privacy: .public), \
-            languages=\(settings.languages.filter(\.value.isEnabled).keys.map(\.rawValue).sorted().joined(separator: ","), privacy: .public) \
-            fullStops=\(settings.sentenceEndingsOverride.map(String.init) ?? "default", privacy: .public)
+            languages=\(settings.languages.filter(\.value.isEnabled).keys.map(\.rawValue).sorted().joined(separator: ","), privacy: .public)
             """
         )
         let work = Task { try await corrector.corrections(for: text, settings: settings) }
 
-        escape.onPress = {
+        escape.onPress = { [weak self] in
             Log.app.info("Cancelled by Escape")
+            self?.wasCancelled = true
             work.cancel()
         }
         escape.start(preferences.cancelKey)
-        defer { escape.stop() }
 
+        /**
+         Deliberately not released here. `run` holds it for the whole pass, so
+         the promise that Escape means "nothing will be written" covers the
+         write itself and not just the thinking.
+         */
         let result = try await work.value
 
         /**
@@ -222,16 +251,24 @@ final class CorrectionEngine {
 
     /** Puts the caret back within a character or two of where the user left it. */
     private func restoreCaret(for target: TextTarget, after edits: [FieldEdit], corrected: String) {
-        guard let caret = target.caret else {
-            /** The user had text selected, so leave them at the end of it. */
-            TextWriter.restoreCaret(
-                to: target.range.location + corrected.utf16.count,
-                in: target.element
-            )
+        if let caret = target.caret {
+            TextWriter.restoreCaret(to: edits.caretPosition(from: caret), in: target.element)
             return
         }
 
-        TextWriter.restoreCaret(to: edits.caretPosition(from: caret), in: target.element)
+        /**
+         Only where the user really had a selection. A field that reports no
+         selection at all arrives here too, and putting the caret at the end of
+         the text then does the very thing this exists to avoid: it flings the
+         insertion point to the end of the message, and creates a caret in a
+         field that never claimed to have one.
+         */
+        guard target.isUserSelection else { return }
+
+        TextWriter.restoreCaret(
+            to: target.range.location + corrected.utf16.count,
+            in: target.element
+        )
     }
 
     /**
@@ -240,7 +277,7 @@ final class CorrectionEngine {
      Reads what the field holds now rather than assuming the correction landed
      as intended, so a write that stopped partway can still be taken back.
      */
-    private func recordForRevert(target: TextTarget) {
+    private func recordForRevert(target: TextTarget, editCount: Int) {
         guard
             let after = target.element.string(kAXValueAttribute),
             after != target.text
@@ -252,6 +289,18 @@ final class CorrectionEngine {
 
         lastFix = Fix(element: target.element, before: target.text, after: after)
         canRevert = true
+
+        /**
+         Kept beyond the single undo above, since a correction is often noticed
+         to be wrong several messages later, by which time the one-step revert
+         has been spent on something else.
+         */
+        history.record(
+            before: target.text,
+            after: after,
+            bundleID: target.bundleID,
+            editCount: editCount
+        )
     }
 
     /**
@@ -288,6 +337,7 @@ final class CorrectionEngine {
             try await TextWriter.apply(
                 [FieldEdit(range: span.range, replacement: span.replacement)],
                 in: fix.element,
+                expecting: current,
                 /** The fallbacks cannot work span by span, so give them the whole value. */
                 replacing: CFRange(location: 0, length: current.utf16.count),
                 with: fix.before,
@@ -306,7 +356,8 @@ final class CorrectionEngine {
         canRevert = false
     }
 
-    private func report(_ message: String?, log: String) {
+    /** Also used by the model to surface a trigger that could not be armed. */
+    func report(_ message: String?, log: String) {
         lastMessage = message
         Log.app.info("\(log, privacy: .public)")
     }

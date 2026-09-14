@@ -15,6 +15,7 @@ final class AppModel {
     let preferences = Preferences()
     let permissions = PermissionsModel()
     let overlay = OverlayController()
+    let history = CorrectionHistory()
     let engine: CorrectionEngine
 
     /** User-initiated pause, cleared manually. */
@@ -30,9 +31,19 @@ final class AppModel {
      */
     private(set) var downloads: [LocalModel: Double] = [:]
 
-    /** The one worth showing in the menu bar, which is whichever is furthest along. */
+    /**
+     The download worth showing in the menu bar, and which model it belongs to.
+
+     Keyed, because the label used to come from whichever model was *selected*
+     rather than from the one being fetched, so a per-language download was
+     announced under the default model's name.
+     */
+    var activeDownload: (model: LocalModel, progress: Double)? {
+        downloads.max { $0.value < $1.value }.map { ($0.key, $0.value) }
+    }
+
     var downloadProgress: Double? {
-        downloads.values.max()
+        activeDownload?.progress
     }
 
     /**
@@ -48,9 +59,25 @@ final class AppModel {
     /** Set while both backends are being run over the same samples. */
     private(set) var isComparing = false
 
+    #if DEBUG
+    /** Measures whether typing is observable per app, for the always-on question. */
+    let typingObserver = TypingObserver()
+    #endif
+
+    /**
+     A model picked from the menu bar, which wins over the default until cleared.
+
+     Deliberately not written to preferences. The settings window holds the
+     lasting answer to which model corrects text, and a model reached for on one
+     awkward piece of writing should not quietly become the permanent one. A
+     relaunch clears it.
+     */
+    private(set) var modelOverride: ModelChoice?
+
     /** Set by whoever owns the window, so the model never touches AppKit itself. */
     @ObservationIgnored var onShowOnboarding: (() -> Void)?
-    @ObservationIgnored var onShowSettings: (() -> Void)?
+    @ObservationIgnored var onShowSettings: ((SettingsTab?) -> Void)?
+    @ObservationIgnored var onShowHistory: (() -> Void)?
 
     /** Correctors that exist only to fetch weights, discarded once they have. */
     @ObservationIgnored private var fetchers: [LocalModel: LocalModelCorrector] = [:]
@@ -67,9 +94,15 @@ final class AppModel {
     }
 
     var status: AppStatus {
-        if let downloadProgress { return .downloading(downloadProgress) }
+        /**
+         A missing permission comes first. A download is progress; a permission
+         the app has not been given means nothing works at all, and showing the
+         download arrow over it replaced the warning with something reassuring.
+         Pausing likewise: the menu said "Resume" while the icon said "busy".
+         */
         if !permissions.isReady { return .needsAttention }
         if isPaused { return .paused }
+        if let downloadProgress { return .downloading(downloadProgress) }
         if engine.isRunning { return .working }
         return .idle
     }
@@ -78,7 +111,8 @@ final class AppModel {
         engine = CorrectionEngine(
             corrector: FoundationModelsCorrector(),
             overlay: overlay,
-            preferences: preferences
+            preferences: preferences,
+            history: history
         )
 
         modifierTaps.onDoubleTap = { [weak self] in self?.trigger() }
@@ -89,13 +123,32 @@ final class AppModel {
 
         preferences.onTriggersChanged = { [weak self] in self?.updateTriggers() }
         preferences.onCorrectorChanged = { [weak self] in self?.rebuildCorrector() }
+        preferences.onHistoryRetentionChanged = { [weak self] in
+            guard let self else { return }
+            history.retention = preferences.historyRetention
+        }
+
+        history.retention = preferences.historyRetention
 
         updateTriggers()
         rebuildCorrector()
     }
 
+    /** What the settings window points at, ignoring any override. */
+    var defaultModel: ModelChoice {
+        switch preferences.backend {
+        case .appleOnDevice: return .appleOnDevice
+        case .local: return .local(preferences.localModel)
+        }
+    }
+
+    /** What actually corrects text right now. */
+    var activeModel: ModelChoice {
+        modelOverride ?? defaultModel
+    }
+
     /**
-     Switches which model corrects text.
+     Switches which model corrects text from now on.
 
      Selecting a downloaded model fetches it straight away rather than on the
      first correction, since choosing it is the moment the user has decided to
@@ -105,6 +158,19 @@ final class AppModel {
         preferences.backend = backend
         if let model { preferences.localModel = model }
 
+        /** A new default is a decision, so it replaces any override standing on top of it. */
+        modelOverride = nil
+
+        rebuildCorrector()
+    }
+
+    /**
+     Picks a model for now only. Nil goes back to whatever the default is.
+     */
+    func override(with choice: ModelChoice?) {
+        guard modelOverride != choice else { return }
+
+        modelOverride = choice
         rebuildCorrector()
     }
 
@@ -116,19 +182,25 @@ final class AppModel {
      explain why.
      */
     func cancelDownload() {
-        guard downloadProgress != nil else { return }
+        /**
+         Only the download the menu bar is actually showing, which is the
+         furthest along. Cancelling every fetch and resetting the backend meant
+         that starting a second model downloading from Settings, then changing
+         your mind, silently switched the app off the model you had chosen and
+         unloaded its weights, with nothing to say so.
+         */
+        guard let model = downloads.max(by: { $0.value < $1.value })?.key else { return }
 
-        if let corrector = engine.corrector as? LocalModelCorrector {
-            Task { await corrector.cancelLoading() }
+        cancelDownload(of: model)
+
+        /** Only fall back if what was cancelled is what corrections were about to use. */
+        if activeModel == .local(model) {
+            if let corrector = engine.corrector as? LocalModelCorrector {
+                Task { await corrector.cancelLoading() }
+            }
+
+            use(.appleOnDevice)
         }
-
-        for fetcher in fetchers.values {
-            Task { await fetcher.cancelLoading() }
-        }
-        fetchers.removeAll()
-
-        downloads.removeAll()
-        use(.appleOnDevice)
     }
 
     /**
@@ -142,13 +214,13 @@ final class AppModel {
     func download(_ model: LocalModel) {
         guard downloads[model] == nil, !model.isDownloaded else { return }
 
-        let corrector = LocalModelCorrector(model: model) { [weak self] progress in
+        let corrector = LocalModelCorrector(model: model) { [weak self] reported, progress in
             Task { @MainActor in
                 if let progress {
-                    self?.downloads[model] = progress
+                    self?.downloads[reported] = progress
                 } else {
-                    self?.downloads[model] = nil
-                    self?.fetchers[model] = nil
+                    self?.downloads[reported] = nil
+                    self?.fetchers[reported] = nil
                 }
             }
         }
@@ -178,15 +250,30 @@ final class AppModel {
         var trashed: NSURL?
         try FileManager.default.trashItem(at: model.cacheDirectory, resultingItemURL: &trashed)
 
-        /** Pointing at weights that are gone would fail on the next keystroke. */
-        if preferences.backend == .local, preferences.localModel == model {
-            use(.appleOnDevice)
+        /**
+         Decided once and applied once. Clearing the override, switching the
+         default and clearing each language used to fire a corrector rebuild
+         apiece, and the first of them could resolve back to the model whose
+         weights had just been trashed and start downloading it again.
+         */
+        if modelOverride == .local(model) {
+            modelOverride = nil
         }
 
-        for (language, settings) in preferences.languageSettings where settings.model == model {
-            var updated = preferences.languageSettings
-            updated[language]?.model = nil
-            preferences.languageSettings = updated
+        var languages = preferences.languageSettings
+        for (language, settings) in languages where settings.model == model {
+            languages[language]?.model = nil
+        }
+
+        if languages != preferences.languageSettings {
+            preferences.languageSettings = languages
+        }
+
+        /** Pointing at weights that are gone would fail on the next keystroke. */
+        if activeModel == .local(model) {
+            use(.appleOnDevice)
+        } else {
+            rebuildCorrector()
         }
 
         Log.app.info("Removed \(model.displayName, privacy: .public)")
@@ -216,29 +303,36 @@ final class AppModel {
         let detector = LanguageDetector(enabled: Array(preferences.enabledLanguages))
         let appliesGuardrail = preferences.isGuardrailEnabled
 
-        switch preferences.backend {
+        switch activeModel {
         case .appleOnDevice:
             engine.corrector = FoundationModelsCorrector(
                 detector: detector,
                 appliesGuardrail: appliesGuardrail
             )
-        case .local:
-            let selected = preferences.localModel
+        case .local(let selected):
             let corrector = LocalModelCorrector(
                 model: selected,
                 detector: detector,
                 appliesGuardrail: appliesGuardrail
-            ) { [weak self] progress in
+            ) { [weak self] reported, progress in
                 Task { @MainActor in
-                    self?.downloads[selected] = progress
+                    self?.downloads[reported] = progress
                 }
             }
             engine.corrector = corrector
 
             loading.insert(selected)
-            Task {
+            Task { [weak self] in
                 await corrector.prepare()
-                loading.remove(selected)
+
+                /**
+                 Only if this is still the corrector that started it. Two
+                 rebuilds for the same model meant the first `prepare` returning
+                 cleared the indicator while the second was still loading.
+                 */
+                guard self?.engine.corrector as? LocalModelCorrector === corrector else { return }
+
+                self?.loading.remove(selected)
             }
         }
 
@@ -266,8 +360,8 @@ final class AppModel {
          */
         let selected = preferences.localModel
         let existing = engine.corrector as? LocalModelCorrector
-        let local = existing ?? LocalModelCorrector(model: selected) { [weak self] progress in
-            Task { @MainActor in self?.downloads[selected] = progress }
+        let local = existing ?? LocalModelCorrector(model: selected) { [weak self] reported, progress in
+            Task { @MainActor in self?.downloads[reported] = progress }
         }
 
         await BackendComparison.run(
@@ -283,10 +377,7 @@ final class AppModel {
     }
 
     var backendDescription: String {
-        switch preferences.backend {
-        case .appleOnDevice: return CorrectorBackend.appleOnDevice.displayName
-        case .local: return preferences.localModel.displayName
-        }
+        activeModel.displayName
     }
 
     /**
@@ -327,7 +418,19 @@ final class AppModel {
         }
 
         if wanted.contains(.hotKey), !armedTriggers.contains(.hotKey) {
-            hotKey.start(preferences.hotKey)
+            /**
+             Another app may already own the combination, in which case
+             registration fails. Recording it as armed anyway made the model
+             believe a shortcut was live that did nothing, and the only trace
+             was a log line the user will never read.
+             */
+            if !hotKey.start(preferences.hotKey) {
+                wanted.remove(.hotKey)
+                engine.report(
+                    "\(preferences.hotKey.displayName) is already used by another app.",
+                    log: "Hot key registration refused"
+                )
+            }
         } else if !wanted.contains(.hotKey), armedTriggers.contains(.hotKey) {
             hotKey.stop()
         }
@@ -344,7 +447,12 @@ final class AppModel {
         onShowOnboarding?()
     }
 
-    func showSettings() {
-        onShowSettings?()
+    /** A tab may be named by whoever is sending the user to a specific setting. */
+    func showSettings(_ tab: SettingsTab? = nil) {
+        onShowSettings?(tab)
+    }
+
+    func showHistory() {
+        onShowHistory?()
     }
 }

@@ -28,6 +28,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private weak var headerItem: NSMenuItem?
     private weak var stopDownloadItem: NSMenuItem?
 
+    private let messages = MessagePanel()
+
     init(model: AppModel) {
         self.model = model
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -42,6 +44,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         updateIcon()
         observeStatus()
+        observeMessages()
     }
 
     private func updateIcon() {
@@ -81,7 +84,34 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
     }
 
+    /**
+     Puts anything the engine has to say under the icon.
+
+     The menu header carries the same words, but nobody opens a menu to find out
+     whether the thing they just triggered worked. Without this, a correction
+     that could not be written was indistinguishable from one that changed
+     nothing, and both looked like the app doing nothing at all.
+     */
+    private func observeMessages() {
+        withObservationTracking {
+            _ = model.engine.lastMessage
+        } onChange: {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+
+                if let message = model.engine.lastMessage, let button = statusItem.button {
+                    messages.show(message, under: button)
+                }
+
+                observeMessages()
+            }
+        }
+    }
+
     func menuNeedsUpdate(_ menu: NSMenu) {
+        /** Opening the menu answers the same question, at more length. */
+        messages.hide()
+
         menu.removeAllItems()
 
         let header = NSMenuItem(title: headerTitle, action: nil, keyEquivalent: "")
@@ -106,15 +136,25 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             to: menu,
             title: "Fix Now",
             keyEquivalent: "f",
-            isEnabled: model.permissions.isReady && !model.engine.isRunning,
+            isEnabled: model.permissions.isReady && !model.isPaused && !model.engine.isRunning,
             action: #selector(fixNow)
         )
         add(
             to: menu,
-            title: "Revert Last Fix",
+            title: "Undo",
             keyEquivalent: "z",
             isEnabled: model.engine.canRevert,
             action: #selector(revertLast)
+        )
+        /**
+         Beside the single undo rather than down with settings, since the two are
+         reached for in the same moment and for the same reason.
+         */
+        add(
+            to: menu,
+            title: "History…",
+            keyEquivalent: "y",
+            action: #selector(showHistory)
         )
 
         menu.addItem(.separator())
@@ -129,21 +169,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
-        let engineItem = NSMenuItem(title: "Correction Model", action: nil, keyEquivalent: "")
-        engineItem.submenu = engineMenu()
-        menu.addItem(engineItem)
-
-        let guardrail = NSMenuItem(
-            title: "Only Fix, Never Rewrite",
-            action: #selector(toggleGuardrail),
-            keyEquivalent: ""
-        )
-        guardrail.target = self
-        guardrail.state = model.preferences.isGuardrailEnabled ? .on : .off
-        guardrail.toolTip = model.preferences.isGuardrailEnabled
-            ? "Changes that are not spelling, punctuation, capitalisation or spacing are discarded."
-            : "Off: whatever the model returns is applied, including rewritten or translated text."
-        menu.addItem(guardrail)
+        let modelsItem = NSMenuItem(title: "Models", action: nil, keyEquivalent: "")
+        modelsItem.submenu = modelsMenu()
+        menu.addItem(modelsItem)
 
         menu.addItem(.separator())
 
@@ -151,6 +179,24 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         add(to: menu, title: "Set Up Spellbee…", keyEquivalent: "", action: #selector(showOnboarding))
 
         #if DEBUG
+        let observing = NSMenuItem(
+            title: model.typingObserver.isRunning
+                ? "Debug: Stop Observing Typing"
+                : "Debug: Observe Typing",
+            action: #selector(toggleTypingObservation),
+            keyEquivalent: ""
+        )
+        observing.target = self
+        observing.state = model.typingObserver.isRunning ? .on : .off
+        menu.addItem(observing)
+
+        add(
+            to: menu,
+            title: "Debug: Report Typing Observations",
+            keyEquivalent: "",
+            action: #selector(reportTypingObservations)
+        )
+
         add(to: menu, title: "Debug: Flash Overlay", keyEquivalent: "", action: #selector(flashOverlay))
         add(
             to: menu,
@@ -176,47 +222,59 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         /** Same wording as the badge, so the two never disagree. */
         let amount = AppStatus.percentage(progress) ?? "starting…"
-        return "Downloading \(model.preferences.localModel.displayName) — \(amount)"
+        let name = model.activeDownload?.model.displayName ?? model.preferences.localModel.displayName
+
+        return "Downloading \(name) — \(amount)"
     }
 
     /**
-     Lets the two backends be compared without a rebuild.
+     Lets a different model be tried without leaving the keyboard.
+
+     Picking one here overrides the default rather than replacing it, so the
+     first entry names the default and is what the menu returns to. Without it
+     there is no way back short of opening settings, and no way to tell that the
+     other entries are temporary at all.
 
      Apple's model is always present; the others are fetched on first use, so
      each says what it will cost before it is picked.
      */
-    private func engineMenu() -> NSMenu {
+    private func modelsMenu() -> NSMenu {
         let menu = NSMenu()
+        /** Same reason as the root menu: AppKit otherwise overrides `isEnabled`. */
+        menu.autoenablesItems = false
 
-        let apple = NSMenuItem(
-            title: CorrectorBackend.appleOnDevice.displayName,
-            action: #selector(useAppleModel),
+        let useDefault = NSMenuItem(
+            title: "Use Default Model (\(model.defaultModel.displayName))",
+            action: #selector(useDefaultModel),
             keyEquivalent: ""
         )
-        apple.target = self
-        apple.state = model.preferences.backend == .appleOnDevice ? .on : .off
-        menu.addItem(apple)
+        useDefault.target = self
+        useDefault.state = model.modelOverride == nil ? .on : .off
+        menu.addItem(useDefault)
 
         menu.addItem(.separator())
 
+        add(to: menu, override: .appleOnDevice, title: CorrectorBackend.appleOnDevice.displayName)
+
         for local in LocalModel.allCases {
-            let isSelected = model.preferences.backend == .local && model.preferences.localModel == local
-            let suffix = isSelected && model.downloadProgress != nil
+            /** What it costs, unless it is being paid for right now. */
+            let suffix = model.activeDownload?.model == local
                 ? " — downloading"
                 : " (\(local.approximateSize))"
 
-            let item = NSMenuItem(
-                title: "\(local.displayName)\(suffix)",
-                action: #selector(useLocalModel(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = local.rawValue
-            item.state = isSelected ? .on : .off
-            menu.addItem(item)
+            add(to: menu, override: .local(local), title: "\(local.displayName)\(suffix)")
         }
 
         return menu
+    }
+
+    private func add(to menu: NSMenu, override choice: ModelChoice, title: String) {
+        let item = NSMenuItem(title: title, action: #selector(overrideModel(_:)), keyEquivalent: "")
+        item.target = self
+        item.representedObject = choice
+        /** Ticked only when overriding, so exactly one row in the submenu ever is. */
+        item.state = model.modelOverride == choice ? .on : .off
+        menu.addItem(item)
     }
 
     private func add(
@@ -240,26 +298,17 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         Task { await model.engine.revertLast() }
     }
 
-    @objc private func toggleGuardrail() {
-        model.preferences.isGuardrailEnabled.toggle()
-    }
-
     @objc private func cancelDownload() {
         model.cancelDownload()
     }
 
-    @objc private func useAppleModel() {
-        model.use(.appleOnDevice)
+    @objc private func useDefaultModel() {
+        model.override(with: nil)
     }
 
-    @objc private func useLocalModel(_ sender: NSMenuItem) {
-        guard
-            let raw = sender.representedObject as? String,
-            let choice = LocalModel(rawValue: raw)
-        else {
-            return
-        }
-        model.use(.local, model: choice)
+    @objc private func overrideModel(_ sender: NSMenuItem) {
+        guard let choice = sender.representedObject as? ModelChoice else { return }
+        model.override(with: choice)
     }
 
     @objc private func togglePause() {
@@ -268,6 +317,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func showSettings() {
         model.showSettings()
+    }
+
+    @objc private func showHistory() {
+        model.showHistory()
     }
 
     @objc private func showOnboarding() {
@@ -279,6 +332,36 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     #if DEBUG
+    @objc private func toggleTypingObservation() {
+        let observer = model.typingObserver
+        observer.isRunning ? observer.stop() : observer.start()
+    }
+
+    /**
+     Shown rather than logged, since the whole point is to read the table and
+     decide something. It is also written to the log, so a long run can be
+     recovered after the window is gone.
+     */
+    @objc private func reportTypingObservations() {
+        let report = model.typingObserver.report()
+        Log.app.info("Typing observations:\n\(report, privacy: .public)")
+
+        /** Monospaced, or the columns do not line up and the table is unreadable. */
+        let table = NSTextField(labelWithString: report)
+        table.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        table.sizeToFit()
+
+        let alert = NSAlert()
+        alert.messageText = "Typing observations"
+        alert.accessoryView = table
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "Reset")
+
+        if alert.runModal() == .alertSecondButtonReturn {
+            model.typingObserver.reset()
+        }
+    }
+
     @objc private func compareModels() {
         Task { await model.compareBackends() }
     }
