@@ -8,9 +8,18 @@ import Foundation
  deliberately lowercase, an identifier in code is spelled the way the code
  spells it. Correcting any of those breaks something.
 
- These are found in the original text and used to veto edits that overlap them,
- rather than being hidden from the model. Text with holes punched in it reads as
- broken to the model, which makes its other corrections worse.
+ These are used twice over. `MaskedText` swaps them for markers before the model
+ is asked, and the guardrail vetoes any edit that lands in one afterwards. The
+ second is not made redundant by the first: a model can still move the text
+ around a marker, and a span that straddles a chunk boundary is only partly
+ hidden.
+
+ Hiding them was once argued against here, on the grounds that text with holes
+ punched in it reads as broken to a model and makes its other corrections worse.
+ That turned out to be false, and expensively so. Measured on Apple's on-device
+ model, a German line whose only fault was one misspelt word was corrected in
+ none of six attempts with the link left in and in all six with the link
+ masked. The link was not merely surviving the pass, it was costing the pass.
  */
 enum ProtectedSpans {
     /// Handles, hashtags, fenced and inline code, and anything with a scheme.
@@ -20,7 +29,12 @@ enum ProtectedSpans {
         #"(?<![\w])[@#][\w.-]+"#,
         #"[a-zA-Z][a-zA-Z0-9+.-]*://\S+"#,
         #"\S+@\S+\.\S+"#,
-        #":[a-z0-9_+-]+:"#,
+        /**
+         An emoji shortcode. The body must contain a letter and must not be
+         flanked by digits, or `10:30:45` protects `:30:` and the whole chunk is
+         then thrown away for an edit that never touched anything.
+         */
+        #"(?<![0-9]):[a-z0-9_+-]*[a-z][a-z0-9_+-]*:(?![0-9])"#,
     ]
 
     static func find(in text: String) -> [Range<String.Index>] {
