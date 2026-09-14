@@ -5,319 +5,833 @@
       "id": "de-neg-01",
       "input": "Ich habe die Rechnung heute Morgen weitergeleitet.",
       "expected": "Ich habe die Rechnung heute Morgen weitergeleitet.",
-      "tags": ["negative"]
+      "tags": [
+        "negative"
+      ]
     },
     {
       "id": "de-neg-02",
       "input": "Passt dir Dienstag um 10 Uhr?",
       "expected": "Passt dir Dienstag um 10 Uhr?",
-      "tags": ["negative"]
+      "tags": [
+        "negative"
+      ]
     },
     {
       "id": "de-neg-03",
       "input": "Klingt gut",
       "expected": "Klingt gut",
-      "tags": ["negative", "fragment"]
+      "tags": [
+        "negative",
+        "fragment"
+      ]
     },
     {
       "id": "de-neg-04",
       "input": "Danke für die schnelle Rückmeldung.",
       "expected": "Danke für die schnelle Rückmeldung.",
-      "tags": ["negative", "umlaut"]
+      "tags": [
+        "negative",
+        "umlaut"
+      ]
     },
     {
       "id": "de-neg-05",
       "input": "Ich bin gleich in einem Termin, melde mich danach.",
       "expected": "Ich bin gleich in einem Termin, melde mich danach.",
-      "tags": ["negative"]
+      "tags": [
+        "negative"
+      ]
     },
     {
       "id": "de-neg-06",
       "input": "Hallo Anna,\n\nanbei findest du den überarbeiteten Vertrag. Sag Bescheid, wenn noch etwas fehlt.\n\nViele Grüße\nChris",
       "expected": "Hallo Anna,\n\nanbei findest du den überarbeiteten Vertrag. Sag Bescheid, wenn noch etwas fehlt.\n\nViele Grüße\nChris",
-      "tags": ["negative", "email", "multiline", "umlaut"]
+      "tags": [
+        "negative",
+        "email",
+        "multiline",
+        "umlaut"
+      ]
     },
     {
       "id": "de-neg-07",
       "input": "Der Build läuft wieder, das war ein Fehler in der Konfiguration.",
       "expected": "Der Build läuft wieder, das war ein Fehler in der Konfiguration.",
-      "tags": ["negative", "umlaut"]
+      "tags": [
+        "negative",
+        "umlaut"
+      ]
     },
     {
       "id": "de-neg-08",
       "input": "Wir treffen uns um 14:30 im großen Besprechungsraum.",
       "expected": "Wir treffen uns um 14:30 im großen Besprechungsraum.",
-      "tags": ["negative", "eszett", "numbers"]
+      "tags": [
+        "negative",
+        "eszett",
+        "numbers"
+      ]
     },
     {
       "id": "de-neg-09",
       "input": "Sieh dir https://example.com/Doku/Anleitung an, da steht alles drin.",
       "expected": "Sieh dir https://example.com/Doku/Anleitung an, da steht alles drin.",
-      "tags": ["negative", "url"]
+      "tags": [
+        "negative",
+        "url"
+      ]
     },
     {
       "id": "de-neg-10",
       "input": "Frag bitte @chris.cook, der hat die Zugangsdaten.",
       "expected": "Frag bitte @chris.cook, der hat die Zugangsdaten.",
-      "tags": ["negative", "mention"]
+      "tags": [
+        "negative",
+        "mention"
+      ]
     },
     {
       "id": "de-neg-11",
       "input": "Führe zuerst `pnpm install` aus, danach `pnpm build`.",
       "expected": "Führe zuerst `pnpm install` aus, danach `pnpm build`.",
-      "tags": ["negative", "code"]
+      "tags": [
+        "negative",
+        "code"
+      ]
     },
     {
       "id": "de-neg-12",
       "input": "Super, dann machen wir das so 👍",
       "expected": "Super, dann machen wir das so 👍",
-      "tags": ["negative", "emoji"]
+      "tags": [
+        "negative",
+        "emoji"
+      ]
     },
     {
       "id": "de-neg-13",
       "input": "Kein Problem, lass dir Zeit.",
       "expected": "Kein Problem, lass dir Zeit.",
-      "tags": ["negative"]
+      "tags": [
+        "negative"
+      ]
     },
     {
       "id": "de-uml-01",
       "input": "wir treffen uns morgen im buero",
       "expected": "Wir treffen uns morgen im Büro",
-      "tags": ["umlaut", "casing", "noun-capitalisation"]
+      "tags": [
+        "umlaut",
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-uml-02",
       "input": "koenntest du das bitte nochmal pruefen",
       "expected": "Könntest du das bitte nochmal prüfen",
-      "tags": ["umlaut", "casing"]
+      "tags": [
+        "umlaut",
+        "casing"
+      ]
     },
     {
       "id": "de-uml-03",
       "input": "das war eine grosse hilfe, vielen dank",
       "expected": "Das war eine große Hilfe, vielen Dank",
-      "tags": ["eszett", "casing", "noun-capitalisation"]
+      "tags": [
+        "eszett",
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-uml-04",
       "input": "ich schicke dir die unterlagen spaeter per mail",
       "expected": "Ich schicke dir die Unterlagen später per Mail",
-      "tags": ["umlaut", "casing", "noun-capitalisation"]
+      "tags": [
+        "umlaut",
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-uml-05",
       "input": "die aenderungen sind schon draussen",
       "expected": "Die Änderungen sind schon draußen",
-      "tags": ["umlaut", "eszett", "casing", "noun-capitalisation"]
+      "tags": [
+        "umlaut",
+        "eszett",
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-uml-06",
       "input": "gruesse aus muenchen",
       "expected": "Grüße aus München",
-      "tags": ["umlaut", "eszett", "casing", "proper-nouns"]
+      "tags": [
+        "umlaut",
+        "eszett",
+        "casing",
+        "proper-nouns"
+      ]
     },
     {
       "id": "de-uml-07",
       "input": "kannst du das bitte fuer mich uebernehmen",
       "expected": "Kannst du das bitte für mich übernehmen",
-      "tags": ["umlaut", "casing"]
+      "tags": [
+        "umlaut",
+        "casing"
+      ]
     },
     {
       "id": "de-uml-08",
       "input": "wir muessen die groesse nochmal anpassen",
       "expected": "Wir müssen die Größe nochmal anpassen",
-      "tags": ["umlaut", "eszett", "casing", "noun-capitalisation"]
+      "tags": [
+        "umlaut",
+        "eszett",
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-cap-01",
       "input": "ich schicke dir den vertrag heute noch.",
       "expected": "Ich schicke dir den Vertrag heute noch.",
-      "tags": ["casing", "noun-capitalisation"]
+      "tags": [
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-cap-02",
       "input": "die rechnung liegt beim kunden zur freigabe.",
       "expected": "Die Rechnung liegt beim Kunden zur Freigabe.",
-      "tags": ["casing", "noun-capitalisation"]
+      "tags": [
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-cap-03",
       "input": "das treffen mit dem team ist auf freitag verschoben.",
       "expected": "Das Treffen mit dem Team ist auf Freitag verschoben.",
-      "tags": ["casing", "noun-capitalisation"]
+      "tags": [
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-cap-04",
       "input": "hast du die zahlen für das quartal schon?",
       "expected": "Hast du die Zahlen für das Quartal schon?",
-      "tags": ["casing", "noun-capitalisation"]
+      "tags": [
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-cap-05",
       "input": "wir gehen nach der arbeit noch ins kino.",
       "expected": "Wir gehen nach der Arbeit noch ins Kino.",
-      "tags": ["casing", "noun-capitalisation"]
+      "tags": [
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-cap-06",
       "input": "der server ist seit gestern wieder stabil.",
       "expected": "Der Server ist seit gestern wieder stabil.",
-      "tags": ["casing", "noun-capitalisation"]
+      "tags": [
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-cap-07",
       "input": "ich brauche noch eine unterschrift von dir.",
       "expected": "Ich brauche noch eine Unterschrift von dir.",
-      "tags": ["casing", "noun-capitalisation"]
+      "tags": [
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-komma-01",
       "input": "Ich glaube dass wir das schaffen.",
       "expected": "Ich glaube, dass wir das schaffen.",
-      "tags": ["comma", "subordinate-clause"]
+      "tags": [
+        "comma",
+        "subordinate-clause"
+      ]
     },
     {
       "id": "de-komma-02",
       "input": "Sag mir bitte Bescheid ob du kommst.",
       "expected": "Sag mir bitte Bescheid, ob du kommst.",
-      "tags": ["comma", "subordinate-clause"]
+      "tags": [
+        "comma",
+        "subordinate-clause"
+      ]
     },
     {
       "id": "de-komma-03",
       "input": "Wir verschieben den Termin weil Anna krank ist.",
       "expected": "Wir verschieben den Termin, weil Anna krank ist.",
-      "tags": ["comma", "subordinate-clause"]
+      "tags": [
+        "comma",
+        "subordinate-clause"
+      ]
     },
     {
       "id": "de-komma-04",
       "input": "Melde dich wenn du den Vertrag hast.",
       "expected": "Melde dich, wenn du den Vertrag hast.",
-      "tags": ["comma", "subordinate-clause"]
+      "tags": [
+        "comma",
+        "subordinate-clause"
+      ]
     },
     {
       "id": "de-komma-05",
       "input": "Das ist der Kollege der die Migration gemacht hat.",
       "expected": "Das ist der Kollege, der die Migration gemacht hat.",
-      "tags": ["comma", "subordinate-clause"]
+      "tags": [
+        "comma",
+        "subordinate-clause"
+      ]
     },
     {
       "id": "de-komma-06",
       "input": "ich hoffe dass das so passt und melde mich morgen",
       "expected": "Ich hoffe, dass das so passt und melde mich morgen",
-      "tags": ["comma", "subordinate-clause", "casing"]
+      "tags": [
+        "comma",
+        "subordinate-clause",
+        "casing"
+      ]
     },
     {
       "id": "de-komma-07",
       "input": "Kannst du mir sagen wann der Termin ist?",
       "expected": "Kannst du mir sagen, wann der Termin ist?",
-      "tags": ["comma", "subordinate-clause"]
+      "tags": [
+        "comma",
+        "subordinate-clause"
+      ]
     },
     {
       "id": "de-komma-08",
       "input": "Ich weiss nicht ob das heute noch klappt.",
       "expected": "Ich weiß nicht, ob das heute noch klappt.",
-      "tags": ["comma", "subordinate-clause", "eszett"]
+      "tags": [
+        "comma",
+        "subordinate-clause",
+        "eszett"
+      ]
     },
     {
       "id": "de-spell-01",
       "input": "das ist ein guter vorschlag , ich stimme zu .",
       "expected": "Das ist ein guter Vorschlag, ich stimme zu.",
-      "tags": ["spacing", "casing", "noun-capitalisation"]
+      "tags": [
+        "spacing",
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-spell-02",
       "input": "sorry für die verspätung,ich war im stau",
       "expected": "Sorry für die Verspätung, ich war im Stau",
-      "tags": ["spacing", "casing", "noun-capitalisation"]
+      "tags": [
+        "spacing",
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-spell-03",
       "input": "ich habe die datei  zweimal hochgeladen",
       "expected": "Ich habe die Datei zweimal hochgeladen",
-      "tags": ["spacing", "casing", "noun-capitalisation"]
+      "tags": [
+        "spacing",
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-spell-04",
       "input": "vielen dank!ich schaue es mir gleich an",
       "expected": "Vielen Dank! Ich schaue es mir gleich an",
-      "tags": ["spacing", "casing", "noun-capitalisation"]
+      "tags": [
+        "spacing",
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-spell-05",
       "input": "der termin am mitwoch passt mir leider nicht",
       "expected": "Der Termin am Mittwoch passt mir leider nicht",
-      "tags": ["spelling", "casing", "noun-capitalisation"]
+      "tags": [
+        "spelling",
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-spell-06",
       "input": "ich kan das heute nicht mehr schaffen, tut mir leid",
       "expected": "Ich kann das heute nicht mehr schaffen, tut mir leid",
-      "tags": ["spelling", "casing"]
+      "tags": [
+        "spelling",
+        "casing"
+      ]
     },
     {
       "id": "de-spell-07",
       "input": "die presentation ist fertig, ich lade sie gleich hoch",
       "expected": "Die Präsentation ist fertig, ich lade sie gleich hoch",
-      "tags": ["spelling", "umlaut", "casing", "noun-capitalisation"]
+      "tags": [
+        "spelling",
+        "umlaut",
+        "casing",
+        "noun-capitalisation"
+      ]
     },
     {
       "id": "de-prot-01",
       "input": "die funktion `getKundeById` liefert manchmal null zurueck",
       "expected": "Die Funktion `getKundeById` liefert manchmal null zurück",
-      "tags": ["umlaut", "casing", "code", "protected"]
+      "tags": [
+        "umlaut",
+        "casing",
+        "code",
+        "protected"
+      ]
     },
     {
       "id": "de-prot-02",
       "input": "schick es an Chris@Flyweight.io und ich melde mich dann",
       "expected": "Schick es an Chris@Flyweight.io und ich melde mich dann",
-      "tags": ["casing", "email", "protected"]
+      "tags": [
+        "casing",
+        "email",
+        "protected"
+      ]
     },
     {
       "id": "de-prot-03",
       "input": "siehe #allgemein für die ankuendigung",
       "expected": "Siehe #allgemein für die Ankündigung",
-      "tags": ["umlaut", "casing", "channel", "protected"]
+      "tags": [
+        "umlaut",
+        "casing",
+        "channel",
+        "protected"
+      ]
     },
     {
       "id": "de-prot-04",
       "input": "wir nutzen hier npm und eslint, nicht yarn",
       "expected": "Wir nutzen hier npm und eslint, nicht yarn",
-      "tags": ["casing", "product-names", "protected"]
+      "tags": [
+        "casing",
+        "product-names",
+        "protected"
+      ]
     },
     {
       "id": "de-multi-01",
       "input": "hallo anna\n\nvielen dank fuer das gespraech gestern. ich habe die punkte zusammengefasst und schicke sie dir morgen. sag bescheid wenn noch etwas fehlt\n\nviele gruesse\nchris",
       "expected": "Hallo Anna\n\nVielen Dank für das Gespräch gestern. Ich habe die Punkte zusammengefasst und schicke sie dir morgen. Sag Bescheid, wenn noch etwas fehlt\n\nViele Grüße\nChris",
-      "tags": ["umlaut", "casing", "comma", "email", "multiline", "multi-error"]
+      "tags": [
+        "umlaut",
+        "casing",
+        "comma",
+        "email",
+        "multiline",
+        "multi-error"
+      ]
     },
     {
       "id": "de-multi-02",
       "input": "kurzes update: die migration lief ueber nacht durch. wir haben zwei zeilen verloren die ich von hand wiederhergestellt habe. von deiner seite ist nichts zu tun",
       "expected": "Kurzes Update: Die Migration lief über Nacht durch. Wir haben zwei Zeilen verloren, die ich von Hand wiederhergestellt habe. Von deiner Seite ist nichts zu tun",
-      "tags": ["umlaut", "casing", "comma", "noun-capitalisation", "multi-error"]
+      "tags": [
+        "umlaut",
+        "casing",
+        "comma",
+        "noun-capitalisation",
+        "multi-error"
+      ]
     },
     {
       "id": "de-multi-03",
       "input": "koennen wir den call auf 15 uhr schieben? ich habe um 14 uhr noch einen termin und moechte das nicht hetzen",
       "expected": "Können wir den Call auf 15 Uhr schieben? Ich habe um 14 Uhr noch einen Termin und möchte das nicht hetzen",
-      "tags": ["umlaut", "casing", "noun-capitalisation", "multi-error"]
+      "tags": [
+        "umlaut",
+        "casing",
+        "noun-capitalisation",
+        "multi-error"
+      ]
     },
     {
       "id": "de-multi-04",
       "input": "der build faellt seit gestern auf main durch. ich glaube es liegt an der node version, sicher bin ich mir aber nicht. @sarah hast du kurz zeit?",
       "expected": "Der Build fällt seit gestern auf main durch. Ich glaube, es liegt an der Node Version, sicher bin ich mir aber nicht. @sarah hast du kurz Zeit?",
-      "tags": ["umlaut", "casing", "comma", "mention", "protected", "multi-error"]
+      "tags": [
+        "umlaut",
+        "casing",
+        "comma",
+        "mention",
+        "protected",
+        "multi-error"
+      ]
     },
     {
       "id": "de-mixed-01",
       "input": "kurzes update: the deploy ging durch, alles gruen",
       "expected": "Kurzes Update: the deploy ging durch, alles grün",
-      "tags": ["mixed", "umlaut", "casing"]
+      "tags": [
+        "mixed",
+        "umlaut",
+        "casing"
+      ]
     },
     {
       "id": "de-mixed-02",
       "input": "hi chris, kurze frage: is the invoice already paid? danke!",
       "expected": "Hi Chris, kurze Frage: is the invoice already paid? Danke!",
-      "tags": ["mixed", "casing"]
+      "tags": [
+        "mixed",
+        "casing"
+      ]
+    },
+    {
+      "id": "de-long-01",
+      "tags": [
+        "long",
+        "multi-error",
+        "casing",
+        "noun-capitalisation",
+        "umlaut",
+        "comma"
+      ],
+      "input": "hallo anna, danke fuer die schnelle rueckmeldung. ich habe die unterlagen heute morgen durchgesehen und finde sie soweit vollstaendig. bei der aufstellung auf seite zwei bin ich mir allerdings nicht sicher, ob die zahlen noch aktuell sind. koenntest du das bitte nochmal pruefen? es eilt nicht, montag reicht voellig.",
+      "expected": "Hallo Anna, danke für die schnelle Rückmeldung. Ich habe die Unterlagen heute Morgen durchgesehen und finde sie soweit vollständig. Bei der Aufstellung auf Seite zwei bin ich mir allerdings nicht sicher, ob die Zahlen noch aktuell sind. Könntest du das bitte nochmal prüfen? Es eilt nicht, Montag reicht völlig."
+    },
+    {
+      "id": "de-long-02",
+      "tags": [
+        "long",
+        "multi-error",
+        "casing",
+        "noun-capitalisation",
+        "umlaut",
+        "subordinate-clause"
+      ],
+      "input": "kurzes update zur migration. der erste teil ist freitag durchgelaufen und hat sauber funktioniert, in den logs war nichts auffaelliges. der zweite teil ist groesser, deshalb lasse ich ihn ueber nacht laufen. wenn das genauso glatt geht sind wir mittwoch fertig. ich schicke danach eine zusammenfassung rum.",
+      "expected": "Kurzes Update zur Migration. Der erste Teil ist Freitag durchgelaufen und hat sauber funktioniert, in den Logs war nichts Auffälliges. Der zweite Teil ist größer, deshalb lasse ich ihn über Nacht laufen. Wenn das genauso glatt geht, sind wir Mittwoch fertig. Ich schicke danach eine Zusammenfassung rum."
+    },
+    {
+      "id": "de-long-03",
+      "tags": [
+        "long",
+        "negative"
+      ],
+      "input": "Danke für die ausführliche Zusammenfassung. Ich habe sie zweimal gelesen und halte den Ansatz für richtig. Der einzige Punkt, bei dem ich zögere, ist die Caching-Schicht, vor allem weil sie ein weiteres Teil bringt, das wir dann pflegen müssen. Wir können gern telefonieren, wenn das einfacher ist als hin und her zu schreiben.",
+      "expected": "Danke für die ausführliche Zusammenfassung. Ich habe sie zweimal gelesen und halte den Ansatz für richtig. Der einzige Punkt, bei dem ich zögere, ist die Caching-Schicht, vor allem weil sie ein weiteres Teil bringt, das wir dann pflegen müssen. Wir können gern telefonieren, wenn das einfacher ist als hin und her zu schreiben."
+    },
+    {
+      "id": "de-num-01",
+      "tags": [
+        "numbers",
+        "casing",
+        "noun-capitalisation",
+        "umlaut"
+      ],
+      "input": "die rechnung ist ueber 1.500 euro und faellig am 15.",
+      "expected": "Die Rechnung ist über 1.500 Euro und fällig am 15."
+    },
+    {
+      "id": "de-num-02",
+      "tags": [
+        "numbers",
+        "casing",
+        "noun-capitalisation"
+      ],
+      "input": "wir treffen uns um 10:30 uhr im grossen raum",
+      "expected": "Wir treffen uns um 10:30 Uhr im großen Raum"
+    },
+    {
+      "id": "de-num-03",
+      "tags": [
+        "numbers",
+        "negative"
+      ],
+      "input": "Version 2.1.4 ist gestern um 16:45 rausgegangen",
+      "expected": "Version 2.1.4 ist gestern um 16:45 rausgegangen"
+    },
+    {
+      "id": "de-punc-01",
+      "tags": [
+        "punctuation",
+        "casing",
+        "umlaut"
+      ],
+      "input": "hast du die mail von gestern schon gesehen?",
+      "expected": "Hast du die Mail von gestern schon gesehen?"
+    },
+    {
+      "id": "de-punc-02",
+      "tags": [
+        "punctuation",
+        "negative"
+      ],
+      "input": "Ist das noch so geplant?",
+      "expected": "Ist das noch so geplant?"
+    },
+    {
+      "id": "de-line-01",
+      "tags": [
+        "multiline",
+        "casing",
+        "noun-capitalisation",
+        "comma"
+      ],
+      "input": "hallo zusammen\nder deploy ist durch\nsagt bescheid wenn was komisch aussieht",
+      "expected": "Hallo zusammen\nDer Deploy ist durch\nSagt Bescheid, wenn was komisch aussieht"
+    },
+    {
+      "id": "de-line-02",
+      "tags": [
+        "multiline",
+        "casing",
+        "noun-capitalisation",
+        "umlaut"
+      ],
+      "input": "agenda fuer morgen\n- backlog durchgehen\n- termin fuer das release festlegen\n- sonstiges",
+      "expected": "Agenda für morgen\n- Backlog durchgehen\n- Termin für das Release festlegen\n- Sonstiges"
+    },
+    {
+      "id": "de-line-03",
+      "tags": [
+        "multiline",
+        "negative"
+      ],
+      "input": "Morgen\nBei mir ist alles grün\nDas Review mache ich nach dem Mittag",
+      "expected": "Morgen\nBei mir ist alles grün\nDas Review mache ich nach dem Mittag"
+    },
+    {
+      "id": "de-mixed-03",
+      "tags": [
+        "mixed",
+        "casing",
+        "noun-capitalisation"
+      ],
+      "input": "danke fuer das update, i will take a look tomorrow",
+      "expected": "Danke für das Update, i will take a look tomorrow"
+    },
+    {
+      "id": "de-mixed-04",
+      "tags": [
+        "mixed",
+        "long",
+        "casing",
+        "noun-capitalisation"
+      ],
+      "input": "kurz vor dem wochenende noch. die zahlen sehen fuer mich gut aus, but i do not understand the table on page two. koennen wir das montag durchgehen?",
+      "expected": "Kurz vor dem Wochenende noch. Die Zahlen sehen für mich gut aus, but i do not understand the table on page two. Können wir das Montag durchgehen?"
+    },
+    {
+      "id": "de-prot-06",
+      "tags": [
+        "protected",
+        "code",
+        "casing",
+        "noun-capitalisation"
+      ],
+      "input": "schau dir `foo bar` an bevor du mergest",
+      "expected": "Schau dir `foo bar` an, bevor du mergest"
+    },
+    {
+      "id": "de-prot-07",
+      "tags": [
+        "protected",
+        "url",
+        "casing"
+      ],
+      "input": "die doku liegt unter https://example.com/a_b_c",
+      "expected": "Die Doku liegt unter https://example.com/a_b_c"
+    },
+    {
+      "id": "de-prot-08",
+      "tags": [
+        "protected",
+        "mention",
+        "channel",
+        "casing"
+      ],
+      "input": "ich habe @anna in #build-alerts angepingt",
+      "expected": "Ich habe @anna in #build-alerts angepingt"
+    },
+    {
+      "id": "de-emoji-02",
+      "tags": [
+        "emoji",
+        "casing"
+      ],
+      "input": "danke 👍 das passt so",
+      "expected": "Danke 👍 das passt so"
+    },
+    {
+      "id": "de-runon-01",
+      "tags": [
+        "run-on",
+        "long",
+        "casing",
+        "noun-capitalisation",
+        "umlaut"
+      ],
+      "input": "also so wie ich das sehe koennen wir entweder den termin eine woche nach hinten schieben dann haben wir zeit die migration sauber fertig zu machen oder wir liefern das was wir haben und raeumen den rest danach auf aber dann faengt sich die bereitschaft am wochenende alles ein was kaputt geht und das finde ich ehrlich gesagt nicht fair",
+      "expected": "Also so wie ich das sehe können wir entweder den Termin eine Woche nach hinten schieben dann haben wir Zeit die Migration sauber fertig zu machen oder wir liefern das was wir haben und räumen den Rest danach auf aber dann fängt sich die Bereitschaft am Wochenende alles ein was kaputt geht und das finde ich ehrlich gesagt nicht fair"
+    },
+    {
+      "id": "de-eszett-04",
+      "tags": [
+        "eszett",
+        "casing",
+        "noun-capitalisation"
+      ],
+      "input": "das war eine grosse hilfe, danke dir",
+      "expected": "Das war eine große Hilfe, danke dir"
+    },
+    {
+      "id": "de-prot-09",
+      "input": "hab die evals gefixt, gerne mal draufscahuen: https://example.com/pr/2631",
+      "expected": "Hab die Evals gefixt, gerne mal draufschauen: https://example.com/pr/2631",
+      "tags": [
+        "noun-capitalisation",
+        "spelling",
+        "url",
+        "protected"
+      ]
+    },
+    {
+      "id": "de-prot-10",
+      "input": "der build laeuft wieder, siehe https://example.com/ci/1234",
+      "expected": "Der Build läuft wieder, siehe https://example.com/ci/1234",
+      "tags": [
+        "casing",
+        "noun-capitalisation",
+        "umlaut",
+        "url",
+        "protected"
+      ]
+    },
+    {
+      "id": "de-prot-11",
+      "input": "https://example.com/doku hat die antwort die du suchst",
+      "expected": "https://example.com/doku hat die Antwort, die du suchst",
+      "tags": [
+        "noun-capitalisation",
+        "comma",
+        "subordinate-clause",
+        "url",
+        "protected"
+      ]
+    },
+    {
+      "id": "de-prot-12",
+      "input": "ich habe @anna schon wegen dem zugang gefragt",
+      "expected": "Ich habe @anna schon wegen dem Zugang gefragt",
+      "tags": [
+        "casing",
+        "noun-capitalisation",
+        "mention",
+        "protected"
+      ]
+    },
+    {
+      "id": "de-prot-13",
+      "input": "fuehr bitte `pnpm install` aus bevor du baust",
+      "expected": "Führ bitte `pnpm install` aus, bevor du baust",
+      "tags": [
+        "casing",
+        "umlaut",
+        "comma",
+        "subordinate-clause",
+        "code",
+        "protected"
+      ]
+    },
+    {
+      "id": "de-prot-14",
+      "input": "wir haben es ausgeliefert 🎉 aber das changelog ist noch leer",
+      "expected": "Wir haben es ausgeliefert 🎉 aber das Changelog ist noch leer",
+      "tags": [
+        "casing",
+        "noun-capitalisation",
+        "emoji",
+        "protected"
+      ]
+    },
+    {
+      "id": "de-prot-15",
+      "input": "sag mir in #build-alerts bescheid wenn es wieder passirt",
+      "expected": "Sag mir in #build-alerts Bescheid, wenn es wieder passiert",
+      "tags": [
+        "casing",
+        "noun-capitalisation",
+        "spelling",
+        "comma",
+        "subordinate-clause",
+        "channel",
+        "protected"
+      ]
+    },
+    {
+      "id": "de-prot-16",
+      "input": "schick die rechung an Chris@Flyweight.io bis morgen",
+      "expected": "Schick die Rechnung an Chris@Flyweight.io bis morgen",
+      "tags": [
+        "casing",
+        "noun-capitalisation",
+        "spelling",
+        "email",
+        "protected"
+      ]
+    },
+    {
+      "id": "de-prot-17",
+      "input": "die einstellung `retryCount` ist viel zu niedrig gesetzt",
+      "expected": "Die Einstellung `retryCount` ist viel zu niedrig gesetzt",
+      "tags": [
+        "casing",
+        "noun-capitalisation",
+        "code",
+        "protected"
+      ]
+    },
+    {
+      "id": "de-prot-18",
+      "input": "hier ist der link: https://example.com/a/b schau mal drueber",
+      "expected": "Hier ist der Link: https://example.com/a/b schau mal drüber",
+      "tags": [
+        "casing",
+        "noun-capitalisation",
+        "umlaut",
+        "url",
+        "protected"
+      ]
     }
   ]
 }
