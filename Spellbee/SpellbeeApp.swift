@@ -42,7 +42,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let settings = SettingsWindowController(model: model)
         self.settings = settings
 
-        let historyWindow = HistoryWindowController(history: model.history) { [weak model] in
+        let historyWindow = HistoryWindowController(
+            history: model.history,
+            describeModel: { [weak model] in model?.activeModel.displayName ?? "unknown" }
+        ) { [weak model] in
             model?.showSettings(.safety)
         }
         self.historyWindow = historyWindow

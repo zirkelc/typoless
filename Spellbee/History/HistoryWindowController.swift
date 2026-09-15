@@ -12,10 +12,16 @@ import SwiftUI
 final class HistoryWindowController {
     private let history: CorrectionHistory
     private let onOpenSettings: () -> Void
+    private let describeModel: () -> String
     private var window: NSWindow?
 
-    init(history: CorrectionHistory, onOpenSettings: @escaping () -> Void) {
+    init(
+        history: CorrectionHistory,
+        describeModel: @escaping () -> String,
+        onOpenSettings: @escaping () -> Void
+    ) {
         self.history = history
+        self.describeModel = describeModel
         self.onOpenSettings = onOpenSettings
     }
 
@@ -47,7 +53,11 @@ final class HistoryWindowController {
         window.isReleasedWhenClosed = false
         window.title = "Correction History"
         window.contentView = NSHostingView(
-            rootView: HistoryView(history: history, onOpenSettings: onOpenSettings)
+            rootView: HistoryView(
+                history: history,
+                onOpenSettings: onOpenSettings,
+                describeModel: describeModel
+            )
         )
         window.center()
 

@@ -28,6 +28,7 @@ cat \
     Spellbee/Engine/EditGuardrail.swift \
     Spellbee/Engine/ProtectedSpans.swift \
     Spellbee/Engine/MaskedText.swift \
+    Spellbee/History/IssueReport.swift \
     Spellbee/Engine/ModelReplyCleaner.swift \
     Spellbee/Accessibility/FieldEdit.swift \
     Spellbee/Accessibility/AppPolicy.swift \
@@ -755,6 +756,102 @@ check("an umlaut left alone is untouched", "die \u{C4}nderungen sind drausen",
       "die \u{C4}nderungen sind drau\u{DF}en", expect: "die \u{C4}nderungen sind drau\u{DF}en")
 
 print("")
+
+print("\n== a bug report carries the correction, and nothing else leaves ==")
+
+func report(before: String, after: String = "x") -> IssueReport {
+    IssueReport(
+        before: before,
+        after: after,
+        appName: "Slack",
+        bundleID: "com.tinyspeck.slackmacgap",
+        editCount: 2,
+        backend: "Apple on-device",
+        appVersion: "1.0 (4)",
+        systemVersion: "Version 26.6.2 (Build 25G83)"
+    )
+}
+
+func checkReport(_ name: String, _ condition: Bool, _ detail: @autoclosure () -> String = "") {
+    if !condition { failures += 1 }
+    print("\(condition ? "PASS" : "FAIL") \(name)")
+    if !condition, !detail().isEmpty { print("        got: \(detail())") }
+}
+
+/// A message about code carries backticks, and a fence of three would end the
+/// block early, spilling the rest of the report into prose and taking the
+/// details table with it.
+let fenced = IssueReport.fenced("run ```make test``` first")
+checkReport("a fence outlasts the backticks inside it", fenced.hasPrefix("````"), fenced)
+checkReport(
+    "the text survives fencing unchanged",
+    fenced.contains("run ```make test``` first")
+)
+checkReport("an ordinary message gets a plain fence", IssueReport.fenced("hello").hasPrefix("```\n"))
+
+/// The form has to be readable, and a very long field would fill it with text
+/// the reader has to scroll past to reach the question.
+let overlongReport = String(repeating: "a", count: IssueReport.textLimit + 500)
+checkReport("a long field is cut", IssueReport.clipped(overlongReport).count < overlongReport.count)
+checkReport("and says where it was cut", IssueReport.clipped(overlongReport).hasSuffix("[…]"))
+checkReport("a short field is left alone", IssueReport.clipped("hello") == "hello")
+
+/// Nothing is sent from the app, so everything has to survive the trip through a
+/// URL: the text is the reproduction, and a mangled one is worth nothing.
+let simple = report(before: "hallo anna, danke fuer die rueckmeldung", after: "Hallo Anna, danke für die Rückmeldung")
+checkReport("the form is prefilled", simple.url != nil)
+checkReport(
+    "the report names the model, so the reader knows what answered",
+    simple.body.contains("Apple on-device")
+)
+checkReport("and the app it happened in", simple.body.contains("com.tinyspeck.slackmacgap"))
+checkReport("and both versions of the text", simple.body.contains("hallo anna") && simple.body.contains("Hallo Anna"))
+checkReport("the title quotes the text so the list is readable", simple.title.contains("hallo anna"))
+
+/// A URL the browser cuts in half loses the second half of the report silently,
+/// which is worse than not opening one at all.
+/// Clipping the text is what keeps a report inside a link, so the two limits
+/// have to be checked against each other rather than separately: a full-length
+/// field on both sides still has to fit once every space has cost three
+/// characters to encode.
+let huge = report(
+    before: String(repeating: "wort ", count: 4_000),
+    after: String(repeating: "Wort ", count: 4_000)
+)
+checkReport("a report of any length still fits in a link", huge.url != nil)
+checkReport("and the body is bounded", huge.body.count < 2 * IssueReport.textLimit + 600)
+
+/// The text is clipped, and nothing else is. A field long enough to overflow
+/// anyway must lose the link rather than the second half of the report.
+let overflowing = IssueReport(
+    before: "hello",
+    after: "Hello",
+    appName: String(repeating: "app ", count: 2_000),
+    bundleID: nil,
+    editCount: 1,
+    backend: "Apple on-device",
+    appVersion: "1.0 (4)",
+    systemVersion: "26.6.2"
+)
+checkReport("too long for a link is refused rather than truncated", overflowing.url == nil)
+checkReport("and the body survives for the clipboard", overflowing.body.contains("hello"))
+
+/// Percent-encoding is the part that goes wrong quietly: a naive join produces a
+/// URL that opens with everything after the first umlaut missing.
+let tricky = report(before: "Grüße & Co #1 + 2 = drei?", after: "Grüße & Co #1 + 2 = drei")
+if let url = tricky.url?.absoluteString {
+    checkReport("an ampersand cannot start a new field", !url.contains("&Co"))
+    checkReport("a hash cannot start a fragment", !url.contains("#1"))
+    checkReport("a plus is not read as a space", url.contains("%2B"))
+} else {
+    checkReport("a short report with punctuation still fits in a link", false)
+}
+
+let newlines = report(before: "erste zeile\nzweite zeile")
+checkReport(
+    "a line break survives as a line break",
+    newlines.url?.absoluteString.contains("%0A") == true
+)
 
 if failures == 0 {
     print("all passed")

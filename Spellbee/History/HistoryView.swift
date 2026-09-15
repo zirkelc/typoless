@@ -21,6 +21,13 @@ struct HistoryView: View {
      */
     let onOpenSettings: () -> Void
 
+    /**
+     Which model is answering, asked at the moment a report is written rather
+     than stored per entry: a report is about what the app does now, and the
+     model is the first thing anyone reading the issue will want to know.
+     */
+    let describeModel: () -> String
+
     var body: some View {
         VStack(spacing: 0) {
             if history.entries.isEmpty {
@@ -29,7 +36,7 @@ struct HistoryView: View {
                 ScrollView {
                     LazyVStack(spacing: 14) {
                         ForEach(history.entries) { entry in
-                            HistoryRow(entry: entry)
+                            HistoryRow(entry: entry, describeModel: describeModel)
                         }
                     }
                     .padding(20)
@@ -80,6 +87,9 @@ struct HistoryView: View {
 
 private struct HistoryRow: View {
     let entry: CorrectionHistory.Entry
+    let describeModel: () -> String
+
+    @State private var isShowingClipboardNotice = false
 
     /** Resolved once per row rather than on each redraw, since it hits LaunchServices. */
     private var app: InstalledApp? {
@@ -120,6 +130,10 @@ private struct HistoryRow: View {
 
                 Button("Copy Original") { copyOriginal() }
                     .controlSize(.small)
+
+                Button("Report…") { report() }
+                    .controlSize(.small)
+                    .help("Opens a prefilled issue on GitHub. Nothing is sent until you submit it.")
             }
             .font(.callout)
 
@@ -132,6 +146,14 @@ private struct HistoryRow: View {
         .overlay {
             RoundedRectangle(cornerRadius: 6)
                 .stroke(Color(nsColor: .separatorColor))
+        }
+        .alert("The report is on the clipboard", isPresented: $isShowingClipboardNotice) {
+            Button("OK") {}
+        } message: {
+            Text("""
+            This correction is too long to carry in a link, so it has been \
+            copied instead. Paste it into the issue that just opened.
+            """)
         }
     }
 
@@ -193,6 +215,50 @@ private struct HistoryRow: View {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(entry.before, forType: .string)
     }
+
+    /**
+     Hands the report to the browser, filled in but unsent.
+
+     The user reads it on GitHub's own form, edits or deletes anything they would
+     rather not publish, and submits it themselves. This is the only place text
+     leaves the Mac, so it leaves by their hand and in plain sight.
+     */
+    private func report() {
+        let report = IssueReport(
+            before: entry.before,
+            after: entry.after,
+            appName: app?.name,
+            bundleID: entry.bundleID,
+            editCount: entry.editCount,
+            backend: describeModel(),
+            appVersion: Self.appVersion,
+            systemVersion: ProcessInfo.processInfo.operatingSystemVersionString
+        )
+
+        if let url = report.url {
+            NSWorkspace.shared.open(url)
+            return
+        }
+
+        /**
+         A long field makes a URL the browser would silently cut in half, so the
+         body travels on the clipboard and the form opens empty.
+         */
+        guard let blank = report.blankFormURL else { return }
+
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(report.body, forType: .string)
+        NSWorkspace.shared.open(blank)
+        isShowingClipboardNotice = true
+    }
+
+    private static var appVersion: String {
+        let info = Bundle.main.infoDictionary
+        let short = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+
+        return "\(short) (\(build))"
+    }
 }
 
 #Preview {
@@ -204,5 +270,5 @@ private struct HistoryRow: View {
         editCount: 3
     )
 
-    return HistoryView(history: history, onOpenSettings: {})
+    return HistoryView(history: history, onOpenSettings: {}, describeModel: { "Apple on-device" })
 }
