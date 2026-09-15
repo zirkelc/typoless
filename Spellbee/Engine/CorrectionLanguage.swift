@@ -220,6 +220,21 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
        capitalised mid-sentence. Only the chunk that really is the beginning is
        told about the beginning.
      */
+    /**
+     German names the ae/oe/ue/ss substitution on purpose.
+
+     Writing the instructions with real umlauts instead of ASCII changes nothing
+     at all, 48 of 82 either way, which is what an earlier sweep found and what
+     three separate proposals to do it predicted wrongly. What works is one
+     sentence saying what to do with the substitution: 48 to 54, and 112 to 118
+     over both languages, with negatives held at 36 of 36 and fewer unrequested
+     changes. The gains land exactly on the failures it names.
+
+     That is not a general licence to name rules. The same sweep tried naming
+     the German noun-capital rule and it lost 16 cases and four negatives, by
+     capitalising everything in sight. A mechanical substitution the model can
+     simply apply is worth naming; a judgement it has to exercise is not.
+     */
     func instructions(startsText: Bool = true) -> String {
         switch self {
         case .english:
@@ -229,9 +244,10 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
             """ + (startsText ? " Capitalise the first word of the text." : "")
         case .german:
             return """
-            Korrigiere Rechtschreibung, Satzzeichen, Gross- und \
-            Kleinschreibung und Abstaende. Aendere sonst nichts.
-            """ + (startsText ? " Das erste Wort des Textes wird grossgeschrieben." : "")
+            Korrigiere Rechtschreibung, Satzzeichen, Groß- und \
+            Kleinschreibung und Abstände. Schreibe ae, oe, ue und ss als ä, ö, \
+            ü und ß. Ändere sonst nichts.
+            """ + (startsText ? " Das erste Wort des Textes wird großgeschrieben." : "")
         /**
          Built from the English wording and never scored, since only English and
          German have datasets. Naming the language is worth several points in
