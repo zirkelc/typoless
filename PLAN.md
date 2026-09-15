@@ -78,9 +78,10 @@ recent fixes as before→after, Settings…, Setup Guide, Quit.
 - **Models** — every model, its size, whether it is on disk, a download button, and which one is the default.
 - **Languages** — the languages added, with an Add menu, and a per-language model override.
 - **Corrections** — a table of rules per added language, each shown with an example in that language.
-- **Sentence-final punctuation** — whether a message with no closing mark gets one. Allowed today, and it is the single largest source of unrequested changes for every backend: 19 of Gemma's 32 false positives in the eval are this one habit. It stays on because finishing a sentence is a correction, but it is the setting most worth having, both globally and **per app**: a full stop is right in mail and changes the tone of a Slack line. Asking the model to handle it does not work; the eval variant that named terminal punctuation made Gemma start deleting full stops from text that was already correct. This belongs in the guardrail.
+- **Sentence-final punctuation** — whether a message with no closing mark gets one. A per-language rule, enforced in the guardrail rather than asked of the model, which does not work: the eval variant that named terminal punctuation made Gemma start deleting full stops from text that was already correct. It was briefly a per-app override too, and that was removed: singling out one rule because it is the noisiest is a reason to fix the rule, and it made the effective rule set depend on which window was in front in a way nothing in the UI showed.
 - **Apps** — deny-list, plus per-app overrides for the settings above. Default-denied: terminals, Xcode, VS Code, password managers.
-- **Privacy** — "nothing leaves your Mac", opt-in local log.
+- **Safety** — how strict the guardrail is, and how long a correction stays undoable. Both answer the same question, so they sit together.
+- **Privacy** — "nothing leaves your Mac", opt-in local log. The one exception is a bug report, which the user reads and submits themselves from the history window.
 
 ## Overlay animation
 
@@ -179,10 +180,37 @@ for updates. The same way Raycast, Alfred, Karabiner and Cotypist ship.
 | M2 | ✅ Foundation Models correction, en/de, chunking, guardrail |
 | M3 | ✅ Revert done early, in M1. Minimal edit application landed; each change is written as its own range replacement |
 | M4 | ✅ Three tiers, per-line tracing, sweep, pulse on changed ranges, cancel on Escape and on focus change |
-| M5 | ✅ Settings window: triggers and a shortcut recorder, languages, per-kind toggles, full stops globally and per app, deny-list, privacy |
-| M6 | Developer ID signing, notarization, Sparkle. Blocked on a Developer ID certificate, which does not exist yet |
+| M5 | ✅ Settings window: triggers and a shortcut recorder, languages, per-kind toggles, deny-list, safety and privacy |
+| M6 | Sparkle wired in. Signing and notarization blocked on a Developer ID certificate, which does not exist yet |
 
 M0-M5 is the app. M6 is shipping it.
+
+### Releasing
+
+Sparkle is in the project and the menu, and does nothing until the two keys
+below are set. The menu item is hidden while either is empty, and Sparkle
+refuses an update it cannot verify, so an unconfigured build fails towards
+doing nothing rather than towards installing something unchecked.
+
+1. **Generate the signing key once.** Sparkle ships `generate_keys` in its
+   release artifacts. It puts the private key in the login keychain and prints
+   the public half. The private key is never in this repository, and losing it
+   means no existing install can ever be updated again, so it is worth a backup
+   somewhere a disk failure cannot reach.
+2. **Set `INFOPLIST_KEY_SUPublicEDKey`** to the printed public key, in both
+   build configurations.
+3. **Set `INFOPLIST_KEY_SUFeedURL`** to wherever the appcast is hosted. GitHub
+   Releases plus an `appcast.xml` at a stable raw URL needs no server.
+4. **Sign and notarize each build.** Sparkle installs over the running app, and
+   an unsigned or unnotarized update is refused by Gatekeeper on arrival. This
+   is the part that waits on the Developer ID certificate.
+5. **Sign each release with `generate_appcast`**, which writes the appcast
+   entry and the signature together from a folder of builds.
+
+Automatic checking is off in the built app. Sparkle sends a profile of the
+machine to the update server when it checks, which is a strange thing to do
+silently in an app whose promise is that it keeps to itself, so it asks first
+and the answer is the user's.
 
 ### M5 notes
 

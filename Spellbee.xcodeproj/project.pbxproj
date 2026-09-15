@@ -83,6 +83,7 @@
 				1A0000000000000000000023 /* MLXHuggingFace */,
 				1A0000000000000000000027 /* HuggingFace */,
 				1A0000000000000000000028 /* Tokenizers */,
+				1A0000000000000000000029 /* Sparkle */,
 			);
 			productName = Spellbee;
 			productReference = 1A0000000000000000000003 /* Spellbee.app */;
@@ -116,6 +117,7 @@
 				1A0000000000000000000020 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */,
 				1A000000000000000000002B /* XCRemoteSwiftPackageReference "swift-huggingface" */,
 				1A000000000000000000002C /* XCRemoteSwiftPackageReference "swift-transformers" */,
+				1A000000000000000000002D /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1A0000000000000000000004 /* Products */;
@@ -215,6 +217,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_SUEnableAutomaticChecks = NO;
+				INFOPLIST_KEY_SUFeedURL = "";
+				INFOPLIST_KEY_SUPublicEDKey = "";
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.zirkelc.spellbee;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -236,6 +241,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_SUEnableAutomaticChecks = NO;
+				INFOPLIST_KEY_SUFeedURL = "";
+				INFOPLIST_KEY_SUPublicEDKey = "";
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.zirkelc.spellbee;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -291,6 +299,14 @@
 				minimumVersion = 1.3.3;
 			};
 		};
+		1A000000000000000000002D /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -318,6 +334,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 1A000000000000000000002C /* XCRemoteSwiftPackageReference "swift-transformers" */;
 			productName = Tokenizers;
+		};
+		1A0000000000000000000029 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A000000000000000000002D /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -16,6 +16,14 @@ final class AppModel {
     let permissions = PermissionsModel()
     let overlay = OverlayController()
     let history = CorrectionHistory()
+
+    /**
+     Nil where the app was built without a feed or a signing key, which is every
+     build made from a checkout. Starting Sparkle then would begin a scheduled
+     check against nothing, and the first thing the user would see of updates is
+     an error about a feed that does not exist.
+     */
+    let updates: UpdateController? = UpdateController.isConfigured ? UpdateController() : nil
     let engine: CorrectionEngine
 
     /** User-initiated pause, cleared manually. */

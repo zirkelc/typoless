@@ -209,6 +209,21 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
+        /**
+         Only where the app was built with a feed and a key. A build that cannot
+         install an update should not offer to look for one, since the only
+         thing the item could report is a failure the user cannot act on.
+         */
+        if UpdateController.isConfigured {
+            add(
+                to: menu,
+                title: "Check for Updates…",
+                keyEquivalent: "",
+                isEnabled: model.updates?.canCheckForUpdates ?? false,
+                action: #selector(checkForUpdates)
+            )
+        }
+
         add(to: menu, title: "Quit Spellbee", keyEquivalent: "q", action: #selector(quit))
     }
 
@@ -313,6 +328,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func togglePause() {
         model.isPaused.toggle()
+    }
+
+    @objc private func checkForUpdates() {
+        model.updates?.checkForUpdates()
     }
 
     @objc private func showSettings() {
