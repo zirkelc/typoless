@@ -65,8 +65,20 @@ actor LocalModelCorrector: Corrector {
             appliesGuardrail: appliesGuardrail,
             deadline: nil
         ) { source, language, startsText in
-            /** A language may prefer a different model from the default. */
-            let chosen = settings.model(for: language) ?? self.model
+            /**
+             A language may prefer a different downloaded model from the default.
+
+             A language set to Apple's model is answered here by this one, since
+             this backend has no way to reach the other. That combination is the
+             router's to resolve, and it does; standalone, this is the honest
+             reading of "use the model I was built with".
+             */
+            let chosen: LocalModel
+            if case .local(let named) = settings.model(for: language) {
+                chosen = named
+            } else {
+                chosen = self.model
+            }
             let container = try await self.loadedContainer(for: chosen)
 
             return await self.corrected(source, language: language, startsText: startsText, model: chosen, using: container)
@@ -76,6 +88,10 @@ actor LocalModelCorrector: Corrector {
 
     /** Fetches the weights ahead of any correction, so the wait is not a surprise. */
     func prepare() async {
+        await prepare(model)
+    }
+
+    func prepare(_ model: LocalModel) async {
         do {
             _ = try await loadedContainer(for: model)
         } catch is CancellationError {
@@ -86,7 +102,7 @@ actor LocalModelCorrector: Corrector {
              it is still downloading something that has already given up.
              */
             Log.app.error(
-                "Could not load \(self.model.displayName, privacy: .public): \(String(describing: error), privacy: .public)"
+                "Could not load \(model.displayName, privacy: .public): \(String(describing: error), privacy: .public)"
             )
         }
     }
@@ -227,6 +243,33 @@ actor LocalModelCorrector: Corrector {
      storing its weights would leave a copy resident with no way to reach it.
      */
     private var generation = 0
+
+    /**
+     One chunk, answered by the model the router picked for this language.
+
+     Loads that model's weights if this is the first chunk to ask for it, which
+     is why it is here rather than in the router: the containers, the download
+     reporting and the cancellation all live in this actor.
+     */
+    func corrected(
+        _ text: String,
+        language: CorrectionLanguage,
+        startsText: Bool,
+        model: LocalModel
+    ) async -> String? {
+        guard let container = try? await loadedContainer(for: model) else {
+            Log.app.info("No weights for \(model.displayName, privacy: .public), leaving the chunk alone")
+            return nil
+        }
+
+        return await corrected(
+            text,
+            language: language,
+            startsText: startsText,
+            model: model,
+            using: container
+        )
+    }
 
     private func corrected(
         _ text: String,

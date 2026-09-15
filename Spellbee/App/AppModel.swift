@@ -203,7 +203,7 @@ final class AppModel {
 
         /** Only fall back if what was cancelled is what corrections were about to use. */
         if activeModel == .local(model) {
-            if let corrector = engine.corrector as? LocalModelCorrector {
+            if let corrector = engine.corrector as? RoutingCorrector {
                 Task { await corrector.cancelLoading() }
             }
 
@@ -269,7 +269,7 @@ final class AppModel {
         }
 
         var languages = preferences.languageSettings
-        for (language, settings) in languages where settings.model == model {
+        for (language, settings) in languages where settings.model == .local(model) {
             languages[language]?.model = nil
         }
 
@@ -301,44 +301,61 @@ final class AppModel {
          switching models mid-download leaves the old one still fetching several
          gigabytes that nothing will ever use.
          */
-        if let previous = engine.corrector as? LocalModelCorrector {
-            Task {
-                await previous.cancelLoading()
-                await previous.unload()
-            }
+        if let previous = engine.corrector as? RoutingCorrector {
+            Task { await previous.unload() }
         }
 
         let detector = LanguageDetector(enabled: Array(preferences.enabledLanguages))
         let appliesGuardrail = preferences.isGuardrailEnabled
 
-        switch activeModel {
-        case .appleOnDevice:
-            engine.corrector = FoundationModelsCorrector(
+        /**
+         One corrector whichever models are in play, because which model answers
+         is now a per-language question and a field can hold two languages. It
+         builds the downloaded backend only if something actually asks for one.
+         */
+        /** Read here, on the main actor, since the closure below cannot reach it. */
+        let fallbackModel = preferences.localModel
+
+        let router = RoutingCorrector(
+            defaultChoice: activeModel,
+            detector: detector,
+            appliesGuardrail: appliesGuardrail
+        ) { [weak self] in
+            LocalModelCorrector(
+                /**
+                 Only a fallback: the router names a model on every request. It
+                 is the selected one so that anything reading the backend's own
+                 idea of its model, such as a log line, says something true.
+                 */
+                model: fallbackModel,
                 detector: detector,
                 appliesGuardrail: appliesGuardrail
-            )
-        case .local(let selected):
-            let corrector = LocalModelCorrector(
-                model: selected,
-                detector: detector,
-                appliesGuardrail: appliesGuardrail
-            ) { [weak self] reported, progress in
+            ) { reported, progress in
                 Task { @MainActor in
                     self?.downloads[reported] = progress
                 }
             }
-            engine.corrector = corrector
+        }
 
+        engine.corrector = router
+
+        /**
+         Fetched ahead only for a model the user has actually chosen, and only
+         when that is a downloaded one. Anything a language names on its own is
+         fetched when a chunk in that language first arrives, since a language
+         that never appears should not cost gigabytes.
+         */
+        if case .local(let selected) = activeModel {
             loading.insert(selected)
             Task { [weak self] in
-                await corrector.prepare()
+                await router.prepare(selected)
 
                 /**
                  Only if this is still the corrector that started it. Two
                  rebuilds for the same model meant the first `prepare` returning
                  cleared the indicator while the second was still loading.
                  */
-                guard self?.engine.corrector as? LocalModelCorrector === corrector else { return }
+                guard self?.engine.corrector as? RoutingCorrector === router else { return }
 
                 self?.loading.remove(selected)
             }
@@ -367,7 +384,7 @@ final class AppModel {
          machine briefly holds two.
          */
         let selected = preferences.localModel
-        let existing = engine.corrector as? LocalModelCorrector
+        let existing = await (engine.corrector as? RoutingCorrector)?.loadedLocalCorrector()
         let local = existing ?? LocalModelCorrector(model: selected) { [weak self] reported, progress in
             Task { @MainActor in self?.downloads[reported] = progress }
         }

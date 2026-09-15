@@ -65,18 +65,26 @@ actor FoundationModelsCorrector: Corrector {
         }
     }
 
-    /** Nil when the model declines or fails, which leaves the chunk untouched. */
-    private func corrected(
+    /**
+     One chunk, answered or not.
+
+     Not private, because the router asks this directly: it owns the chunking
+     and decides per chunk which backend answers, so it needs the part of a
+     backend that is only about answering.
+
+     Nil when the model declines or fails, which leaves the chunk untouched.
+     */
+    func corrected(
         _ text: String,
         language: CorrectionLanguage,
         startsText: Bool,
-        deadline: CorrectionDeadline
+        deadline: CorrectionDeadline?
     ) async -> String? {
         if let result = await respond(
             to: text,
             using: language.instructions(startsText: startsText),
             asking: language.prompt(for: text),
-            within: deadline.allowance()
+            within: deadline?.allowance()
         ) {
             return result
         }
@@ -88,26 +96,31 @@ actor FoundationModelsCorrector: Corrector {
          enough to be worth the second round trip, and the text stays in its own
          language because the prompt still says which one it is.
          */
-        guard language != .english, !deadline.hasExpired() else { return nil }
+        guard language != .english, deadline?.hasExpired() != true else { return nil }
 
         Log.app.info("Retrying a declined chunk with English instructions")
         return await respond(
             to: text,
             using: CorrectionLanguage.english.instructions(startsText: startsText),
             asking: "Correct this \(language.displayName) text, keeping every word:\n\n\(text)",
-            within: deadline.allowance()
+            within: deadline?.allowance()
         )
     }
 
+    /**
+     - Parameter allowance: How long to wait, or nil to wait as long as it takes.
+       Nil is the routed case: a pass that could reach a downloaded model carries
+       no budget, since these limits are measured against this model only.
+     */
     private func respond(
         to text: String,
         using instructions: String,
         asking prompt: String,
-        within allowance: Duration
+        within allowance: Duration?
     ) async -> String? {
         let model = model
 
-        let reply = await answered(within: allowance) {
+        let ask: @Sendable () async -> String? = {
             let session = LanguageModelSession(model: model, instructions: instructions)
 
             do {
@@ -122,6 +135,13 @@ actor FoundationModelsCorrector: Corrector {
                 Log.app.info("Model declined a chunk: \(String(describing: error), privacy: .public)")
                 return nil
             }
+        }
+
+        let reply: String?
+        if let allowance {
+            reply = await answered(within: allowance, by: ask)
+        } else {
+            reply = await ask()
         }
 
         guard let reply else { return nil }

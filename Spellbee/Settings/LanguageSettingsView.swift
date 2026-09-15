@@ -35,8 +35,6 @@ struct LanguageSettingsView: View {
                         language: language,
                         isSelected: selection == language,
                         model: modelBinding(for: language),
-                        /** Only a local backend can hand a paragraph to a different model. */
-                        canOverrideModel: preferences.backend == .local,
                         onSelect: { selection = language }
                     )
                 }
@@ -117,7 +115,7 @@ struct LanguageSettingsView: View {
         self.selection = nil
     }
 
-    private func modelBinding(for language: CorrectionLanguage) -> Binding<LocalModel?> {
+    private func modelBinding(for language: CorrectionLanguage) -> Binding<ModelChoice?> {
         Binding(
             get: { preferences.languageSettings[language]?.model },
             set: { model in update(language) { $0.model = model } }
@@ -136,8 +134,7 @@ struct LanguageSettingsView: View {
 private struct LanguageRow: View {
     let language: CorrectionLanguage
     let isSelected: Bool
-    @Binding var model: LocalModel?
-    var canOverrideModel = true
+    @Binding var model: ModelChoice?
     let onSelect: () -> Void
 
     var body: some View {
@@ -153,21 +150,23 @@ private struct LanguageRow: View {
 
             Spacer()
 
+            /**
+             Every model, not only the downloaded ones. A language naming Apple's
+             model while the default is a downloaded one is a real configuration,
+             and it used to be unsayable: the choice was offered only when the
+             global backend was already the local one, and could only name
+             another local model.
+             */
             Picker("", selection: $model) {
-                Text("Default model").tag(LocalModel?.none)
+                Text("Default model").tag(ModelChoice?.none)
                 Divider()
+                Text(ModelChoice.appleOnDevice.displayName).tag(ModelChoice?.some(.appleOnDevice))
                 ForEach(LocalModel.allCases, id: \.self) { option in
-                    Text(option.displayName).tag(LocalModel?.some(option))
+                    Text(option.displayName).tag(ModelChoice?.some(.local(option)))
                 }
             }
             .labelsHidden()
             .fixedSize()
-            /**
-             Apple's model has no way to hand a paragraph to a different one, so
-             offering the choice against that backend stored a setting that was
-             then ignored, while the page said it was honoured.
-             */
-            .disabled(!canOverrideModel)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)

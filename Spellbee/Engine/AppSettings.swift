@@ -4,8 +4,15 @@ import Foundation
 struct LanguageSettings: Equatable, Sendable {
     var isEnabled: Bool
 
-    /** Nil means the model chosen under Corrections, which is the usual case. */
-    var model: LocalModel?
+    /**
+     Nil means whichever model is the default, which is the usual case.
+
+     Any model, not only a downloaded one. A language naming Apple's model while
+     the default is a downloaded one is a real configuration: the two are better
+     at different languages, and the point of setting a model per language is to
+     say so.
+     */
+    var model: ModelChoice?
 
     var allowedRules: Set<CorrectionRule>
 
@@ -33,7 +40,7 @@ struct AppSettings: Equatable, Sendable {
         languages[language]?.allowedRules ?? language.applicableRules
     }
 
-    func model(for language: CorrectionLanguage) -> LocalModel? {
+    func model(for language: CorrectionLanguage) -> ModelChoice? {
         languages[language]?.model
     }
 

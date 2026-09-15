@@ -301,7 +301,7 @@ final class Preferences {
              change to these settings was being discarded.
              */
             if let model = entry.value.model {
-                value["model"] = model.rawValue
+                value["model"] = model.storageKey
             }
 
             result[entry.key.rawValue] = value
@@ -322,7 +322,12 @@ final class Preferences {
 
             return (language, LanguageSettings(
                 isEnabled: entry["enabled"] as? Bool ?? language.isEnabledByDefault,
-                model: (entry["model"] as? String).flatMap(LocalModel.init),
+                /**
+                 A stored choice naming a model the app no longer has reads as
+                 nil, which is the default, rather than keeping a language
+                 pointed at something that cannot answer.
+                 */
+                model: (entry["model"] as? String).flatMap(ModelChoice.init(storageKey:)),
                 /** Only rules the language has, so a stored set cannot resurrect one. */
                 allowedRules: Set(rules ?? Array(language.applicableRules))
                     .intersection(language.applicableRules)

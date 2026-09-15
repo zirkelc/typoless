@@ -125,4 +125,33 @@ enum ModelChoice: Equatable, Hashable, Sendable {
         case .local(let model): return model.displayName
         }
     }
+
+    /**
+     One string, so a choice can be written to user defaults.
+
+     Deliberately not the backend's raw value for the Apple case and the model's
+     for the other: those two vocabularies could collide as they grow, and the
+     stored value has to survive a model being removed from the app, which is
+     what `init?` is for.
+     */
+    var storageKey: String {
+        switch self {
+        case .appleOnDevice: return "apple"
+        case .local(let model): return "local:" + model.rawValue
+        }
+    }
+
+    init?(storageKey: String) {
+        if storageKey == "apple" {
+            self = .appleOnDevice
+            return
+        }
+
+        guard
+            storageKey.hasPrefix("local:"),
+            let model = LocalModel(rawValue: String(storageKey.dropFirst("local:".count)))
+        else { return nil }
+
+        self = .local(model)
+    }
 }
