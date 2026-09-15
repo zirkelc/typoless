@@ -28,33 +28,45 @@ enum TextDiff {
 
         guard !source.isEmpty || !target.isEmpty else { return [] }
 
-        let common = longestCommonSubsequence(source.map(\.text), target)
+        let sourceTexts = source.map(\.text)
+        let common = longestCommonSubsequence(sourceTexts, target)
 
         var edits: [TextEdit] = []
         var sourceIndex = 0
         var targetIndex = 0
 
-        /** Everything between two matched atoms is one edit. */
+        /** Everything between two matched atoms is one edit, or several. */
         for match in common + [Match(source: source.count, target: target.count)] {
-            let changedSource = source[sourceIndex..<match.source]
-            let changedTarget = target[targetIndex..<match.target]
+            let (sourceGap, targetGap) = trimmingUnchangedSpacing(
+                sourceIndex..<match.source,
+                targetIndex..<match.target,
+                sourceTexts,
+                target
+            )
 
-            if !changedSource.isEmpty || !changedTarget.isEmpty {
+            for pair in pairing(sourceGap, targetGap, sourceTexts, target) {
+                let changedSource = source[pair.source]
+                let changedTarget = target[pair.target]
                 let replacement = changedTarget.joined()
 
+                guard changedSource.map(\.text).joined() != replacement else { continue }
+
                 if let first = changedSource.first, let last = changedSource.last {
-                    let range = first.range.lowerBound..<last.range.upperBound
                     edits.append(
                         TextEdit(
-                            range: range,
+                            range: first.range.lowerBound..<last.range.upperBound,
                             original: changedSource.map(\.text).joined(),
                             replacement: replacement
                         )
                     )
                 } else if !replacement.isEmpty {
-                    /** Pure insertion, anchored where the next matched atom starts. */
-                    let position = match.source < source.count
-                        ? source[match.source].range.lowerBound
+                    /**
+                     Pure insertion, anchored where what follows it begins, which
+                     is the spacing just trimmed rather than the matched word
+                     beyond it.
+                     */
+                    let position = pair.source.lowerBound < source.count
+                        ? source[pair.source.lowerBound].range.lowerBound
                         : original.endIndex
                     edits.append(
                         TextEdit(range: position..<position, original: "", replacement: replacement)
@@ -67,6 +79,50 @@ enum TextDiff {
         }
 
         return merging(edits, in: original)
+    }
+
+    /**
+     Splits a gap into one change per word, where both sides hold the same number
+     of words.
+
+     Without this a gap is one change however much it spans, and a single
+     untouchable word inside it takes the whole sentence down with it: a URL
+     whose capitalisation the model altered sits between two ordinary fixes, and
+     refusing the one change refuses all three. Where the words still correspond
+     one to one, which is the ordinary case, each can be judged on its own.
+
+     Where the counts differ the words no longer correspond, and pairing them by
+     position would be the very mistake this file exists to avoid, so the gap
+     stays whole and is judged as one change.
+     */
+    private static func pairing(
+        _ sourceGap: Range<Int>,
+        _ targetGap: Range<Int>,
+        _ source: [String],
+        _ target: [String]
+    ) -> [(source: Range<Int>, target: Range<Int>)] {
+        let sourceWords = sourceGap.filter { isAnchor(source[$0]) }
+        let targetWords = targetGap.filter { isAnchor(target[$0]) }
+
+        guard !sourceWords.isEmpty, sourceWords.count == targetWords.count else {
+            return [(sourceGap, targetGap)]
+        }
+
+        var pairs: [(source: Range<Int>, target: Range<Int>)] = []
+        var sourceStart = sourceGap.lowerBound
+        var targetStart = targetGap.lowerBound
+
+        for (sourceWord, targetWord) in zip(sourceWords, targetWords) {
+            /** The spacing leading up to the word, which may differ on its own. */
+            pairs.append((sourceStart..<sourceWord, targetStart..<targetWord))
+            pairs.append((sourceWord..<(sourceWord + 1), targetWord..<(targetWord + 1)))
+            sourceStart = sourceWord + 1
+            targetStart = targetWord + 1
+        }
+
+        pairs.append((sourceStart..<sourceGap.upperBound, targetStart..<targetGap.upperBound))
+
+        return pairs
     }
 
     /**
@@ -208,6 +264,56 @@ enum TextDiff {
         return result
     }
 
+    /**
+     Whether an atom may anchor the alignment, which words may and spacing may not.
+
+     Every run of whitespace looks like every other one, so a subsequence is free
+     to pair any space with any space, and prefers to: there are many of them and
+     each one matched is another atom in common. The alignment then slips by a
+     word, and the diff reports that the user's own word should become a
+     different word. That is refused, correctly, and the real corrections in the
+     same sentence go down with it.
+     */
+    private static func isAnchor(_ atom: String) -> Bool {
+        atom.first.map { !$0.isWhitespace } ?? false
+    }
+
+    /**
+     Gives back the spacing on either side of a change that did not change.
+
+     Spacing takes no part in the alignment, so it all falls into the gaps
+     between matched words, and a gap that begins and ends with the same spacing
+     on both sides describes an edit larger than what actually differs. Trimming
+     from the ends is safe where matching in the middle was not: a matched word
+     pins the end of the gap, so there is only one way to read the spacing next
+     to it.
+     */
+    private static func trimmingUnchangedSpacing(
+        _ sourceGap: Range<Int>,
+        _ targetGap: Range<Int>,
+        _ source: [String],
+        _ target: [String]
+    ) -> (source: Range<Int>, target: Range<Int>) {
+        var sourceGap = sourceGap
+        var targetGap = targetGap
+
+        while
+            !sourceGap.isEmpty, !targetGap.isEmpty,
+            source[sourceGap.lowerBound] == target[targetGap.lowerBound] {
+            sourceGap = (sourceGap.lowerBound + 1)..<sourceGap.upperBound
+            targetGap = (targetGap.lowerBound + 1)..<targetGap.upperBound
+        }
+
+        while
+            !sourceGap.isEmpty, !targetGap.isEmpty,
+            source[sourceGap.upperBound - 1] == target[targetGap.upperBound - 1] {
+            sourceGap = sourceGap.lowerBound..<(sourceGap.upperBound - 1)
+            targetGap = targetGap.lowerBound..<(targetGap.upperBound - 1)
+        }
+
+        return (sourceGap, targetGap)
+    }
+
     private static func longestCommonSubsequence(_ source: [String], _ target: [String]) -> [Match] {
         guard !source.isEmpty, !target.isEmpty else { return [] }
 
@@ -218,7 +324,7 @@ enum TextDiff {
 
         for i in stride(from: source.count - 1, through: 0, by: -1) {
             for j in stride(from: target.count - 1, through: 0, by: -1) {
-                lengths[i][j] = source[i] == target[j]
+                lengths[i][j] = source[i] == target[j] && isAnchor(source[i])
                     ? lengths[i + 1][j + 1] + 1
                     : max(lengths[i + 1][j], lengths[i][j + 1])
             }
@@ -229,7 +335,7 @@ enum TextDiff {
         var j = 0
 
         while i < source.count, j < target.count {
-            if source[i] == target[j] {
+            if source[i] == target[j], isAnchor(source[i]) {
                 matches.append(Match(source: i, target: j))
                 i += 1
                 j += 1

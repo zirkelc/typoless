@@ -80,6 +80,37 @@ check("word split by punctuation", "hi tim,i hope your  well", "Hi Tim, I hope y
 
 check("transposed letters plus a capital", "the meeting is on wendesday at three", "The meeting is on Wednesday at three", expect: "The meeting is on Wednesday at three")
 
+/// A space is not an anchor.
+///
+/// Every run of whitespace is the same single space, so a longest common
+/// subsequence over atoms is free to match any space to any other one, and it
+/// prefers doing so: matching spaces is cheap and there are many of them. The
+/// alignment then slips by one word and the diff reports that the user's
+/// "mistake" should become "my", which the guardrail refuses, correctly, taking
+/// the real corrections down with it. Only words anchor the alignment now.
+check(
+    "punctuation and spacing fixed in one sentence",
+    "sorry ,my mistake . i will redo it .",
+    "Sorry, my mistake. I will redo it.",
+    expect: "Sorry, my mistake. I will redo it."
+)
+check(
+    "several spaces before commas",
+    "thanks , and yes , that works",
+    "Thanks, and yes, that works",
+    expect: "Thanks, and yes, that works"
+)
+/// A doubled word is still a word, and removing one is still a deletion, so the
+/// alignment has to survive the repetition without the guardrail's answer
+/// changing. It refuses, as it refuses every deletion. That is deliberate: the
+/// same shape covers "the the" and a word the user meant to repeat.
+check(
+    "a doubled word is not removed, even where the words around it repeat",
+    "the the same the same day",
+    "The same the same day",
+    expect: "the the same the same day"
+)
+
 print("\n== rewriting refused, wording preserved ==")
 check("word inserted", "hello world", "hello beautiful world", expect: "hello world")
 check("word deleted", "i am very tired", "I am tired", expect: "I am very tired")
@@ -160,8 +191,22 @@ print("\n== known gap, pinned so it cannot change unnoticed ==")
 // when it did not. Closing it needs a rule about word endings, not a budget.
 check("word ending changed within budget", "wir fahren nach hause", "wir fahren nach häuser", expect: "wir fahren nach häuser")
 
+/// A rewrite of one phrase, alongside a capital that is genuinely a correction.
+///
+/// The capital lands and the rewrite does not, which is what the four checks
+/// above ask for in the same situation. It used to be refused outright, and the
+/// only thing that made this case different was that the alignment happened to
+/// split the rewritten phrase into two changes rather than one, so it crossed
+/// the trust threshold by an accident of where the words lined up. Whether a
+/// pass is trusted should not turn on that.
+check(
+    "one phrase rewritten, the capital still lands",
+    "the meeting is at 5",
+    "The meeting has been scheduled for 5",
+    expect: "The meeting is at 5"
+)
+
 print("\n== whole chunk refused ==")
-check("rephrase", "the meeting is at 5", "The meeting has been scheduled for 5", expect: "the meeting is at 5")
 check("translation", "wir gehen ins kino", "we are going to the cinema", expect: "wir gehen ins kino")
 check("mostly rewritten", "can you send it over when your done", "Please forward it once you have finished.", expect: "can you send it over when your done")
 check("model answered instead", "what is the capital of france", "The capital of France is Paris.", expect: "what is the capital of france")
@@ -710,6 +755,7 @@ check("an umlaut left alone is untouched", "die \u{C4}nderungen sind drausen",
       "die \u{C4}nderungen sind drau\u{DF}en", expect: "die \u{C4}nderungen sind drau\u{DF}en")
 
 print("")
+
 if failures == 0 {
     print("all passed")
 } else {
