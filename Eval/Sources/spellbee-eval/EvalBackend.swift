@@ -67,6 +67,18 @@ enum SchemaMode: String, Sendable, CaseIterable {
     case described
     /** Guided generation with no description at all, leaving only the wording. */
     case bare
+    /**
+     The shipping description with the word-preservation half removed, and
+     `words` with the rule list removed. The two together say what the shipping
+     description says, so running them apart is what shows which half earns its
+     place and whether either is merely repeating the wording.
+     */
+    case rules
+    case words
+    /** As short as a description can be while still naming the output. */
+    case terse
+    /** The free-text preamble, written as a description. */
+    case only
     /** No schema. The reply is free text and the preamble sits in the instructions. */
     case freeInstructions
     /** No schema. The preamble sits at the end of the user turn instead. */
@@ -76,12 +88,16 @@ enum SchemaMode: String, Sendable, CaseIterable {
         switch self {
         case .described: return ""
         case .bare: return "-bare"
+        case .rules: return "-rules"
+        case .words: return "-words"
+        case .terse: return "-terse"
+        case .only: return "-only"
         case .freeInstructions: return "-free"
         case .freePrompt: return "-free-suffix"
         }
     }
 
-    var isGuided: Bool { self == .described || self == .bare }
+    var isGuided: Bool { self != .freeInstructions && self != .freePrompt }
 }
 
 /**
@@ -124,6 +140,14 @@ struct AppleBackend: EvalBackend {
                 return try await session.respond(to: asked, generating: CorrectedText.self, options: options).content.text
             case .bare:
                 return try await session.respond(to: asked, generating: PlainText.self, options: options).content.text
+            case .rules:
+                return try await session.respond(to: asked, generating: RuleText.self, options: options).content.text
+            case .words:
+                return try await session.respond(to: asked, generating: WordText.self, options: options).content.text
+            case .terse:
+                return try await session.respond(to: asked, generating: TerseText.self, options: options).content.text
+            case .only:
+                return try await session.respond(to: asked, generating: OnlyText.self, options: options).content.text
             case .freeInstructions, .freePrompt:
                 /**
                  Free text arrives with whatever packaging the model felt like
@@ -154,6 +178,47 @@ private struct CorrectedText {
 /** The same shape with the description taken away, so the schema says nothing. */
 @Generable
 private struct PlainText {
+    let text: String
+}
+
+/**
+ The shipping description split in two, then pared down.
+
+ A description cannot be built at run time: it is a literal in the type, so each
+ wording needs its own shape. They are otherwise identical, which is what makes
+ the arms comparable.
+ */
+@Generable
+private struct RuleText {
+    @Guide(
+        description: """
+        The text with only spelling, punctuation, capitalisation and spacing \
+        corrected.
+        """
+    )
+    let text: String
+}
+
+@Generable
+private struct WordText {
+    @Guide(
+        description: """
+        The corrected text, with every word of the original still present, in \
+        the same order.
+        """
+    )
+    let text: String
+}
+
+@Generable
+private struct TerseText {
+    @Guide(description: "The corrected text.")
+    let text: String
+}
+
+@Generable
+private struct OnlyText {
+    @Guide(description: "Only the corrected text, nothing else.")
     let text: String
 }
 
