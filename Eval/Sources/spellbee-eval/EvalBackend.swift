@@ -122,6 +122,16 @@ enum SchemaMode: String, Sendable, CaseIterable {
     case sameNameWords
     case sameNameTerse
     case sameNameOnly
+
+    /**
+     The property's name, which goes into the schema beside the type's.
+
+     The type name is read by the model, measured at 15 to 21 replies of 168, so
+     the field name beside it is the other half of the same question and has
+     never been looked at.
+     */
+    case fieldCorrected
+    case fieldOutput
     /** No schema. The reply is free text and the preamble sits in the instructions. */
     case freeInstructions
     /** No schema. The preamble sits at the end of the user turn instead. */
@@ -146,6 +156,8 @@ enum SchemaMode: String, Sendable, CaseIterable {
         case .sameNameWords: return "-same-words"
         case .sameNameTerse: return "-same-terse"
         case .sameNameOnly: return "-same-only"
+        case .fieldCorrected: return "-field-corrected"
+        case .fieldOutput: return "-field-output"
         case .freeInstructions: return "-free"
         case .freePrompt: return "-free-suffix"
         }
@@ -235,6 +247,10 @@ struct AppleBackend: EvalBackend {
                 return try await session.respond(to: asked, generating: Terse.CorrectedText.self, options: options).content.text
             case .sameNameOnly:
                 return try await session.respond(to: asked, generating: Only.CorrectedText.self, options: options).content.text
+            case .fieldCorrected:
+                return try await session.respond(to: asked, generating: FieldCorrected.CorrectedText.self, options: options).content.corrected
+            case .fieldOutput:
+                return try await session.respond(to: asked, generating: FieldOutput.CorrectedText.self, options: options).content.output
             case .freeInstructions, .freePrompt:
                 /**
                  Free text arrives with whatever packaging the model felt like
@@ -392,6 +408,36 @@ private enum Only {
     struct CorrectedText {
         @Guide(description: "Only the corrected text, nothing else.")
         let text: String
+    }
+}
+
+
+/**
+ The shipping shape with its one property renamed, and nothing else touched.
+ */
+private enum FieldCorrected {
+    @Generable
+    struct CorrectedText {
+        @Guide(
+            description: """
+            The text with only spelling, punctuation, capitalisation and spacing \
+            corrected.
+            """
+        )
+        let corrected: String
+    }
+}
+
+private enum FieldOutput {
+    @Generable
+    struct CorrectedText {
+        @Guide(
+            description: """
+            The text with only spelling, punctuation, capitalisation and spacing \
+            corrected.
+            """
+        )
+        let output: String
     }
 }
 

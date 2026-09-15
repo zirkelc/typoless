@@ -221,6 +221,23 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
        told about the beginning.
      */
     /**
+     English opens with an order rather than a description of the result.
+
+     "Start the text with a capital letter" against "Capitalise the first word of
+     the text" is worth 4 English cases of 86, 64 to 68, with German untouched.
+     The gain is specific to that sentence rather than to imperatives: the
+     equally imperative "Capitalise the first word." gains nothing, which is
+     reason to hold it loosely.
+
+     It costs a negative, knowingly. The model that capitalises more openings
+     also capitalises `cc @sarah` into `CC @sarah` and starts a new capital after
+     an emoji. Three attempts to keep the gain without the cost all failed, and
+     the one that told it to leave the other capitals alone lost 5 cases and
+     raised unrequested changes by half, which is what naming a second rule keeps
+     doing to this model. Chris took the trade: four corrections against one
+     message altered that was already right.
+     */
+    /**
      German names the ae/oe/ue/ss substitution on purpose.
 
      Writing the instructions with real umlauts instead of ASCII changes nothing
@@ -241,7 +258,7 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
             return """
             Fix spelling, punctuation, capitalisation and spacing. Change \
             nothing else.
-            """ + (startsText ? " Capitalise the first word of the text." : "")
+            """ + (startsText ? " Start the text with a capital letter." : "")
         case .german:
             return """
             Korrigiere Rechtschreibung, Satzzeichen, Groß- und \
@@ -257,7 +274,7 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
             return """
             Fix spelling, accents, punctuation, capitalisation and spacing in \
             this \(displayName) text. Change nothing else.
-            """ + (startsText ? " Capitalise the first word of the text." : "")
+            """ + (startsText ? " Start the text with a capital letter." : "")
         }
     }
 
