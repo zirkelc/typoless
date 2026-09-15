@@ -29,6 +29,7 @@ cat \
     Spellbee/Engine/ProtectedSpans.swift \
     Spellbee/Engine/MaskedText.swift \
     Spellbee/History/IssueReport.swift \
+    Spellbee/Engine/CorrectionDeadline.swift \
     Spellbee/Engine/ModelReplyCleaner.swift \
     Spellbee/Accessibility/FieldEdit.swift \
     Spellbee/Accessibility/AppPolicy.swift \
@@ -852,6 +853,65 @@ checkReport(
     "a line break survives as a line break",
     newlines.url?.absoluteString.contains("%0A") == true
 )
+
+
+print("\n== a correction gives up rather than hang ==")
+
+func checkDeadline(_ name: String, _ condition: Bool) {
+    if !condition { failures += 1 }
+    print("\(condition ? "PASS" : "FAIL") \(name)")
+}
+
+let start = ContinuousClock().now
+let deadline = CorrectionDeadline(budget: .seconds(20), now: start)
+
+checkDeadline("a fresh pass has its whole budget", deadline.remaining(at: start) == .seconds(20))
+checkDeadline("and has not expired", !deadline.hasExpired(at: start))
+checkDeadline("a used-up pass has expired", deadline.hasExpired(at: start + .seconds(20)))
+
+/// The budget must bound the requests, not the other way round. A request
+/// started with two seconds left may not run for six, or every limit past the
+/// last one is decided by the request rather than by the pass.
+checkDeadline(
+    "a request early in the pass gets the request limit",
+    deadline.allowance(at: start) == CorrectionDeadline.perRequest
+)
+checkDeadline(
+    "a request near the end gets only what is left",
+    deadline.allowance(at: start + .seconds(18)) == .seconds(2)
+)
+checkDeadline(
+    "a request after the end gets nothing",
+    deadline.allowance(at: start + .seconds(25)) == .zero
+)
+checkDeadline(
+    "time never runs backwards",
+    deadline.remaining(at: start + .seconds(40)) == .zero
+)
+
+/// The point of the limit is that a stuck request stops costing time, whether
+/// or not it notices it has been cancelled.
+let quick = await answered(within: .seconds(5)) { "answered" }
+checkDeadline("a request inside its allowance answers", quick == "answered")
+
+/// Deliberately a request with no suspension point to cancel at. Sleeping here
+/// instead proves nothing, because a sleep ends the moment it is cancelled: the
+/// first version of this passed that test and still held the pass open for the
+/// full three seconds when measured against a request that does not notice.
+let began = ContinuousClock().now
+let slow = await answered(within: .milliseconds(200)) {
+    let until = Date().addingTimeInterval(3)
+    var spin = 0.0
+    while Date() < until { spin += 1 }
+
+    return "much too late (\(spin > 0))"
+}
+let waited = ContinuousClock().now - began
+checkDeadline("a request past its allowance gives up", slow == nil)
+checkDeadline("and does not keep the pass waiting for it", waited < .seconds(1))
+
+let none = await answered(within: .zero) { "should not run" }
+checkDeadline("no allowance means no request", none == nil)
 
 if failures == 0 {
     print("all passed")

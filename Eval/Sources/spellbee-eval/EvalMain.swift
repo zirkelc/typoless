@@ -68,7 +68,12 @@ struct EvalMain {
                     guard let dataset = datasets[language] else { continue }
 
                     let cases = options.limit.map { Array(dataset.cases.prefix($0)) } ?? dataset.cases
-                    let pipeline = EvalPipeline(backend: backend, variant: variant, masks: masks)
+                    let pipeline = EvalPipeline(
+                        backend: backend,
+                        variant: variant,
+                        masks: masks,
+                        appliesDeadline: options.appliesDeadline
+                    )
 
                     let maskLabel = masks ? "masked" : "unmasked"
                     print("running \(backend.id) \(language.code) \(variant.id) \(maskLabel) (\(cases.count) cases)")

@@ -21,6 +21,8 @@ struct EvalPipeline: Sendable {
     let variant: PromptVariant
     /** False shows the model the links and handles, which is what the app used to do. */
     let masks: Bool
+    /** False lets a stuck request run, which is what the app used to do. */
+    let appliesDeadline: Bool
     let detector = LanguageDetector()
 
     struct Outcome: Sendable {
@@ -47,12 +49,17 @@ struct EvalPipeline: Sendable {
     func correct(_ text: String) async -> Pass {
         let protected = ProtectedSpans.find(in: text)
 
+        /** The same budget the app gives a pass, for the backends it applies to. */
+        let deadline = backend.hasDeadline && appliesDeadline ? CorrectionDeadline() : nil
+
         var guardedEdits: [TextEdit] = []
         var unguardedEdits: [TextEdit] = []
         var guarded = Outcome(text: text)
         var unguarded = Outcome(text: text)
 
         for chunk in TextChunker.chunks(of: text) {
+            guard deadline?.hasExpired() != true else { break }
+
             let source = String(text[chunk])
 
             /** Only the opening chunk is told about an opening capital, as the app does. */
@@ -75,10 +82,11 @@ struct EvalPipeline: Sendable {
             }
 
             /** Masked first, then as written if the markers did not survive, as the app does. */
-            var answered = await answer(for: masked.text, language: language, startsText: startsText).flatMap(masked.restore)
+            var answered = await answer(for: masked.text, language: language, startsText: startsText, within: deadline)
+                .flatMap(masked.restore)
 
-            if answered == nil, !masked.hidesNothing {
-                answered = await answer(for: source, language: language, startsText: startsText)
+            if answered == nil, !masked.hidesNothing, deadline?.hasExpired() != true {
+                answered = await answer(for: source, language: language, startsText: startsText, within: deadline)
                 guarded.maskRetries += 1
                 unguarded.maskRetries += 1
             }
@@ -117,20 +125,27 @@ struct EvalPipeline: Sendable {
         return Pass(guarded: guarded, unguarded: unguarded)
     }
 
-    private func answer(for source: String, language: CorrectionLanguage, startsText: Bool) async -> String? {
+    private func answer(
+        for source: String,
+        language: CorrectionLanguage,
+        startsText: Bool,
+        within deadline: CorrectionDeadline?
+    ) async -> String? {
         let first = await backend.reply(
             instructions: variant.instructions(language, startsText),
             prompt: variant.userPrompt(language, source),
-            freeTextSuffix: variant.freeTextSuffix
+            freeTextSuffix: variant.freeTextSuffix,
+            within: deadline?.allowance()
         )
 
         if let first { return first }
-        guard language != .english else { return nil }
+        guard language != .english, deadline?.hasExpired() != true else { return nil }
 
         return await backend.reply(
             instructions: variant.retryInstructions(startsText: startsText),
             prompt: variant.retryPrompt(language, source),
-            freeTextSuffix: variant.freeTextSuffix
+            freeTextSuffix: variant.freeTextSuffix,
+            within: deadline?.allowance()
         )
     }
 

@@ -21,8 +21,14 @@ protocol EvalBackend: Sendable {
     /** Loads whatever the backend needs before it is timed. */
     func prepare() async throws
 
-    /** Nil when the model declines or fails, which leaves the chunk untouched. */
-    func reply(instructions: String, prompt: String, freeTextSuffix: String) async -> String?
+    /**
+     Nil when the model declines or fails, which leaves the chunk untouched.
+
+     - Parameter allowance: How long the request may run, or nil for no limit.
+       Only the backend the app applies a deadline to is given one, since the
+       limits are measured against that model and no other.
+     */
+    func reply(instructions: String, prompt: String, freeTextSuffix: String, within allowance: Duration?) async -> String?
 
     /** Frees the weights, which are the largest thing this process ever holds. */
     func release() async
@@ -101,6 +107,11 @@ enum SchemaMode: String, Sendable, CaseIterable {
     var isGuided: Bool { self != .freeInstructions && self != .freePrompt }
 }
 
+extension EvalBackend {
+    /** Whether the app would apply its measured limits to this backend. */
+    var hasDeadline: Bool { self is AppleBackend }
+}
+
 /**
  Apple's on-device model.
 
@@ -126,7 +137,13 @@ struct AppleBackend: EvalBackend {
         guard model.isAvailable else { throw EvalError.backendUnavailable(displayName) }
     }
 
-    func reply(instructions: String, prompt: String, freeTextSuffix: String) async -> String? {
+    func reply(instructions: String, prompt: String, freeTextSuffix: String, within allowance: Duration?) async -> String? {
+        guard let allowance else { return await asked(instructions, prompt, freeTextSuffix) }
+
+        return await answered(within: allowance) { await asked(instructions, prompt, freeTextSuffix) }
+    }
+
+    private func asked(_ instructions: String, _ prompt: String, _ freeTextSuffix: String) async -> String? {
         let preamble = "\n\nReturn only the corrected text, nothing else."
         let session = LanguageModelSession(
             model: model,
@@ -271,7 +288,7 @@ actor MLXBackend: EvalBackend {
         container = nil
     }
 
-    func reply(instructions: String, prompt: String, freeTextSuffix: String) async -> String? {
+    func reply(instructions: String, prompt: String, freeTextSuffix: String, within allowance: Duration?) async -> String? {
         guard let container = try? await loadedContainer() else { return nil }
 
         let session = ChatSession(

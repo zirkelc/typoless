@@ -62,7 +62,8 @@ actor LocalModelCorrector: Corrector {
             over: text,
             settings: settings,
             detector: detector,
-            appliesGuardrail: appliesGuardrail
+            appliesGuardrail: appliesGuardrail,
+            deadline: nil
         ) { source, language, startsText in
             /** A language may prefer a different model from the default. */
             let chosen = settings.model(for: language) ?? self.model

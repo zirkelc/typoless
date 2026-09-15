@@ -24,6 +24,14 @@ enum ChunkedCorrection {
         detector: LanguageDetector,
         appliesGuardrail: Bool,
         /**
+         Nil where a backend has no measured limits of its own. The values in
+         `CorrectionDeadline` are taken from Apple's on-device model, and a
+         downloaded model is a different distribution: it generates slower, and
+         its first request of the session waits for gigabytes of weights to
+         load, which would spend the whole budget before anything was asked.
+         */
+        deadline: CorrectionDeadline?,
+        /**
          Inherited from whoever called, so the closure below stays on the
          caller's actor. Both backends are actors and their closures touch their
          own state, which a nonisolated helper could not accept.
@@ -37,6 +45,17 @@ enum ChunkedCorrection {
         for chunk in TextChunker.chunks(of: text) {
             /** The user can give up mid-pass, and a long field is several chunks. */
             try Task.checkCancellation()
+
+            /**
+             Whatever has landed so far is kept and the rest of the field is
+             left as written. Stopping is better than the alternative it
+             replaced, which was to keep asking while the user watched an
+             overlay sit on their text.
+             */
+            guard deadline?.hasExpired() != true else {
+                Log.app.info("Out of time, leaving the rest of the field alone")
+                break
+            }
 
             let source = String(text[chunk])
 
@@ -77,7 +96,7 @@ enum ChunkedCorrection {
              */
             var corrected = try await answer(masked.text, language, startsText).flatMap(masked.restore)
 
-            if corrected == nil, !masked.hidesNothing {
+            if corrected == nil, !masked.hidesNothing, deadline?.hasExpired() != true {
                 Log.app.info("A marker did not survive, asking again without them")
                 corrected = try await answer(source, language, startsText)
             }

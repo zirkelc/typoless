@@ -22,6 +22,15 @@ struct Options: Sendable {
      ways, is a link in the sentence costing corrections elsewhere in it.
      */
     var masking: [Bool] = [true]
+
+    /**
+     Whether a pass gives up on a stuck request, as the app does.
+
+     Switchable because it has to be taken out of a comparison, not because the
+     app can run without it: a change measured against a run that also changed
+     the deadline cannot say which of the two moved the number.
+     */
+    var appliesDeadline = true
     var limit: Int?
     var output: URL?
     var datasets: URL?
@@ -91,6 +100,14 @@ struct Options: Sendable {
                 default: throw EvalError.unknownArgument("--masking \(value)")
                 }
 
+            case "--deadline":
+                let value = try next(argument)
+                switch value {
+                case "on": options.appliesDeadline = true
+                case "off": options.appliesDeadline = false
+                default: throw EvalError.unknownArgument("--deadline \(value)")
+                }
+
             case "--limit", "-n":
                 options.limit = Int(try next(argument))
 
@@ -137,6 +154,7 @@ struct Options: Sendable {
           --model, -m      \(Backends.all().map(\.id).joined(separator: " | "))
           --variant, -v    \(PromptVariant.all.map(\.id).joined(separator: " | "))
           --guardrail, -g  on | off | both        (default both)
+          --deadline       on | off               (default on, as the app runs)
           --limit, -n      first N cases per language
           --out, -o        where to write the per-case JSON
           --datasets       directory holding the dataset files
