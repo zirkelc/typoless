@@ -122,13 +122,26 @@ actor FoundationModelsCorrector: Corrector {
      */
 }
 
-/** The shape the model is asked to fill in, which keeps preamble out of the reply. */
+/**
+ The shape the model is asked to fill in, which keeps preamble out of the reply.
+
+ The description is read by the model, so it is part of the prompt whether or
+ not it is written like one, and it is worth as much as a prompt change:
+ removing it entirely costs 16 cases of 168.
+
+ It used to carry a second sentence, requiring every original word to still be
+ present in the same order. Measured on its own that sentence scores 94 against
+ 92 for no description at all, and adding it to the sentence below takes 113
+ down to 108. It is not redundant with the wording, it is worse than nothing,
+ which is the same finding the prompt sweep produced: this model does worse at a
+ rule the more other words surround it.
+ */
 @Generable
 private struct CorrectedText {
     @Guide(
         description: """
         The text with only spelling, punctuation, capitalisation and spacing \
-        corrected. Every original word must still be present, in the same order.
+        corrected.
         """
     )
     let text: String

@@ -862,3 +862,34 @@ if failures == 0 {
 SWIFT
 
 swift "$SOURCE"
+SWIFT_STATUS=$?
+
+# The description the model is shown exists twice: once in the app, once in the
+# eval's own copy of the same shape. They are not one string, because a @Guide
+# description has to be a literal in the type, so nothing but a check keeps them
+# equal. When they drifted, a sweep silently measured the old wording and
+# reported it as the new one, which is the worst way for a measurement to fail:
+# it produced plausible numbers for a comparison that was not being made.
+description_in() {
+    python3 -c '
+import sys
+
+source = open(sys.argv[1], encoding="utf-8").read()
+shape = source.split("struct CorrectedText {", 1)[1].split("let text", 1)[0]
+print(" ".join(shape.replace("\\\n", " ").split()))
+' "$1"
+}
+
+APP_DESCRIPTION=$(description_in Spellbee/Engine/FoundationModelsCorrector.swift)
+EVAL_DESCRIPTION=$(description_in Eval/Sources/spellbee-eval/EvalBackend.swift)
+
+if [ "$APP_DESCRIPTION" = "$EVAL_DESCRIPTION" ]; then
+    echo "PASS the eval measures the description the app ships"
+else
+    echo "FAIL the eval measures the description the app ships"
+    echo "        app : $APP_DESCRIPTION"
+    echo "        eval: $EVAL_DESCRIPTION"
+    exit 1
+fi
+
+exit $SWIFT_STATUS

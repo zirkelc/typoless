@@ -68,12 +68,13 @@ enum SchemaMode: String, Sendable, CaseIterable {
     /** Guided generation with no description at all, leaving only the wording. */
     case bare
     /**
-     The shipping description with the word-preservation half removed, and
-     `words` with the rule list removed. The two together say what the shipping
-     description says, so running them apart is what shows which half earns its
-     place and whether either is merely repeating the wording.
+     The wording that shipped until the sweep, which is the one below plus a
+     sentence requiring every original word to still be present. Kept as the
+     control: the sentence is what was removed, so a later change has something
+     to be measured against rather than only against saying nothing.
      */
-    case rules
+    case wordy
+    /** The shipping description with the rule list removed, leaving the other half. */
     case words
     /** As short as a description can be while still naming the output. */
     case terse
@@ -88,7 +89,7 @@ enum SchemaMode: String, Sendable, CaseIterable {
         switch self {
         case .described: return ""
         case .bare: return "-bare"
-        case .rules: return "-rules"
+        case .wordy: return "-wordy"
         case .words: return "-words"
         case .terse: return "-terse"
         case .only: return "-only"
@@ -140,8 +141,8 @@ struct AppleBackend: EvalBackend {
                 return try await session.respond(to: asked, generating: CorrectedText.self, options: options).content.text
             case .bare:
                 return try await session.respond(to: asked, generating: PlainText.self, options: options).content.text
-            case .rules:
-                return try await session.respond(to: asked, generating: RuleText.self, options: options).content.text
+            case .wordy:
+                return try await session.respond(to: asked, generating: WordyText.self, options: options).content.text
             case .words:
                 return try await session.respond(to: asked, generating: WordText.self, options: options).content.text
             case .terse:
@@ -169,7 +170,7 @@ private struct CorrectedText {
     @Guide(
         description: """
         The text with only spelling, punctuation, capitalisation and spacing \
-        corrected. Every original word must still be present, in the same order.
+        corrected.
         """
     )
     let text: String
@@ -182,18 +183,18 @@ private struct PlainText {
 }
 
 /**
- The shipping description split in two, then pared down.
+ The wordings the shipping one is measured against.
 
  A description cannot be built at run time: it is a literal in the type, so each
  wording needs its own shape. They are otherwise identical, which is what makes
  the arms comparable.
  */
 @Generable
-private struct RuleText {
+private struct WordyText {
     @Guide(
         description: """
         The text with only spelling, punctuation, capitalisation and spacing \
-        corrected.
+        corrected. Every original word must still be present, in the same order.
         """
     )
     let text: String
