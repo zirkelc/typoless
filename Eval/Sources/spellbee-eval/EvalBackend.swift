@@ -86,6 +86,42 @@ enum SchemaMode: String, Sendable, CaseIterable {
     case terse
     /** The free-text preamble, written as a description. */
     case only
+
+    /**
+     The same description under a different type name, which is not the
+     cosmetic change it looks like. Holding the description byte-identical and
+     changing only the name moves 18 of 168 replies, so the name is read. These
+     arms sweep it, since nothing chose the shipping one deliberately.
+     */
+    case namePlain
+    case nameOutput
+    case nameProofread
+    case nameRule
+    case nameAnswer
+
+    /**
+     The shipping name, declared inside another type.
+
+     Asks whether a nested declaration is seen as its own name or its full path.
+     If it is transparent, every other arm can be given the same leaf name and a
+     description sweep stops confounding the two.
+     */
+    case nested
+
+    /**
+     The description arms again, every one of them declared as a `CorrectedText`
+     nested in a type of its own.
+
+     The first sweep of these gave each wording its own type name and so
+     measured two things at once, which cost it 2 of the 5 cases it claimed.
+     Nesting is transparent, measured at 0 of 168 replies changed, so this
+     holds the name still and moves only the words.
+     */
+    case sameNameWordy
+    case sameNameBare
+    case sameNameWords
+    case sameNameTerse
+    case sameNameOnly
     /** No schema. The reply is free text and the preamble sits in the instructions. */
     case freeInstructions
     /** No schema. The preamble sits at the end of the user turn instead. */
@@ -99,6 +135,17 @@ enum SchemaMode: String, Sendable, CaseIterable {
         case .words: return "-words"
         case .terse: return "-terse"
         case .only: return "-only"
+        case .namePlain: return "-name-plain"
+        case .nameOutput: return "-name-output"
+        case .nameProofread: return "-name-proofread"
+        case .nameRule: return "-name-rule"
+        case .nameAnswer: return "-name-answer"
+        case .nested: return "-nested"
+        case .sameNameWordy: return "-same-wordy"
+        case .sameNameBare: return "-same-bare"
+        case .sameNameWords: return "-same-words"
+        case .sameNameTerse: return "-same-terse"
+        case .sameNameOnly: return "-same-only"
         case .freeInstructions: return "-free"
         case .freePrompt: return "-free-suffix"
         }
@@ -166,6 +213,28 @@ struct AppleBackend: EvalBackend {
                 return try await session.respond(to: asked, generating: TerseText.self, options: options).content.text
             case .only:
                 return try await session.respond(to: asked, generating: OnlyText.self, options: options).content.text
+            case .namePlain:
+                return try await session.respond(to: asked, generating: Text.self, options: options).content.text
+            case .nameOutput:
+                return try await session.respond(to: asked, generating: Output.self, options: options).content.text
+            case .nameProofread:
+                return try await session.respond(to: asked, generating: ProofreadText.self, options: options).content.text
+            case .nameRule:
+                return try await session.respond(to: asked, generating: RuleText.self, options: options).content.text
+            case .nameAnswer:
+                return try await session.respond(to: asked, generating: Answer.self, options: options).content.text
+            case .nested:
+                return try await session.respond(to: asked, generating: Nested.CorrectedText.self, options: options).content.text
+            case .sameNameWordy:
+                return try await session.respond(to: asked, generating: Wordy.CorrectedText.self, options: options).content.text
+            case .sameNameBare:
+                return try await session.respond(to: asked, generating: Bare.CorrectedText.self, options: options).content.text
+            case .sameNameWords:
+                return try await session.respond(to: asked, generating: Words.CorrectedText.self, options: options).content.text
+            case .sameNameTerse:
+                return try await session.respond(to: asked, generating: Terse.CorrectedText.self, options: options).content.text
+            case .sameNameOnly:
+                return try await session.respond(to: asked, generating: Only.CorrectedText.self, options: options).content.text
             case .freeInstructions, .freePrompt:
                 /**
                  Free text arrives with whatever packaging the model felt like
@@ -191,6 +260,139 @@ private struct CorrectedText {
         """
     )
     let text: String
+}
+
+
+/**
+ One description, five names.
+
+ Everything below is the shipping shape with its type renamed and nothing else
+ touched, which is the only way to read the name's effect on its own.
+ */
+
+@Generable
+private struct Text {
+    @Guide(
+        description: """
+        The text with only spelling, punctuation, capitalisation and spacing \
+        corrected.
+        """
+    )
+    let text: String
+}
+
+@Generable
+private struct Output {
+    @Guide(
+        description: """
+        The text with only spelling, punctuation, capitalisation and spacing \
+        corrected.
+        """
+    )
+    let text: String
+}
+
+@Generable
+private struct ProofreadText {
+    @Guide(
+        description: """
+        The text with only spelling, punctuation, capitalisation and spacing \
+        corrected.
+        """
+    )
+    let text: String
+}
+
+@Generable
+private struct RuleText {
+    @Guide(
+        description: """
+        The text with only spelling, punctuation, capitalisation and spacing \
+        corrected.
+        """
+    )
+    let text: String
+}
+
+@Generable
+private struct Answer {
+    @Guide(
+        description: """
+        The text with only spelling, punctuation, capitalisation and spacing \
+        corrected.
+        """
+    )
+    let text: String
+}
+
+/** The shipping shape, declared one level down. */
+private enum Nested {
+    @Generable
+    struct CorrectedText {
+        @Guide(
+            description: """
+            The text with only spelling, punctuation, capitalisation and spacing \
+            corrected.
+            """
+        )
+        let text: String
+    }
+}
+
+
+/**
+ Every wording under one name.
+
+ The leaf name is what the model is shown, so these differ in their description
+ and in nothing else.
+ */
+private enum Wordy {
+    @Generable
+    struct CorrectedText {
+        @Guide(
+            description: """
+            The text with only spelling, punctuation, capitalisation and spacing \
+            corrected. Every original word must still be present, in the same order.
+            """
+        )
+        let text: String
+    }
+}
+
+private enum Bare {
+    @Generable
+    struct CorrectedText {
+        let text: String
+    }
+}
+
+private enum Words {
+    @Generable
+    struct CorrectedText {
+        @Guide(
+            description: """
+            The corrected text, with every word of the original still present, in \
+            the same order.
+            """
+        )
+        let text: String
+    }
+}
+
+private enum Terse {
+    @Generable
+    struct CorrectedText {
+        @Guide(description: "The corrected text.")
+        let text: String
+    }
+}
+
+private enum Only {
+    @Generable
+    struct CorrectedText {
+        @Guide(description: "Only the corrected text, nothing else.")
+        let text: String
+    }
 }
 
 /** The same shape with the description taken away, so the schema says nothing. */

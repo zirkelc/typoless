@@ -152,23 +152,35 @@ actor FoundationModelsCorrector: Corrector {
  The shape the model is asked to fill in, which keeps preamble out of the reply.
 
  The description is read by the model, so it is part of the prompt whether or
- not it is written like one, and it is worth as much as a prompt change:
- removing it entirely costs 16 cases of 168.
+ not it is written like one. Removing it entirely costs 4 cases of 168, 112
+ against 108.
 
  It used to carry a second sentence, requiring every original word to still be
- present in the same order. Measured on its own that sentence scores 94 against
- 92 for no description at all, and removing it from the sentence below is worth
- **3 cases of 168**, 109 to 112. It is not redundant with the wording, it is
+ present in the same order. That sentence alone scores 99 against 108 for no
+ description at all, so it is not merely redundant, it is nine cases worse than
+ silence. Removing it from the sentence below is worth **3 cases of 168**, 109
+ to 112, measured twice. It is not redundant with the wording, it is
  worse than nothing, which is the same finding the prompt sweep produced: this
  model does worse at a rule the more other words surround it.
 
- That gain was first reported as 5, which was wrong. The arm it was measured on
- declared the same description on a type named `RuleText` rather than
- `CorrectedText`, and **the name of the type is part of what the model reads**:
- holding the description identical and changing only the name moves 18 of 168
- replies and 2 cases of exact match. Nothing here is more than a shape to fill
- in, so nothing warned that renaming it was an experiment. It is worth running
- as one, since the name that is not ours scored the better of the two.
+ Every figure above is measured with the type name held still, which took two
+ attempts. **The name of the type is part of what the model reads**: holding the
+ description identical and changing only the name moves 15 to 21 replies of 168.
+ A failing case made it plain by echoing its own schema back, `name:
+ CorrectedText, schema: {...}`. Nothing here is more than a shape to fill in, so
+ nothing warned that renaming it was an experiment, and the first sweep of these
+ wordings gave each one a name of its own and so measured both at once. It
+ reported this gain as 5 rather than 3, and the cost of dropping the description
+ as 16 rather than 4.
+
+ Declaring the shape inside another type is transparent, 0 of 168 replies
+ changed, which is what makes a description sweep possible without renaming
+ anything.
+
+ The name itself is worth a sweep of its own. Six of them span 110 to 114, and
+ the neutral `Text` is the worst of them, so a name that says something about the
+ task is doing work. Not acted on: 4 cases across six arms chosen on the same
+ 168 they are reported on is how a winner gets manufactured.
  */
 @Generable
 private struct CorrectedText {
