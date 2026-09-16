@@ -219,9 +219,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_SUEnableAutomaticChecks = NO;
-				INFOPLIST_KEY_SUFeedURL = "";
-				INFOPLIST_KEY_SUPublicEDKey = "0rSq/PlKZL2WCCVfBaS4PUxNPTrmPL2j1UGZJnPd7ps=";
+				INFOPLIST_FILE = "Config/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -247,9 +245,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_SUEnableAutomaticChecks = NO;
-				INFOPLIST_KEY_SUFeedURL = "";
-				INFOPLIST_KEY_SUPublicEDKey = "0rSq/PlKZL2WCCVfBaS4PUxNPTrmPL2j1UGZJnPd7ps=";
+				INFOPLIST_FILE = "Config/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

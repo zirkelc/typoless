@@ -52,6 +52,10 @@ if ! security find-identity -v -p codesigning | grep -q "Developer ID Applicatio
     exit 1
 fi
 
+# Signing is deliberately left alone here and handled by the export below.
+# Overriding CODE_SIGN_IDENTITY on the command line applies it to every target
+# in the build, including the dozen that arrive with the packages, and each of
+# those then fails for want of a development team it has no reason to have.
 echo "==> Archiving $VERSION"
 xcodebuild archive \
     -project Spellbee.xcodeproj \
@@ -60,9 +64,7 @@ xcodebuild archive \
     -archivePath "$ARCHIVE" \
     -skipPackagePluginValidation \
     -skipMacroValidation \
-    MARKETING_VERSION="$VERSION" \
-    CODE_SIGN_STYLE=Manual \
-    CODE_SIGN_IDENTITY="Developer ID Application"
+    MARKETING_VERSION="$VERSION"
 
 echo "==> Exporting"
 cat > "$BUILD/export-options.plist" <<PLIST
@@ -73,7 +75,9 @@ cat > "$BUILD/export-options.plist" <<PLIST
     <key>method</key>
     <string>developer-id</string>
     <key>signingStyle</key>
-    <string>manual</string>
+    <string>automatic</string>
+    <key>teamID</key>
+    <string>D568Q9VY3L</string>
 </dict>
 </plist>
 PLIST
