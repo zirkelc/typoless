@@ -1,204 +1,105 @@
+import AppKit
+import ServiceManagement
 import SwiftUI
-
-/**
- The look shared by every settings page.
-
- Labels right-aligned in a narrow left column, controls left-aligned beside
- them, and a hairline between blocks that belong to different ideas. This is the
- layout a Mac settings window has had for twenty years, and the reason to follow
- it is that people can already read it.
- */
-struct SettingsPage<Content: View>: View {
-    /**
-     How wide the labels and controls are, before the window's own margins.
-
-     Fixed rather than filling the window, so the block sits in the middle with
-     even space on either side. Letting the form stretch pushes every label to
-     the far left and leaves a ragged gap on the right, which is what a settings
-     window is not supposed to look like.
-     */
-    var contentWidth: CGFloat = 520
-
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        Form {
-            content
-        }
-        .formStyle(.columns)
-        .frame(width: contentWidth)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-    }
-}
-
-/**
- A row of one or more controls under a right-aligned label.
-
- Several checkboxes usually belong to one idea, and repeating a label for each
- of them, or leaving them unlabelled, both read worse than naming the idea once.
- */
-struct SettingsRow<Content: View>: View {
-    let label: String
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        LabeledContent(label) {
-            VStack(alignment: .leading, spacing: 6) {
-                content
-            }
-        }
-    }
-}
-
-/**
- An explanation of the control above it.
-
- Flush with the control rather than indented under its label. Indenting lines a
- sentence up with the words of a checkbox but leaves it out of step with a
- picker or a button, which have no label of their own to sit under, so the notes
- on one page started at three different places.
- */
-struct SettingsNote: View {
-    let text: String
-
-    init(_ text: String) {
-        self.text = text
-    }
-
-    var body: some View {
-        Text(text)
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.bottom, 2)
-    }
-}
 
 struct GeneralSettingsView: View {
     @Bindable var preferences: Preferences
 
     var body: some View {
-        SettingsPage {
-            SettingsRow(label: "Startup:") {
-                Toggle("Open Spellbee at login", isOn: launchAtLogin)
+        SettingsSurface {
+            SettingsSection("App") {
+                SettingsLine(
+                    "Open at login",
+                    note: preferences.launchAtLogin == .needsApproval
+                        ? "Waiting for your approval under Login Items in System Settings."
+                        : nil
+                ) {
+                    if preferences.launchAtLogin == .needsApproval {
+                        Button("Open Login Items…") {
+                            SMAppService.openSystemSettingsLoginItems()
+                        }
+                    }
+
+                    SettingsSwitch(isOn: launchAtLogin)
+                }
             }
 
-            Divider().padding(.vertical, 10)
-
-            SettingsRow(label: "Triggers:") {
-                HStack(spacing: 8) {
-                    Toggle("Double-tap", isOn: $preferences.isDoubleTapEnabled)
-
+            SettingsSection("Triggers") {
+                SettingsLine(
+                    "Double-tap",
+                    note: preferences.doubleTapModifier.caution
+                        ?? "Tap \(preferences.doubleTapModifier.symbol) twice, quickly, with no other key or click in between."
+                ) {
                     Picker("", selection: $preferences.doubleTapModifier) {
                         ForEach(TapModifier.allCases, id: \.self) { modifier in
                             Text(modifier.displayName).tag(modifier)
                         }
                     }
                     .labelsHidden()
-                    .fixedSize()
                     .disabled(!preferences.isDoubleTapEnabled)
+
+                    SettingsSwitch(isOn: $preferences.isDoubleTapEnabled)
                 }
 
-                SettingsNote(
-                    preferences.doubleTapModifier.caution
-                        ?? "Tap \(preferences.doubleTapModifier.symbol) twice, quickly. No other key or click in between."
-                )
-
-                HStack(spacing: 8) {
-                    Toggle("Keyboard shortcut", isOn: $preferences.isHotKeyEnabled)
-
+                SettingsLine(
+                    "Keyboard shortcut",
+                    note: "Press \(preferences.hotKey.displayName)."
+                ) {
                     ShortcutRecorder(shortcut: $preferences.hotKey)
                         .disabled(!preferences.isHotKeyEnabled)
+
+                    SettingsSwitch(isOn: $preferences.isHotKeyEnabled)
                 }
-
-                SettingsNote("Fires on one press, wherever you are. Click it to record a different one.")
             }
 
-            Divider().padding(.vertical, 10)
-
-            SettingsRow(label: "Stopping:") {
-                ShortcutRecorder(
-                    shortcut: $preferences.cancelKey,
-                    allowsUnmodifiedKeys: true,
-                    fallback: .cancel
-                )
-
-                SettingsNote("Pressed while a correction is running, nothing is written. Claimed only for those few seconds, so a bare key is safe here.")
+            SettingsSection("Stopping") {
+                SettingsLine(
+                    "Cancel key",
+                    note: "Press \(preferences.cancelKey.displayName) to cancel a running correction. Claimed only while a correction is running, so a bare key is safe here."
+                ) {
+                    ShortcutRecorder(
+                        shortcut: $preferences.cancelKey,
+                        allowsUnmodifiedKeys: true,
+                        fallback: .cancel
+                    )
+                }
             }
-
         }
     }
 
     /**
-     Written straight through to the system rather than mirrored, since the user
-     can turn it off in System Settings without telling us.
+     "Waiting for approval" shows as on, since the user did turn it on and the
+     note beside it says what is still missing.
      */
     private var launchAtLogin: Binding<Bool> {
         Binding(
-            get: { preferences.launchesAtLogin },
-            set: { preferences.launchesAtLogin = $0 }
+            get: { preferences.launchAtLogin != .off },
+            set: { preferences.setLaunchesAtLogin($0) }
         )
     }
 }
 
 struct PrivacySettingsView: View {
     var body: some View {
-        SettingsPage {
-            SettingsRow(label: "On this Mac:") {
-                Label("Nothing leaves your Mac", systemImage: "lock.fill")
-                    .font(.headline)
-                SettingsNote("""
-                Corrections run on a model on this machine. No text is uploaded, and \
-                nothing is sent anywhere for any reason.
-                """)
+        SettingsSurface {
+            SettingsSection("On this Mac") {
+                SettingsText(
+                    "Nothing leaves your Mac",
+                    text: "Corrections run on a local model on this machine. No text is uploaded and nothing is sent anywhere."
+                )
             }
 
-            Divider().padding(.vertical, 10)
-
-            SettingsRow(label: "Logging:") {
-                Text("""
-                Spellbee writes diagnostic messages to the system log: which app a \
-                field was in, how many characters it held, and how many changes were \
-                made. The text itself is never among them.
+            SettingsSection("Never read") {
+                SettingsText(text: """
+                Password fields are always ignored. Every app excluded under Apps is \
+                always ignored, and if you have named apps to correct in, every other \
+                app as well.
                 """)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Divider().padding(.vertical, 10)
-
-            SettingsRow(label: "History:") {
-                Text("""
-                History is the one place that keeps the text itself, so that a \
-                bad correction can be undone after the fact. It is held in memory \
-                only and never written to disk, and quitting Spellbee clears it. \
-                How long it is kept, or whether it is kept at all, is set under \
-                Safety.
-                """)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Divider().padding(.vertical, 10)
-
-            SettingsRow(label: "Never read:") {
-                Text("""
-                Password fields, always. Every app excluded under Apps, always. \
-                And if you have named the apps to correct in, everything else \
-                as well.
-                """)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 }
 
 #Preview("General") {
-    GeneralSettingsView(preferences: Preferences()).frame(width: 560)
+    GeneralSettingsView(preferences: Preferences())
 }
-

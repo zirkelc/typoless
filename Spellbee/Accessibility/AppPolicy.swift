@@ -23,17 +23,26 @@ struct AppPolicy: Sendable {
      editors and password managers, where the "text field" is usually code, a
      command, or a secret. Seeds the exclusion list the user can then edit.
      */
-    static let defaultDenied: Set<String> = [
-        "com.apple.Terminal",
-        "com.googlecode.iterm2",
-        "com.mitchellh.ghostty",
-        "dev.warp.Warp-Stable",
-        "com.apple.dt.Xcode",
-        "com.microsoft.VSCode",
-        "com.todesktop.230313mzl4w4u92", // Cursor
-        "com.jetbrains.intellij",
-        "com.1password.1password",
-        "com.agilebits.onepassword7",
+    static var defaultDenied: Set<String> { Set(defaultDeniedNames.keys) }
+
+    /**
+     The same apps with the names people know them by.
+
+     Needed because most machines have only a few of them installed, and an app
+     that is not installed has no name to look up. The list then showed
+     `230313mzl4w4u92` where it meant Cursor.
+     */
+    static let defaultDeniedNames: [String: String] = [
+        "com.apple.Terminal": "Terminal",
+        "com.googlecode.iterm2": "iTerm2",
+        "com.mitchellh.ghostty": "Ghostty",
+        "dev.warp.Warp-Stable": "Warp",
+        "com.apple.dt.Xcode": "Xcode",
+        "com.microsoft.VSCode": "Visual Studio Code",
+        "com.todesktop.230313mzl4w4u92": "Cursor",
+        "com.jetbrains.intellij": "IntelliJ IDEA",
+        "com.1password.1password": "1Password",
+        "com.agilebits.onepassword7": "1Password 7",
     ]
 
     var denied: Set<String> = defaultDenied

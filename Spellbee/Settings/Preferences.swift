@@ -101,18 +101,31 @@ final class Preferences {
 
      Unlike everything else here this is not ours to remember: the system owns
      it, and the user can turn it off in System Settings without telling us. So
-     it is read back from `SMAppService` rather than from a stored copy that
-     would slowly become a lie.
+     it is read back from `SMAppService` after every change, and again whenever
+     settings are shown, rather than kept as a stored copy that would slowly
+     become a lie.
+
+     Stored all the same, because a computed property is invisible to
+     observation. It used to be one, and the switch wrote to the system and then
+     drew the old state, since nothing a view was watching had changed.
      */
-    var launchesAtLogin: Bool {
-        get { SMAppService.mainApp.status == .enabled }
-        set {
-            do {
-                try newValue ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
-            } catch {
-                Log.app.error("Could not change launch at login: \(String(describing: error), privacy: .public)")
-            }
+    private(set) var launchAtLogin: LaunchAtLogin = .current
+
+    /** Asks the system, then shows whatever it actually decided. */
+    func setLaunchesAtLogin(_ isOn: Bool) {
+        do {
+            try isOn ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
+        } catch {
+            Log.app.error("Could not change launch at login: \(String(describing: error), privacy: .public)")
         }
+
+        refreshLaunchAtLogin()
+    }
+
+    /** Picks up a change made in System Settings while we were not looking. */
+    func refreshLaunchAtLogin() {
+        let current = LaunchAtLogin.current
+        if launchAtLogin != current { launchAtLogin = current }
     }
 
     // MARK: Languages
@@ -206,7 +219,7 @@ final class Preferences {
         AppPolicy(denied: deniedBundleIDs, allowed: allowedBundleIDs)
     }
 
-    // MARK: Safety
+    // MARK: History
 
     /** How long a correction stays recoverable, or whether it is kept at all. */
     var historyRetention: HistoryRetention {
@@ -356,6 +369,27 @@ final class Preferences {
         )
 
         defaults.set(value, forKey: key)
+    }
+}
+
+/**
+ What the system says about starting at login.
+
+ Three states rather than a flag, because registering can succeed and still not
+ take effect: the system may hold the item until the user allows it under Login
+ Items, and a switch that reads "off" after being turned on needs to say why.
+ */
+enum LaunchAtLogin: Equatable {
+    case off
+    case on
+    case needsApproval
+
+    static var current: LaunchAtLogin {
+        switch SMAppService.mainApp.status {
+        case .enabled: return .on
+        case .requiresApproval: return .needsApproval
+        default: return .off
+        }
     }
 }
 

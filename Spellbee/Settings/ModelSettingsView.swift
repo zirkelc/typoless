@@ -14,11 +14,13 @@ struct ModelSettingsView: View {
 
     var body: some View {
         SettingsSurface {
-            Table {
-                TableHeader("Default model", trailing: "On disk")
-
-                Divider()
-
+            SettingsSection(
+                "Default model",
+                footer: """
+                Default model for every language. Can be overridden per language \
+                in Languages.
+                """
+            ) {
                 ModelRow(
                     title: CorrectorBackend.appleOnDevice.displayName,
                     detail: "Built in, nothing to download",
@@ -29,8 +31,6 @@ struct ModelSettingsView: View {
                 )
 
                 ForEach(LocalModel.allCases, id: \.self) { local in
-                    Divider()
-
                     ModelRow(
                         title: local.displayName,
                         detail: detail(for: local),
@@ -45,12 +45,6 @@ struct ModelSettingsView: View {
                     )
                 }
             }
-
-            SettingsFootnote("""
-            Gemma leads fix recall by roughly 15 points over Apple's model in \
-            both measured languages, at about one and a half times the latency. \
-            Apple's needs no download and is the safe default.
-            """)
         }
     }
 
@@ -159,7 +153,7 @@ private struct ModelRow: View {
                 }
             }
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .contentShape(Rectangle())
         .onTapGesture { if isSelectable { onMakeDefault() } }

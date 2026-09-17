@@ -38,6 +38,7 @@ struct InstalledApp {
         let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
 
         name = url.flatMap { FileManager.default.displayName(atPath: $0.path) }
+            ?? AppPolicy.defaultDeniedNames[bundleID]
             ?? bundleID.components(separatedBy: ".").last
             ?? bundleID
 

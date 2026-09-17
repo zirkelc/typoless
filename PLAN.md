@@ -77,10 +77,9 @@ recent fixes as before→after, Settings…, Setup Guide, Quit.
 - **General** — launch at login, double-⌘ on/off, conventional hotkey recorder, revert shortcut, show icon.
 - **Models** — every model, its size, whether it is on disk, a download button, and which one is the default.
 - **Languages** — the languages added, with an Add menu, and a per-language model override.
-- **Corrections** — a table of rules per added language, each shown with an example in that language.
+- **Corrections** — whether the guardrail applies, a table of rules per added language (each shown with an example in that language, and disabled while the guardrail is off), and how long a correction stays undoable in history.
 - **Sentence-final punctuation** — whether a message with no closing mark gets one. A per-language rule, enforced in the guardrail rather than asked of the model, which does not work: the eval variant that named terminal punctuation made Gemma start deleting full stops from text that was already correct. It was briefly a per-app override too, and that was removed: singling out one rule because it is the noisiest is a reason to fix the rule, and it made the effective rule set depend on which window was in front in a way nothing in the UI showed.
 - **Apps** — deny-list, plus per-app overrides for the settings above. Default-denied: terminals, Xcode, VS Code, password managers.
-- **Safety** — how strict the guardrail is, and how long a correction stays undoable. Both answer the same question, so they sit together.
 - **Privacy** — "nothing leaves your Mac", opt-in local log. The one exception is a bug report, which the user reads and submits themselves from the history window.
 
 ## Overlay animation

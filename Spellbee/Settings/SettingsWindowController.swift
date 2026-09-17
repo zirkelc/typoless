@@ -31,18 +31,6 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
      */
     private var pages: [SettingsTab: NSView] = [:]
 
-    /**
-     Whether a height change should animate.
-
-     False while a page is being put on screen, because `setFrame(animate:)`
-     blocks the main thread for as long as the animation runs, and AppKit scales
-     that with the distance: a third of a second for the drop from the tallest
-     page to the shortest. Paid on every click, that is the lag. Growth that
-     happens later, such as a language opening to show its rules, still animates
-     since nothing is waiting on it.
-     */
-    private var animatesResize = false
-
     init(model: AppModel) {
         self.model = model
     }
@@ -61,6 +49,15 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }
+
+    #if DEBUG
+    /** Switches tab and forces the layout and drawing a click would cause, so a timer around it sees the whole cost. */
+    func showForMeasuring(_ tab: SettingsTab) {
+        show(tab)
+        window?.contentView?.layoutSubtreeIfNeeded()
+        window?.displayIfNeeded()
+    }
+    #endif
 
     private func makeWindow() -> NSWindow {
         let window = NSWindow(
@@ -98,12 +95,8 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
         let page = pages[tab] ?? makePage(for: tab)
         pages[tab] = page
 
-        animatesResize = false
         window.contentView = page
-        resize(toContentHeight: page.fittingSize.height, animated: false)
-
-        /** Once the switch has settled, later growth is free to animate again. */
-        Task { @MainActor in animatesResize = true }
+        resize(toContentHeight: page.fittingSize.height)
     }
 
     private func makePage(for tab: SettingsTab) -> NSView {
@@ -128,7 +121,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
                              */
                             guard self.selected == tab else { return }
 
-                            self.resize(toContentHeight: height, animated: self.animatesResize)
+                            self.resize(toContentHeight: height)
                         }
                     }
                 }
@@ -143,8 +136,14 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
     /**
      Grows from the top edge rather than the centre, so the title bar stays put
      and only the bottom of the window moves.
+
+     Never animated. `setFrame(animate:)` runs the whole animation on the main
+     thread before it returns, and on every frame of it the hosting view lays
+     the page out again from scratch. The height arrives a moment after the
+     switch, so that stall landed on nearly every first visit to a page:
+     measured at up to three quarters of a second, most of it spent resizing.
      */
-    private func resize(toContentHeight height: CGFloat, animated: Bool) {
+    private func resize(toContentHeight height: CGFloat) {
         guard let window, height > 0 else { return }
 
         let size = NSSize(width: selected.width, height: height)
@@ -153,7 +152,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
         guard abs(frame.height - window.frame.height) > 0.5 else { return }
 
         frame.origin = NSPoint(x: window.frame.origin.x, y: window.frame.maxY - frame.height)
-        window.setFrame(frame, display: true, animate: animated)
+        window.setFrame(frame, display: true)
     }
 
     /**
@@ -163,6 +162,15 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
      disappeared and cannot clean up after themselves. A shortcut recorder left
      listening swallows every key press in the app until the next launch.
      */
+    /**
+     Coming back to the window is when a change made in System Settings shows
+     up, and launch at login is the one setting the system can change behind
+     our back.
+     */
+    func windowDidBecomeKey(_ notification: Notification) {
+        model.preferences.refreshLaunchAtLogin()
+    }
+
     func windowWillClose(_ notification: Notification) {
         ShortcutListener.shared.stopAll()
     }

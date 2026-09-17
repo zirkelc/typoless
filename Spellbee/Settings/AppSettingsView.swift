@@ -20,7 +20,7 @@ struct AppSettingsView: View {
     @State private var includedSelection: String?
 
     var body: some View {
-        SettingsSurface {
+        SettingsSurface(spacing: 12) {
             AppList(
                 title: "Never correct in",
                 bundleIDs: preferences.deniedBundleIDs,
@@ -31,10 +31,7 @@ struct AppSettingsView: View {
                 onReset: { preferences.deniedBundleIDs = AppPolicy.defaultDenied }
             )
 
-            SettingsFootnote("""
-            Terminals, editors and password managers, where a "text field" is \
-            usually code, a command, or a secret. Always applies.
-            """)
+            SettingsFootnote("Never correct in these apps, or leave empty to correct everywhere.")
 
             Divider().padding(.vertical, 6)
 
@@ -48,10 +45,7 @@ struct AppSettingsView: View {
                 onRemove: { preferences.allowedBundleIDs.remove($0) }
             )
 
-            SettingsFootnote("""
-            Leave this empty to correct everywhere. Name even one app and \
-            Spellbee works there and nowhere else, minus anything excluded above.
-            """)
+            SettingsFootnote("Only correct in these apps, or leave empty to correct everywhere.")
 
         }
     }
@@ -75,28 +69,32 @@ private struct AppList: View {
     var onReset: (() -> Void)?
 
     private var apps: [InstalledApp] {
-        bundleIDs.map(InstalledApp.named).sorted { $0.name < $1.name }
+        bundleIDs.map(InstalledApp.named).sorted {
+            $0.name.localizedStandardCompare($1.name) == .orderedAscending
+        }
     }
 
     var body: some View {
-        Table {
-            TableHeader(title, trailing: trailing)
+        /** The page holds two lists, so each one needs its name. */
+        TableTitle(title, trailing: trailing)
 
-            ForEach(apps, id: \.bundleID) { app in
-                Divider()
+        Table {
+            if apps.isEmpty {
+                Text(emptyMessage)
+                    .font(.callout)
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            ForEach(Array(apps.enumerated()), id: \.element.bundleID) { index, app in
+                if index > 0 {
+                    Divider()
+                }
 
                 AppRow(app: app, isSelected: selection == app.bundleID)
                     .onTapGesture { selection = app.bundleID }
-            }
-
-            if apps.isEmpty {
-                Divider()
-
-                Text(emptyMessage)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
 
@@ -159,20 +157,21 @@ private struct AppRow: View {
              makes a list of ten look like ten unrelated things.
              */
             Text(app.name)
+                .fontWeight(.medium)
                 .lineLimit(1)
-                .frame(width: 170, alignment: .leading)
+                .frame(width: 190, alignment: .leading)
 
             /** The identifier is what this is keyed on, so it is worth showing. */
             Text(app.bundleID)
-                .font(.caption)
+                .font(.callout)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
 
             Spacer()
-
         }
+        .frame(minHeight: Table<EmptyView>.rowHeight)
         .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.vertical, 7)
         .background(isSelected ? Color.accentColor.opacity(0.15) : .clear)
         .contentShape(Rectangle())
     }

@@ -7,7 +7,6 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case languages
     case corrections
     case apps
-    case safety
     case privacy
 
     var id: String { rawValue }
@@ -19,7 +18,6 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .languages: return "Languages"
         case .corrections: return "Corrections"
         case .apps: return "Apps"
-        case .safety: return "Safety"
         case .privacy: return "Privacy"
         }
     }
@@ -31,7 +29,6 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .languages: return "globe"
         case .corrections: return "checkmark.circle"
         case .apps: return "square.grid.2x2"
-        case .safety: return "shield"
         case .privacy: return "hand.raised"
         }
     }
@@ -52,9 +49,8 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .general: GeneralSettingsView(preferences: model.preferences)
         case .models: ModelSettingsView(model: model)
         case .languages: LanguageSettingsView(preferences: model.preferences)
-        case .corrections: CorrectionSettingsView(preferences: model.preferences)
+        case .corrections: CorrectionSettingsView(preferences: model.preferences, history: model.history)
         case .apps: AppSettingsView(preferences: model.preferences)
-        case .safety: SafetySettingsView(preferences: model.preferences, history: model.history)
         case .privacy: PrivacySettingsView()
         }
     }

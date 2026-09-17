@@ -15,7 +15,7 @@ struct LanguageSettingsView: View {
     @State private var isAdding = false
 
     var body: some View {
-        SettingsSurface {
+        SettingsSurface(spacing: 12) {
             Table {
                 if added.isEmpty {
                     Text("No languages yet. Add one to start correcting.")
@@ -57,10 +57,6 @@ struct LanguageSettingsView: View {
                                 } label: {
                                     HStack(spacing: 6) {
                                         Text(language.displayName)
-                                        if !language.isTuned {
-                                            Image(systemName: "questionmark.circle")
-                                                .foregroundStyle(.tertiary)
-                                        }
                                         Spacer()
                                     }
                                     .contentShape(Rectangle())
@@ -80,18 +76,10 @@ struct LanguageSettingsView: View {
                 Spacer()
             }
 
-            SettingsFootnote(preferences.backend == .appleOnDevice
-                ? """
-                The language of each paragraph is detected, and anything written \
-                in a language not listed here is left alone. Per-language models \
-                need a downloaded model as the default under Models; Apple's \
-                cannot hand a paragraph to another one.
-                """
-                : """
-                The language of each paragraph is detected, and anything written \
-                in a language not listed here is left alone. A model set here \
-                overrides the default under Models for that language alone.
-                """)
+            SettingsFootnote("""
+            Available languages that will be corrected. The language of each line \
+            is detected. Override the default model per language.
+            """)
         }
     }
 
@@ -142,12 +130,6 @@ private struct LanguageRow: View {
             Text(language.displayName)
                 .fontWeight(.medium)
 
-            if !language.isTuned {
-                Image(systemName: "questionmark.circle")
-                    .foregroundStyle(.tertiary)
-                    .help("Not measured. English and German are scored against a dataset; this one uses the same wording with the language named, and its quality is unknown.")
-            }
-
             Spacer()
 
             /**
@@ -168,6 +150,7 @@ private struct LanguageRow: View {
             .labelsHidden()
             .fixedSize()
         }
+        .frame(minHeight: Table<EmptyView>.rowHeight)
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .background(isSelected ? Color.accentColor.opacity(0.15) : .clear)

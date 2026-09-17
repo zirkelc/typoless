@@ -46,7 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             history: model.history,
             describeModel: { [weak model] in model?.activeModel.displayName ?? "unknown" }
         ) { [weak model] in
-            model?.showSettings(.safety)
+            model?.showSettings(.corrections)
         }
         self.historyWindow = historyWindow
 
@@ -82,6 +82,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
          and no window, and it is the only way to look at a layout without
          someone sitting in front of it.
          */
+        /**
+         Opens settings and walks every tab a few times, logging how long each
+         switch takes to lay out and draw, so the window's speed can be measured
+         and profiled rather than judged by feel.
+         */
+        if ProcessInfo.processInfo.arguments.contains("--cycle-settings") {
+            Task { @MainActor in
+                settings.show()
+                try? await Task.sleep(for: .seconds(1))
+
+                /**
+                 The longest the main thread went without running a tick, which
+                 is the freeze a person feels. Timing the switch call alone
+                 misses work the switch schedules for a moment later, such as
+                 the window resizing to fit the page.
+                 */
+                var lastTick = ContinuousClock.now
+                var longestGap = Duration.zero
+                let ticker = Timer(timeInterval: 0.004, repeats: true) { _ in
+                    MainActor.assumeIsolated {
+                        let now = ContinuousClock.now
+                        longestGap = max(longestGap, now - lastTick)
+                        lastTick = now
+                    }
+                }
+                RunLoop.main.add(ticker, forMode: .common)
+
+                for round in 1...3 {
+                    for tab in SettingsTab.allCases {
+                        lastTick = .now
+                        longestGap = .zero
+                        let started = ContinuousClock.now
+                        settings.showForMeasuring(tab)
+                        let call = ContinuousClock.now - started
+                        try? await Task.sleep(for: .milliseconds(600))
+                        print("cycle round=\(round) tab=\(tab.rawValue) call=\(call.formatted(.units(allowed: [.milliseconds]))) freeze=\(max(call, longestGap).formatted(.units(allowed: [.milliseconds])))")
+                    }
+                }
+
+                ticker.invalidate()
+                NSApp.terminate(nil)
+            }
+        }
+
         if let index = ProcessInfo.processInfo.arguments.firstIndex(of: "--render-settings") {
             let directory = ProcessInfo.processInfo.arguments[safe: index + 1] ?? NSTemporaryDirectory()
             renderSettingsPages(into: URL(fileURLWithPath: directory))
