@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+    Merged into the generated Info.plist rather than replacing it, which is what
+    Xcode does when a file is named alongside GENERATE_INFOPLIST_FILE.
+
+    Sparkle's keys live here because they cannot live in the build settings. An
+    INFOPLIST_KEY_ setting only carries keys Xcode already knows, and it drops
+    anything else without a word: LSUIElement arrived in the built app and every
+    Sparkle key beside it vanished, so the updater was reading settings that had
+    never been in a build. It failed safe, since a missing key reads as "not
+    configured", and it would have gone on failing safe right up until someone
+    trusted it. Keys Xcode does know, such as the copyright line, stay in the
+    build settings.
+-->
+<plist version="1.0">
+<dict>
+    <!--
+        The public half of the update-signing key. The private half is in the
+        login keychain and in no file here. Sparkle refuses any update whose
+        signature does not match this, which is what makes a self-updater safe:
+        the feed can be replaced and the download intercepted, and an update
+        still cannot be installed.
+    -->
+    <key>SUPublicEDKey</key>
+    <string>0rSq/PlKZL2WCCVfBaS4PUxNPTrmPL2j1UGZJnPd7ps=</string>
+
+    <!--
+        Where the app looks for updates, from the TYPOLESS_FEED_URL build
+        setting: the real feed in Release, empty in Debug. An empty feed keeps
+        the updater off and hides its menu item, so a build made from a checkout
+        never checks against a feed that may not exist yet, and never offers to
+        replace itself with a release. The release script reads this value back
+        from the built app to decide where the downloads go.
+
+        Automatic checking is not set here on purpose. With no value in this
+        file Sparkle asks the user on the second launch whether to check
+        automatically, and the answer can be changed later in General settings.
+        A value here would suppress that question for good.
+    -->
+    <key>SUFeedURL</key>
+    <string>$(TYPOLESS_FEED_URL)</string>
+</dict>
+</plist>

@@ -1,1 +1,0 @@
-../../../../Spellbee/Support/Log.swift

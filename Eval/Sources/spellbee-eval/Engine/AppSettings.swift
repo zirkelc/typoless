@@ -1,1 +1,0 @@
-../../../../Spellbee/Engine/AppSettings.swift
