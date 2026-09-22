@@ -1,0 +1,68 @@
+---
+/**
+ * Switches between the light and the dark theme.
+ *
+ * The site follows the system appearance until this is clicked; from then on
+ * the choice is kept in local storage and applied before the page is drawn.
+ * The icon shows the theme a click switches to: a moon on the light page, a
+ * sun on the dark one.
+ */
+---
+
+<button
+  type="button"
+  class="flex size-9 cursor-pointer items-center justify-center rounded-lg text-muted hover:bg-band hover:text-ink"
+  aria-label="Switch between light and dark theme"
+  title="Switch theme"
+  data-theme-toggle
+>
+  <svg
+    viewBox="0 0 24 24"
+    class="size-[18px] dark:hidden"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M20.5 14.1A8.5 8.5 0 0 1 9.9 3.5a8.5 8.5 0 1 0 10.6 10.6Z"></path>
+  </svg>
+  <svg
+    viewBox="0 0 24 24"
+    class="hidden size-[18px] dark:block"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    aria-hidden="true"
+  >
+    <circle cx="12" cy="12" r="4"></circle>
+    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
+  </svg>
+</button>
+
+<script>
+  const root = document.documentElement;
+  const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+  /** The theme on screen, whether chosen here or taken from the system. */
+  function current(): 'light' | 'dark' {
+    const chosen = root.dataset.theme;
+    if (chosen === 'light' || chosen === 'dark') return chosen;
+    return systemDark.matches ? 'dark' : 'light';
+  }
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]')) {
+    button.addEventListener('click', () => {
+      const next = current() === 'dark' ? 'light' : 'dark';
+      root.dataset.theme = next;
+
+      try {
+        localStorage.setItem('theme', next);
+      } catch {
+        /** Private browsing can refuse storage; the switch still applies to this page. */
+      }
+    });
+  }
+</script>

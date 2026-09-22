@@ -1,0 +1,27 @@
+/**
+ * Serves the built site from Cloudflare's edge as static assets. There is no
+ * Worker script: every request is answered from the files in `dist`.
+ *
+ * `pnpm deploy` builds and uploads to typoless.app, which needs typoless.app to
+ * be a zone in the same Cloudflare account. `pnpm deploy:preview` uploads the
+ * same build to a separate Worker on workers.dev instead. Routes are not
+ * inherited by an environment, so the preview can never take over the domain.
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "typoless-www",
+  "compatibility_date": "2026-09-19",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page",
+    "html_handling": "drop-trailing-slash",
+  },
+  "routes": [{ "pattern": "typoless.app", "custom_domain": true }],
+  "workers_dev": false,
+  "env": {
+    "preview": {
+      "workers_dev": true,
+      "routes": [],
+    },
+  },
+}

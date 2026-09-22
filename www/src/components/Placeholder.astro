@@ -1,0 +1,29 @@
+---
+/**
+ * Stands in for a screenshot or illustration that does not exist yet.
+ *
+ * Sized by aspect ratio so the layout is final before the artwork is: dropping
+ * the real image in later moves nothing around it. The label says what belongs
+ * here, so the page doubles as the list of visuals still to make.
+ */
+interface Props {
+  label: string;
+  /** Width over height, for example `16 / 10`. */
+  ratio?: string;
+  class?: string;
+}
+
+const { label, ratio = '16 / 10', class: className } = Astro.props;
+---
+
+<div
+  class:list={[
+    'flex items-center justify-center rounded-2xl border border-dashed border-line bg-band p-6 text-center',
+    className,
+  ]}
+  style={`aspect-ratio: ${ratio}`}
+  role="img"
+  aria-label={`Placeholder: ${label}`}
+>
+  <span class="font-mono text-xs tracking-wide text-faint uppercase">{label}</span>
+</div>

@@ -1,0 +1,55 @@
+---
+import '../styles/global.css';
+
+/**
+ * The frame every page shares: document head, social preview tags, and the
+ * site-wide styles. Pages supply their own title and description, so a shared
+ * link describes the page it points at rather than the site in general.
+ */
+interface Props {
+  title: string;
+  description: string;
+}
+
+
+const { title, description } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const preview = new URL('/apple-touch-icon.png', Astro.site);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="color-scheme" content="light dark" />
+
+    <!--
+      Applies a stored theme before the first paint. Loaded as a module or
+      deferred, it would run after the page is drawn in the system theme and
+      the page would flash once in the wrong one.
+    -->
+    <script is:inline>
+      try {
+        const theme = localStorage.getItem('theme');
+        if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+      } catch {}
+    </script>
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={preview} />
+    <meta name="twitter:card" content="summary" />
+  </head>
+  <body class="bg-page font-sans leading-normal text-ink antialiased selection:bg-accent-soft">
+    <slot />
+  </body>
+</html>

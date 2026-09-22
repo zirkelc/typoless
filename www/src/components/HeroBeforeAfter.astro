@@ -1,0 +1,54 @@
+---
+import { heroFixCount, heroSample } from '../data/hero-sample';
+
+/**
+ * The hero's static visual: the typed sentence above the corrected one, with
+ * every change marked. Replaced by the animated demo, and kept for a page or a
+ * setting where motion is not wanted.
+ */
+---
+
+<div class="rounded-2xl border border-line bg-card shadow-[0_24px_60px_-30px_rgb(0_0_0/0.25)]">
+  <div class="flex items-center justify-between border-b border-line px-5 py-3">
+    <div class="flex gap-1.5" aria-hidden="true">
+      <span class="size-2.5 rounded-full bg-line"></span>
+      <span class="size-2.5 rounded-full bg-line"></span>
+      <span class="size-2.5 rounded-full bg-line"></span>
+    </div>
+    <span class="font-mono text-xs text-faint">⌘ ⌘ double-tap</span>
+  </div>
+  <div class="px-5 py-5">
+    <p class="font-mono text-[11px] tracking-[0.12em] text-faint uppercase">What you typed</p>
+    <p class="mt-2 font-mono text-sm whitespace-pre-wrap text-muted">
+      {
+        heroSample.map((part) =>
+          part.typed === part.fixed ? (
+            <span>{part.typed}</span>
+          ) : (
+            <span class="decoration-red-400 decoration-wavy underline-offset-4 [text-decoration-line:underline]">
+              {part.typed}
+            </span>
+          ),
+        )
+      }
+    </p>
+  </div>
+  <div class="border-t border-line px-5 py-5">
+    <p class="font-mono text-[11px] tracking-[0.12em] text-faint uppercase">What Typoless writes</p>
+    <p class="mt-2 text-lg whitespace-pre-wrap">
+      {
+        heroSample.map((part) =>
+          part.typed === part.fixed ? (
+            <span>{part.fixed}</span>
+          ) : (
+            <mark class="rounded bg-accent-soft px-0.5 text-ink">{part.fixed}</mark>
+          ),
+        )
+      }
+    </p>
+  </div>
+  <div class="flex items-center justify-between border-t border-line px-5 py-3 font-mono text-xs text-faint">
+    <span>{heroFixCount} fixes · 0 words rewritten</span>
+    <span>on device</span>
+  </div>
+</div>

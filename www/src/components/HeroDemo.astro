@@ -1,0 +1,341 @@
+---
+import { heroFixCount, heroSample } from '../data/hero-sample';
+
+/**
+ * The hero's animated visual: Typoless at work in a TextEdit window.
+ *
+ * The sentence is typed with the spell checker's squiggles, ⌘ is tapped twice,
+ * the overlay sweeps the text the way the app's own overlay does, and each
+ * mistake is replaced with a short green flash. The two overlay stages copy the
+ * app's: an amber tint with a highlight crossing the whole block while the model
+ * reads, then a green pulse on only the words that changed.
+ *
+ * The markup is the finished state, so without JavaScript, or with reduced
+ * motion, the window simply shows the corrected sentence.
+ */
+const finalStatus = `${heroFixCount} fixes · 0 words rewritten`;
+---
+
+<figure
+  class="relative rounded-2xl border border-line bg-card shadow-[0_24px_60px_-30px_rgb(0_0_0/0.3)]"
+  data-hero-demo
+  data-sample={JSON.stringify(heroSample)}
+  data-final-status={finalStatus}
+>
+  <figcaption class="sr-only">
+    An animation of Typoless in TextEdit: a sentence is typed with spelling mistakes, Command is pressed twice,
+    and the mistakes are corrected in place.
+  </figcaption>
+
+  <div class="relative flex items-center border-b border-line px-4 py-3" aria-hidden="true">
+    <div class="flex gap-2">
+      <span class="size-3 rounded-full bg-[#ff5f57]"></span>
+      <span class="size-3 rounded-full bg-[#febc2e]"></span>
+      <span class="size-3 rounded-full bg-[#28c840]"></span>
+    </div>
+    <span class="absolute inset-x-0 text-center text-xs font-medium text-muted">Untitled — Edited</span>
+  </div>
+
+  <!--
+    One line on a wide screen, so the scan reads as a single pass and the fixes
+    land without the text reflowing. A narrow screen may still wrap it, since
+    cutting the sentence off would hide half the demo.
+  -->
+  <div class="relative min-h-40 px-5 py-6" aria-hidden="true" data-demo-body>
+    <p class="relative text-lg leading-9 whitespace-pre-wrap lg:whitespace-pre" data-demo-text>
+      {heroSample.map((part) => <span>{part.fixed}</span>)}
+    </p>
+    <div class="pointer-events-none absolute inset-0" data-demo-overlay></div>
+
+    <div
+      class="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center opacity-0 transition-opacity duration-200"
+      data-demo-keys
+    >
+      <div class="flex items-center gap-3 rounded-2xl bg-[#17171a]/90 px-4 py-3 text-[#f3f2ef] shadow-lg backdrop-blur">
+        <kbd
+          class="demo-key flex size-11 items-center justify-center rounded-lg border border-white/15 bg-white/10 font-sans text-2xl"
+          data-demo-key>⌘</kbd
+        >
+        <span class="font-mono text-xs opacity-70">double-tap</span>
+      </div>
+    </div>
+  </div>
+
+  <div
+    class="flex items-center justify-between border-t border-line px-5 py-3 font-mono text-xs text-faint"
+    aria-hidden="true"
+  >
+    <span data-demo-status>{finalStatus}</span>
+    <span>on device</span>
+  </div>
+</figure>
+
+<style is:global>
+  /**
+   * Global because the script builds these elements at run time, and Astro only
+   * scopes styles to elements it renders itself.
+   */
+  .demo-squiggle {
+    text-decoration-line: underline;
+    text-decoration-style: wavy;
+    text-decoration-color: #ef4444;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 6px;
+  }
+
+  .demo-caret {
+    display: inline-block;
+    width: 2px;
+    height: 1.15em;
+    margin-left: 1px;
+    vertical-align: -0.2em;
+    background: var(--ink);
+    animation: demo-blink 1s steps(1) infinite;
+  }
+
+  @keyframes demo-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  .demo-scan {
+    position: absolute;
+    overflow: hidden;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 40%, transparent);
+  }
+
+  .demo-sweep {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--color-accent) 55%, transparent),
+      transparent
+    );
+  }
+
+  /** Green, as in the app, so "this changed" never reads as another scan. */
+  .demo-pulse {
+    position: absolute;
+    border-radius: 4px;
+    background: rgb(34 197 94 / 0.28);
+    box-shadow: inset 0 0 0 1px rgb(34 197 94 / 0.6);
+    opacity: 0;
+  }
+
+  .demo-key {
+    transition:
+      transform 90ms ease-out,
+      background-color 90ms ease-out;
+  }
+
+  .demo-key[data-pressed] {
+    transform: scale(0.88);
+    background-color: rgb(255 255 255 / 0.28);
+  }
+</style>
+
+<script>
+  import type { SamplePart } from '../data/hero-sample';
+
+  const sleep = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+  /** Waits while the tab is in the background, so the loop does not race ahead unseen. */
+  async function whenVisible() {
+    while (document.hidden) {
+      await sleep(300);
+    }
+  }
+
+  /**
+   * One rect per visual line of the text, relative to the body, which is what
+   * the app's overlay draws too: a wrapped paragraph gets a band per line rather
+   * than one box around everything.
+   */
+  function lineRects(text: HTMLElement, body: HTMLElement): Array<DOMRect> {
+    const range = document.createRange();
+    range.selectNodeContents(text);
+    const origin = body.getBoundingClientRect();
+    const lines = new Map<number, DOMRect>();
+
+    for (const rect of range.getClientRects()) {
+      if (rect.width < 1) continue;
+
+      const key = Math.round(rect.top);
+      const known = lines.get(key);
+      const left = Math.min(rect.left, known?.left ?? rect.left);
+      const right = Math.max(rect.right, known?.right ?? rect.right);
+
+      lines.set(key, new DOMRect(left, rect.top, right - left, rect.height));
+    }
+
+    return [...lines.values()].map(
+      (rect) => new DOMRect(rect.left - origin.left - 3, rect.top - origin.top, rect.width + 6, rect.height),
+    );
+  }
+
+  function place(element: HTMLElement, rect: DOMRect) {
+    element.style.left = `${rect.left}px`;
+    element.style.top = `${rect.top}px`;
+    element.style.width = `${rect.width}px`;
+    element.style.height = `${rect.height}px`;
+  }
+
+  async function run(root: HTMLElement) {
+    const sample: Array<SamplePart> = JSON.parse(root.dataset.sample ?? '[]');
+    const finalStatus = root.dataset.finalStatus ?? '';
+    const body = root.querySelector<HTMLElement>('[data-demo-body]')!;
+    const text = root.querySelector<HTMLElement>('[data-demo-text]')!;
+    const overlay = root.querySelector<HTMLElement>('[data-demo-overlay]')!;
+    const keys = root.querySelector<HTMLElement>('[data-demo-keys]')!;
+    const key = root.querySelector<HTMLElement>('[data-demo-key]')!;
+    const status = root.querySelector<HTMLElement>('[data-demo-status]')!;
+
+    const caret = document.createElement('span');
+    caret.className = 'demo-caret';
+
+    for (;;) {
+      await whenVisible();
+
+      /** Type the sentence, one character at a time, mistakes and all. */
+      const spans = sample.map(() => document.createElement('span'));
+      text.replaceChildren(...spans, caret);
+      text.style.opacity = '1';
+      status.textContent = 'Typing…';
+
+      for (const [index, part] of sample.entries()) {
+        const span = spans[index];
+        span.after(caret);
+
+        for (const character of part.typed) {
+          span.textContent += character;
+          await sleep(character === ' ' ? 70 : 38 + Math.random() * 45);
+        }
+
+        /** The spell checker marks a word once it is finished, as it does on the Mac. */
+        if (part.misspelled) span.classList.add('demo-squiggle');
+      }
+
+      await sleep(900);
+
+      /** Tap ⌘ twice. */
+      status.textContent = '⌘ ⌘';
+      keys.style.opacity = '1';
+      await sleep(350);
+
+      for (let tap = 0; tap < 2; tap++) {
+        key.setAttribute('data-pressed', '');
+        await sleep(110);
+        key.removeAttribute('data-pressed');
+        await sleep(140);
+      }
+
+      await sleep(250);
+      keys.style.opacity = '0';
+      caret.remove();
+
+      /** Read: the amber band with a highlight crossing the whole block. */
+      status.textContent = 'Correcting…';
+      const bands = lineRects(text, body).map((rect) => {
+        const band = document.createElement('div');
+        band.className = 'demo-scan';
+        place(band, rect);
+
+        const sweep = document.createElement('div');
+        sweep.className = 'demo-sweep';
+        band.append(sweep);
+        overlay.append(band);
+
+        return { rect, sweep };
+      });
+
+      const blockLeft = Math.min(...bands.map(({ rect }) => rect.left));
+      const blockWidth = Math.max(...bands.map(({ rect }) => rect.right)) - blockLeft;
+      const sweepWidth = Math.max(blockWidth * 0.28, 48);
+      const scanDuration = 1400;
+      const from = blockLeft - sweepWidth;
+      const to = blockLeft + blockWidth;
+
+      /**
+       * One phase for the whole block, offset per band, so on wrapped text the
+       * highlight reads as a single pass over the passage rather than every
+       * line lighting up at once. Animated by the browser rather than frame by
+       * frame, so the timing survives a tab that is throttled or in the back.
+       */
+      for (const { rect, sweep } of bands) {
+        sweep.style.width = `${sweepWidth}px`;
+        sweep.animate([{ left: `${from - rect.left}px` }, { left: `${to - rect.left}px` }], {
+          duration: scanDuration,
+          easing: 'linear',
+          fill: 'forwards',
+        });
+      }
+
+      await sleep(scanDuration);
+
+      overlay.replaceChildren();
+
+      /** Fix each mistake in turn, with a green flash on what changed. */
+      for (const [index, part] of sample.entries()) {
+        if (part.typed === part.fixed) continue;
+
+        const span = spans[index];
+        span.textContent = part.fixed;
+        span.classList.remove('demo-squiggle');
+
+        if (part.fixed.trim()) {
+          const origin = body.getBoundingClientRect();
+
+          for (const rect of span.getClientRects()) {
+            const pulse = document.createElement('div');
+            pulse.className = 'demo-pulse';
+            place(
+              pulse,
+              new DOMRect(rect.left - origin.left - 2, rect.top - origin.top - 1, rect.width + 4, rect.height + 2),
+            );
+            overlay.append(pulse);
+
+            /** The app's timing: in over 0.12 s, held 0.24 s, out over 0.32 s. */
+            pulse
+              .animate(
+                [
+                  { opacity: 0 },
+                  { opacity: 1, offset: 0.18 },
+                  { opacity: 1, offset: 0.53 },
+                  { opacity: 0 },
+                ],
+                { duration: 680, easing: 'ease-in-out' },
+              )
+              .finished.then(() => pulse.remove());
+          }
+        }
+
+        await sleep(170);
+      }
+
+      status.textContent = finalStatus;
+      await sleep(3200);
+
+      /** Clear the page for the next round. */
+      text.style.transition = 'opacity 300ms';
+      text.style.opacity = '0';
+      await sleep(350);
+      text.style.transition = '';
+      status.textContent = '';
+      await sleep(250);
+    }
+  }
+
+  const reducesMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (!reducesMotion) {
+    for (const root of document.querySelectorAll<HTMLElement>('[data-hero-demo]')) {
+      void run(root);
+    }
+  }
+</script>

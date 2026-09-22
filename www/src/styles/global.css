@@ -1,0 +1,100 @@
+@import 'tailwindcss';
+
+/**
+ * Served from this site rather than a font CDN. A request to a third party on
+ * every visit would hand it the visitor's address, which is an odd thing for
+ * the page of an app whose promise is that nothing leaves the Mac.
+ */
+@import '@fontsource-variable/fraunces/opsz.css';
+@import '@fontsource-variable/fraunces/opsz-italic.css';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+
+/**
+ * The palette follows the system appearance unless the visitor picked one.
+ *
+ * Each colour holds both values through `light-dark()`, and `color-scheme`
+ * decides which applies: both by default, so the system setting wins, or one
+ * of them once the theme button has set `data-theme` on the root. The theme
+ * below maps the properties to Tailwind colours, so `text-muted` or `bg-card`
+ * pick up the right value in either mode.
+ */
+:root {
+  --page: light-dark(#faf9f6, #111113);
+  --band: light-dark(#f3f1ec, #18181b);
+  --card: light-dark(#ffffff, #1d1d20);
+  --ink: light-dark(#17171a, #f3f2ef);
+  --muted: light-dark(#6b6a70, #a3a2a8);
+  --faint: light-dark(#a3a1a8, #6f6e75);
+  --line: light-dark(#e6e3dc, #2c2c30);
+  /** The bright amber in both themes, for the large italic words in headings. */
+  --accent-ink: #f2b544;
+  /**
+   * The same amber for small text. Bright amber on the light page has a
+   * contrast of 1.7 : 1, too little for a label, so the light theme darkens it
+   * to 4.4 : 1; on the dark page the bright one already reads well.
+   */
+  --accent-label: light-dark(#a8650a, #f2b544);
+  --accent-soft: light-dark(#fbefd9, #3a2a0f);
+
+  color-scheme: light dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/**
+ * Tailwind's `dark:` classes answer the same question as the palette: an
+ * explicit choice first, the system setting only when there is none.
+ */
+@custom-variant dark {
+  &:where([data-theme='dark'], [data-theme='dark'] *) {
+    @slot;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    &:where(:not([data-theme='light'], [data-theme='light'] *)) {
+      @slot;
+    }
+  }
+}
+
+@theme inline {
+  --color-page: var(--page);
+  --color-band: var(--band);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-label: var(--accent-label);
+  --color-accent-soft: var(--accent-soft);
+}
+
+@theme {
+  /** The amber of the app icon, for fills and marks. */
+  --color-accent: #e8a317;
+
+  --font-sans: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /** Large headings read better with the optical size the font was drawn for. */
+  h1,
+  h2 {
+    font-optical-sizing: auto;
+    text-wrap: balance;
+  }
+}

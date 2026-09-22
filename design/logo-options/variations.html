@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Typoless logo variations</title>
+    <style>
+      /* Served from the repository root, so the site's own font files load. */
+      @font-face {
+        font-family: 'Fraunces';
+        src: url('/www/node_modules/@fontsource-variable/fraunces/files/fraunces-latin-wght-normal.woff2')
+          format('woff2');
+        font-weight: 100 900;
+      }
+      @font-face {
+        font-family: 'Fraunces';
+        src: url('/www/node_modules/@fontsource-variable/fraunces/files/fraunces-latin-wght-italic.woff2')
+          format('woff2');
+        font-weight: 100 900;
+        font-style: italic;
+      }
+      @font-face {
+        font-family: 'Inter';
+        src: url('/www/node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2');
+        font-weight: 100 900;
+      }
+
+      body {
+        margin: 0;
+        padding: 48px 56px;
+        background: #faf9f6;
+        color: #17171a;
+        font-family: 'Inter', sans-serif;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font: 500 34px 'Fraunces', serif;
+      }
+      h2 {
+        margin: 44px 0 18px;
+        font: 500 24px 'Fraunces', serif;
+      }
+      .lead {
+        margin: 0;
+        color: #6b6a70;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+      }
+      .card {
+        padding: 22px;
+        border: 1px solid #e6e3dc;
+        border-radius: 18px;
+        background: #fff;
+      }
+      .top {
+        display: flex;
+        gap: 18px;
+        align-items: end;
+      }
+      .label {
+        margin-top: 16px;
+        font: 600 12px 'Inter';
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #a8650a;
+      }
+      .name {
+        margin: 2px 0 4px;
+        font: 500 19px 'Fraunces', serif;
+      }
+      .idea {
+        margin: 0;
+        color: #6b6a70;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .bars {
+        display: flex;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .menubar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        background: #ececec;
+        font: 500 12px 'Inter';
+        color: #111;
+      }
+      .menubar.dark {
+        background: #2b2b2e;
+        color: #eee;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Variations of A and B</h1>
+    <p class="lead">Six of each. Big icon, 32 and 16 pixels, and the one-colour menu bar symbol in light and dark.</p>
+
+    <svg width="0" height="0" style="position: absolute">
+      <defs>
+        <linearGradient id="amber" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffcf5a" />
+          <stop offset="1" stop-color="#f08c12" />
+        </linearGradient>
+        <linearGradient id="ink" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#2a2a2e" />
+          <stop offset="1" stop-color="#121214" />
+        </linearGradient>
+        <!-- Red where the line is wavy, amber once it is straight. -->
+        <linearGradient id="fix" gradientUnits="userSpaceOnUse" x1="18" y1="0" x2="82" y2="0">
+          <stop offset="0.3" stop-color="#ef4444" />
+          <stop offset="0.55" stop-color="#f0a020" />
+        </linearGradient>
+        <linearGradient id="fix-light" gradientUnits="userSpaceOnUse" x1="18" y1="0" x2="82" y2="0">
+          <stop offset="0.3" stop-color="#ef4444" />
+          <stop offset="0.55" stop-color="#17171a" />
+        </linearGradient>
+      </defs>
+      <g id="symbols"></g>
+    </svg>
+
+    <h2>A · Straightened</h2>
+    <div class="grid" id="a"></div>
+
+    <h2>B · Smoothed</h2>
+    <div class="grid" id="b"></div>
+
+    <script>
+      const squircle = (fill, stroke) =>
+        `<rect width="100" height="100" rx="22.5" fill="${fill}" />` +
+        (stroke ? `<rect x="0.5" y="0.5" width="99" height="99" rx="22" fill="none" stroke="${stroke}" />` : '');
+
+      const serifT = (fill, { size = 58, y = 66, italic = false, weight = 700, x = 50 } = {}) =>
+        `<text x="${x}" y="${y}" text-anchor="middle" font-family="Fraunces" font-weight="${weight}" ${
+          italic ? 'font-style="italic"' : ''
+        } font-size="${size}" fill="${fill}">T</text>`;
+
+      const line = (d, stroke, width) =>
+        `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" />`;
+
+      const wavyUnder = 'M25 79 q3.2 -4.5 6.4 0 t6.4 0 t6.4 0 t6.4 0 L75 79';
+      const wavyUnderGlyph = 'M20 84 q3.8 -5.5 7.6 0 t7.6 0 t7.6 0 L80 84';
+      const stroke3 = 'M18 51 q4.6 -9 9.2 0 t9.2 0 t9.2 0 L82 51';
+      const stroke3Glyph = 'M10 50 q6 -13 12 0 t12 0 t12 0 L90 50';
+      const strokeBold = 'M16 50 q7 -14 14 0 t14 0 L84 50';
+      const strokeBoldGlyph = 'M8 50 q9 -18 18 0 t18 0 L92 50';
+
+      const a = [
+        {
+          name: 'A1 · Original',
+          idea: 'Amber, white serif T, white line. The starting point.',
+          icon: squircle('url(#amber)') + serifT('#fff') + line(wavyUnder, '#fff', 4.2),
+          glyph: serifT('currentColor', { size: 62 }) + line(wavyUnderGlyph, 'currentColor', 8),
+        },
+        {
+          name: 'A2 · Ink',
+          idea: 'Dark ground, white T, amber line. Stands out in a Dock full of bright icons.',
+          icon: squircle('url(#ink)') + serifT('#f3f2ef') + line(wavyUnder, 'url(#amber)', 4.6),
+          glyph: serifT('currentColor', { size: 62 }) + line(wavyUnderGlyph, 'currentColor', 8),
+        },
+        {
+          name: 'A3 · Paper',
+          idea: 'Paper ground and an ink T. The line starts red like a spell checker and turns amber.',
+          icon: squircle('#faf9f6', '#e6e3dc') + serifT('#17171a') + line(wavyUnder, 'url(#fix)', 4.6),
+          glyph: serifT('currentColor', { size: 62 }) + line(wavyUnderGlyph, 'currentColor', 8),
+        },
+        {
+          name: 'A4 · Italic',
+          idea: 'An italic Fraunces T, lighter and more written. Closest to the site’s headings.',
+          icon:
+            squircle('url(#amber)') +
+            serifT('#fff', { italic: true, weight: 600, size: 62, x: 52 }) +
+            line(wavyUnder, '#fff', 4),
+          glyph: serifT('currentColor', { italic: true, size: 66, x: 52 }) + line(wavyUnderGlyph, 'currentColor', 8),
+        },
+        {
+          name: 'A5 · Wavy crossbar',
+          idea: 'The squiggle is the T itself: its crossbar is wavy on the left and straight on the right.',
+          icon:
+            squircle('url(#amber)') +
+            line('M22 30 q3.5 -5 7 0 t7 0 t7 0 L78 30', '#fff', 8) +
+            line('M50 30 V78', '#fff', 9),
+          glyph: line('M12 22 q5 -8 10 0 t10 0 t10 0 L88 22', 'currentColor', 13) + line('M50 22 V88', 'currentColor', 14),
+        },
+        {
+          name: 'A6 · Wavy crossbar, ink',
+          idea: 'A5 on the dark ground with an amber T. The most compact of the letter ideas.',
+          icon:
+            squircle('url(#ink)') +
+            line('M22 30 q3.5 -5 7 0 t7 0 t7 0 L78 30', '#f5a524', 8) +
+            line('M50 30 V78', '#f5a524', 9),
+          glyph: line('M12 22 q5 -8 10 0 t10 0 t10 0 L88 22', 'currentColor', 13) + line('M50 22 V88', 'currentColor', 14),
+        },
+      ];
+
+      const b = [
+        {
+          name: 'B1 · Original',
+          idea: 'Amber stroke on ink, three waves, then straight.',
+          icon: squircle('url(#ink)') + line(stroke3, 'url(#amber)', 7.5),
+          glyph: line(stroke3Glyph, 'currentColor', 12),
+        },
+        {
+          name: 'B2 · Amber',
+          idea: 'The colours turned round: a white stroke on amber, the same ground as today’s icon.',
+          icon: squircle('url(#amber)') + line(stroke3, '#fff', 7.5),
+          glyph: line(stroke3Glyph, 'currentColor', 12),
+        },
+        {
+          name: 'B3 · Red to amber',
+          idea: 'The wavy part is spell-checker red and the straight part amber, so the fix is in the colour too.',
+          icon: squircle('url(#ink)') + line(stroke3, 'url(#fix)', 7.5),
+          glyph: line(stroke3Glyph, 'currentColor', 12),
+        },
+        {
+          name: 'B4 · Bold',
+          idea: 'Two bigger waves and a thicker stroke. Loses some finesse, reads best at 16 pixels.',
+          icon: squircle('url(#ink)') + line(strokeBold, 'url(#amber)', 10),
+          glyph: line(strokeBoldGlyph, 'currentColor', 15),
+        },
+        {
+          name: 'B5 · Ends in a caret',
+          idea: 'The straight part ends in a text cursor, so it reads as “typing, fixed”.',
+          icon:
+            squircle('url(#ink)') +
+            line('M16 55 q4.4 -9 8.8 0 t8.8 0 t8.8 0 L70 55', 'url(#amber)', 7) +
+            line('M80 36 V66', '#f3f2ef', 5.5),
+          glyph: line('M6 56 q6 -13 12 0 t12 0 t12 0 L74 56', 'currentColor', 11) + line('M88 26 V78', 'currentColor', 10),
+        },
+        {
+          name: 'B6 · Ends in a full stop',
+          idea: 'The line finishes with a dot, the punctuation the app adds. Borrows the idea from option C.',
+          icon:
+            squircle('#faf9f6', '#e6e3dc') +
+            line('M16 52 q4.6 -9 9.2 0 t9.2 0 t9.2 0 L68 52', 'url(#fix-light)', 7) +
+            '<circle cx="80" cy="52" r="5.5" fill="#f0a020" />',
+          glyph:
+            line('M6 50 q6 -13 12 0 t12 0 t12 0 L70 50', 'currentColor', 11) +
+            '<circle cx="87" cy="50" r="8" fill="currentColor" />',
+        },
+      ];
+
+      const symbols = document.getElementById('symbols');
+
+      function render(target, options) {
+        for (const [index, option] of options.entries()) {
+          const id = `${target}${index}`;
+          symbols.insertAdjacentHTML(
+            'beforeend',
+            `<symbol id="${id}-icon" viewBox="0 0 100 100">${option.icon}</symbol>` +
+              `<symbol id="${id}-glyph" viewBox="0 0 100 100">${option.glyph}</symbol>`,
+          );
+
+          const use = (suffix, size, style = '') =>
+            `<svg width="${size}" height="${size}" style="${style}"><use href="#${id}-${suffix}" /></svg>`;
+
+          document.getElementById(target).insertAdjacentHTML(
+            'beforeend',
+            `<div class="card">
+              <div class="top">${use('icon', 120)}${use('icon', 32)}${use('icon', 16)}</div>
+              <div class="label">${option.name.split(' · ')[0]}</div>
+              <div class="name">${option.name.split(' · ')[1]}</div>
+              <p class="idea">${option.idea}</p>
+              <div class="bars">
+                <div class="menubar">${use('glyph', 16)}<span>Light</span></div>
+                <div class="menubar dark">${use('glyph', 16)}<span>Dark</span></div>
+              </div>
+            </div>`,
+          );
+        }
+      }
+
+      render('a', a);
+      render('b', b);
+    </script>
+  </body>
+</html>

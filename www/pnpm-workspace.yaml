@@ -1,0 +1,5 @@
+# Packages allowed to run install scripts, which pnpm blocks by default.
+allowBuilds:
+  esbuild: true
+  sharp: true
+  workerd: true
