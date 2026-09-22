@@ -13,6 +13,7 @@ enum AppStatus: Equatable {
 
     var symbolName: String {
         switch self {
+        /** Only a fallback: the menu bar shows the app's own mark while idle. */
         case .idle: return "textformat.abc"
         case .working: return "sparkles"
         case .paused: return "pause.circle"

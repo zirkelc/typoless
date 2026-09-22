@@ -51,11 +51,17 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         guard let button = statusItem.button else { return }
 
         let status = model.status
-        button.image = NSImage(
-            systemSymbolName: status.symbolName,
-            accessibilityDescription: status.label
-        )
-        button.image?.isTemplate = true
+        /**
+         The app's own mark while it is ready, which is most of the time. The
+         other states keep a symbol, since a change of shape is what says
+         something needs a look.
+         */
+        let image = status == .idle
+            ? NSImage(named: "MenuBarIcon")
+            : NSImage(systemSymbolName: status.symbolName, accessibilityDescription: status.label)
+        image?.accessibilityDescription = status.label
+        image?.isTemplate = true
+        button.image = image
         button.imagePosition = status.badge == nil ? .imageOnly : .imageLeading
         button.title = status.badge.map { " \($0)" } ?? ""
         button.toolTip = status.label
@@ -130,19 +136,27 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(stop)
         stopDownloadItem = stop
 
+        /**
+         How to fix text, in place of a menu item that would do it. The trigger
+         works from the app being typed in, which is where a correction is
+         wanted, so the menu only has to say what it is.
+         */
+        if let triggerHint, model.permissions.isReady, !model.isPaused {
+            let hint = NSMenuItem(title: triggerHint, action: nil, keyEquivalent: "")
+            hint.isEnabled = false
+            menu.addItem(hint)
+        }
+
         menu.addItem(.separator())
 
-        add(
-            to: menu,
-            title: "Fix Now",
-            keyEquivalent: "f",
-            isEnabled: model.permissions.isReady && !model.isPaused && !model.engine.isRunning,
-            action: #selector(fixNow)
-        )
+        /**
+         No key equivalents here. They would work only while this menu is
+         open, so they save nothing over a click.
+         */
         add(
             to: menu,
             title: "Undo",
-            keyEquivalent: "z",
+            keyEquivalent: "",
             isEnabled: model.engine.canRevert,
             action: #selector(revertLast)
         )
@@ -153,11 +167,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         add(
             to: menu,
             title: "History…",
-            keyEquivalent: "y",
+            keyEquivalent: "",
             action: #selector(showHistory)
         )
 
         menu.addItem(.separator())
+
+        /** What corrects, and whether anything does: the two ways to change how it behaves. */
+        let modelsItem = NSMenuItem(title: "Models", action: nil, keyEquivalent: "")
+        modelsItem.submenu = modelsMenu()
+        menu.addItem(modelsItem)
 
         add(
             to: menu,
@@ -169,42 +188,14 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
-        let modelsItem = NSMenuItem(title: "Models", action: nil, keyEquivalent: "")
-        modelsItem.submenu = modelsMenu()
-        menu.addItem(modelsItem)
-
-        menu.addItem(.separator())
-
         add(to: menu, title: "Settings…", keyEquivalent: ",", action: #selector(showSettings))
         add(to: menu, title: "Set Up Typoless…", keyEquivalent: "", action: #selector(showOnboarding))
 
         #if DEBUG
-        let observing = NSMenuItem(
-            title: model.typingObserver.isRunning
-                ? "Debug: Stop Observing Typing"
-                : "Debug: Observe Typing",
-            action: #selector(toggleTypingObservation),
-            keyEquivalent: ""
-        )
-        observing.target = self
-        observing.state = model.typingObserver.isRunning ? .on : .off
-        menu.addItem(observing)
-
-        add(
-            to: menu,
-            title: "Debug: Report Typing Observations",
-            keyEquivalent: "",
-            action: #selector(reportTypingObservations)
-        )
-
-        add(to: menu, title: "Debug: Flash Overlay", keyEquivalent: "", action: #selector(flashOverlay))
-        add(
-            to: menu,
-            title: "Debug: Compare Models (downloads \(model.preferences.localModel.displayName))",
-            keyEquivalent: "",
-            isEnabled: !model.isComparing,
-            action: #selector(compareModels)
-        )
+        /** In a submenu of its own, so a debug build's menu still reads like the real one. */
+        let debugItem = NSMenuItem(title: "Debug", action: nil, keyEquivalent: "")
+        debugItem.submenu = debugMenu()
+        menu.addItem(debugItem)
         #endif
 
         menu.addItem(.separator())
@@ -227,6 +218,52 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
 
         add(to: menu, title: "Quit Typoless", keyEquivalent: "q", action: #selector(quit))
+    }
+
+    #if DEBUG
+    /** Tools for developing the app. Compiled out of a release build entirely. */
+    private func debugMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+
+        let observing = NSMenuItem(
+            title: model.typingObserver.isRunning ? "Stop Observing Typing" : "Observe Typing",
+            action: #selector(toggleTypingObservation),
+            keyEquivalent: ""
+        )
+        observing.target = self
+        observing.state = model.typingObserver.isRunning ? .on : .off
+        menu.addItem(observing)
+
+        add(to: menu, title: "Report Typing Observations", keyEquivalent: "", action: #selector(reportTypingObservations))
+        add(to: menu, title: "Flash Overlay", keyEquivalent: "", action: #selector(flashOverlay))
+        add(
+            to: menu,
+            title: "Compare Models (downloads \(model.preferences.localModel.displayName))",
+            keyEquivalent: "",
+            isEnabled: !model.isComparing,
+            action: #selector(compareModels)
+        )
+
+        return menu
+    }
+    #endif
+
+    /** Nil when both triggers are off, since then there is nothing to press. */
+    private var triggerHint: String? {
+        let preferences = model.preferences
+        var keys: [String] = []
+
+        if preferences.isDoubleTapEnabled {
+            keys.append("\(preferences.doubleTapModifier.symbol) twice")
+        }
+        if preferences.isHotKeyEnabled {
+            keys.append(preferences.hotKey.displayName)
+        }
+
+        guard !keys.isEmpty else { return nil }
+
+        return "Press \(keys.joined(separator: " or ")) to fix text"
     }
 
     private var headerTitle: String {
@@ -305,10 +342,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         item.target = self
         item.isEnabled = isEnabled
         menu.addItem(item)
-    }
-
-    @objc private func fixNow() {
-        model.trigger()
     }
 
     @objc private func revertLast() {

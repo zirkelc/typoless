@@ -97,3 +97,37 @@ for (name, size) in [("public/favicon.png", 64), ("public/apple-touch-icon.png",
     try writePNG(icon(ofSize: size, inset: 0), to: website.appending(path: name))
     print("wrote \(name)")
 }
+
+/**
+ The menu bar shows the mark alone, as a template image that macOS tints for
+ the light or dark bar. Cropped to the mark, since the menu bar scales an image
+ to its height and the square's margin would only make the mark smaller. The
+ colour must be plain black: an asset catalog does not read `currentColor`.
+ */
+let mark = try String(contentsOf: repository.appending(path: "design/logo/typoless-mark.svg"), encoding: .utf8)
+let menuBarIcon = mark
+    .replacingOccurrences(of: "viewBox=\"0 0 100 100\"", with: "viewBox=\"14 18 72 72\" width=\"18\" height=\"18\"")
+    .replacingOccurrences(of: "currentColor", with: "#000000")
+let menuBarSet = repository.appending(path: "app/Typoless/Assets.xcassets/MenuBarIcon.imageset")
+try FileManager.default.createDirectory(at: menuBarSet, withIntermediateDirectories: true)
+try Data(menuBarIcon.utf8).write(to: menuBarSet.appending(path: "menubar.svg"))
+try Data("""
+{
+  "images" : [
+    {
+      "filename" : "menubar.svg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  },
+  "properties" : {
+    "preserves-vector-representation" : true,
+    "template-rendering-intent" : "template"
+  }
+}
+
+""".utf8).write(to: menuBarSet.appending(path: "Contents.json"))
+print("wrote MenuBarIcon.imageset")
