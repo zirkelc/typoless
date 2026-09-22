@@ -28,9 +28,9 @@ struct CorrectionSettingsView: View {
         SettingsSurface {
             SettingsSection {
                 SettingsLine(
-                    "Fix only, never rewrite",
+                    "Strict mode",
                     note: preferences.isGuardrailEnabled
-                        ? "Every change is checked against the allowed rules. Anything that is not allowed is discarded."
+                        ? "Every change is checked against the rules below before it is applied. A change that breaks a rule is dropped, so some real fixes can be dropped too."
                         : "Off: whatever the model returns is applied, including rewritten or translated text. History is the only way back."
                 ) {
                     SettingsSwitch(isOn: $preferences.isGuardrailEnabled)
@@ -41,7 +41,7 @@ struct CorrectionSettingsView: View {
                 "Rules",
                 footer: preferences.isGuardrailEnabled
                     ? "Turning off a rule only drops that change and keeps the rest of the correction."
-                    : "Rules apply only while \"Fix only, never rewrite\" is on."
+                    : "Rules apply only while strict mode is on."
             ) {
                 if added.isEmpty {
                     Text("No languages yet. Add one under Languages.")
