@@ -1,0 +1,26 @@
+---
+import type { SamplePart } from '../data/hero-sample';
+
+/**
+ * A text field the correction demo can play in: the text, and an overlay over
+ * it for the scan and the pulses. Renders the finished text, which is what a
+ * visitor without JavaScript, or with reduced motion, sees.
+ */
+interface Props {
+  sample: Array<SamplePart>;
+  class?: string;
+}
+
+const { sample, class: className } = Astro.props;
+---
+
+<div class:list={['relative', className]} data-demo-body>
+  <p class="relative whitespace-pre-wrap" data-demo-text>
+    {
+      sample.map((part) => (
+        <span class:list={{ 'demo-squiggle': part.misspelled && part.typed === part.fixed }}>{part.fixed}</span>
+      ))
+    }
+  </p>
+  <div class="pointer-events-none absolute inset-0" data-demo-overlay></div>
+</div>

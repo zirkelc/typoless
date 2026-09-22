@@ -1,0 +1,403 @@
+---
+import { appSamples } from '../data/app-samples';
+import { fixCount } from '../data/hero-sample';
+import DemoBadge from './DemoBadge.astro';
+import DemoField from './DemoField.astro';
+import MockLights from './MockLights.astro';
+
+/**
+ * One large app window at a time, with a tab for each app above it.
+ *
+ * Each app plays the whole correction: the message is typed with its
+ * mistakes, ⌘ is tapped twice, and the fixes land in place. Then the next tab
+ * takes over. Picking a tab jumps straight to that app and carries on from
+ * there.
+ *
+ * The windows are drawn rather than screenshotted, so there is no screenshot
+ * to keep current and each follows the page's light or dark theme. Each copies
+ * only what makes the app recognisable at a glance: Slack's sidebar, the blue
+ * bubbles in Messages, the address bar in Safari.
+ */
+const samples = Object.fromEntries(appSamples.map((app) => [app.id, app.sample]));
+---
+
+<div class="mt-12" data-app-showcase>
+  <div class="flex flex-wrap justify-center gap-2" role="tablist" aria-label="Apps">
+    {
+      appSamples.map((app, index) => (
+        <button
+          type="button"
+          role="tab"
+          id={`app-tab-${app.id}`}
+          aria-controls={`app-window-${app.id}`}
+          aria-selected={index === 0 ? 'true' : 'false'}
+          class="flex items-center gap-2 rounded-full border border-line bg-card px-4 py-1.5 text-sm text-muted transition-colors hover:text-ink aria-selected:border-ink aria-selected:text-ink"
+          data-app-tab
+        >
+          <span class="size-3 rounded-[4px]" style={`background: ${app.color}`} aria-hidden="true" />
+          {app.name}
+        </button>
+      ))
+    }
+  </div>
+
+  <div
+    class="relative mx-auto mt-6 grid max-w-4xl overflow-hidden rounded-2xl border border-line bg-card text-[15px] leading-6 shadow-[0_30px_70px_-35px_rgb(0_0_0/0.35)]"
+  >
+    {
+      appSamples.map((app, index) => (
+        <section
+          id={`app-window-${app.id}`}
+          role="tabpanel"
+          aria-labelledby={`app-tab-${app.id}`}
+          class="flex h-[440px] flex-col transition-opacity duration-300 [grid-area:1/1] data-hidden:invisible data-hidden:opacity-0"
+          data-app-window
+          data-sample={JSON.stringify(app.sample)}
+          data-fixes={fixCount(app.sample)}
+          data-hidden={index === 0 ? undefined : ''}
+        >
+          <div class="flex items-center gap-4 border-b border-line px-4 py-3">
+            <MockLights />
+            <span class="flex items-center gap-2 text-sm font-medium">
+              <span class="size-4 rounded-[5px]" style={`background: ${app.color}`} aria-hidden="true" />
+              {app.name}
+            </span>
+          </div>
+
+          {
+            app.id === 'mail' && (
+              <div class="flex flex-1 flex-col px-6 py-5">
+                <p class="text-xs font-medium tracking-wider text-faint uppercase">New message</p>
+                <div class="mt-3 divide-y divide-line border-b border-line">
+                  <p class="flex gap-6 py-2.5">
+                    <span class="w-16 text-faint">To</span>
+                    <span class="rounded bg-[#1e90ff]/12 px-1.5 text-[#1e90ff]">Anna Berger</span>
+                  </p>
+                  <p class="flex gap-6 py-2.5">
+                    <span class="w-16 text-faint">Subject</span>
+                    Slides for Thursday
+                  </p>
+                </div>
+                <DemoField sample={samples.mail} class="mt-4" />
+              </div>
+            )
+          }
+
+          {
+            app.id === 'slack' && (
+              <div class="flex flex-1">
+                <div class="flex w-48 flex-col gap-1 bg-[#3f0e40] px-3 py-4 text-sm text-white/70">
+                  <p class="mb-2 font-semibold text-white">Acme</p>
+                  <p># general</p>
+                  <p class="-mx-1.5 rounded-md bg-[#1164a3] px-1.5 text-white"># launch</p>
+                  <p># design</p>
+                  <p># random</p>
+                </div>
+                <div class="flex flex-1 flex-col">
+                  <p class="border-b border-line px-5 py-3 font-semibold"># launch</p>
+                  <div class="flex flex-1 gap-3 px-5 py-4">
+                    <span
+                      class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#e8a317] font-semibold text-white"
+                      aria-hidden="true"
+                    >
+                      S
+                    </span>
+                    <div>
+                      <p>
+                        <span class="font-semibold">Sam</span> <span class="text-xs text-faint">10:42</span>
+                      </p>
+                      <p class="text-muted">are we still on for the release today?</p>
+                    </div>
+                  </div>
+                  <div class="m-4 rounded-xl border border-faint/50">
+                    <DemoField sample={samples.slack} class="px-3.5 pt-3 pb-2" />
+                    <div class="flex items-center justify-between px-3 pb-2 text-sm text-faint">
+                      <span class="flex gap-3 font-semibold">
+                        <span>B</span>
+                        <span class="italic">I</span>
+                        <span class="line-through">S</span>
+                      </span>
+                      <span class="rounded-md bg-[#007a5a] px-2 py-0.5 text-white">➤</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          {
+            app.id === 'notes' && (
+              <div class="flex flex-1">
+                <div class="flex w-56 flex-col gap-1 border-r border-line bg-band p-2 text-sm">
+                  <div class="rounded-lg bg-[#e5b000]/85 px-3 py-2 text-[#1d1d1f]">
+                    <p class="font-semibold">Wochenende</p>
+                    <p class="text-xs opacity-70">Heute</p>
+                  </div>
+                  <div class="px-3 py-2 text-muted">
+                    <p class="font-semibold text-ink">Ideen</p>
+                    <p class="text-xs">Gestern</p>
+                  </div>
+                  <div class="px-3 py-2 text-muted">
+                    <p class="font-semibold text-ink">Einkauf</p>
+                    <p class="text-xs">Montag</p>
+                  </div>
+                </div>
+                <div class="flex-1 px-8 py-5">
+                  <p class="text-center text-xs text-faint">22. September 2026 um 09:14</p>
+                  <p class="mt-3 text-2xl font-bold">Wochenende</p>
+                  <DemoField sample={samples.notes} class="mt-2" />
+                </div>
+              </div>
+            )
+          }
+
+          {
+            app.id === 'messages' && (
+              <div class="flex flex-1 flex-col">
+                <div class="flex flex-col items-center gap-1 border-b border-line py-3">
+                  <span
+                    class="flex size-10 items-center justify-center rounded-full bg-gradient-to-b from-[#a5a5ab] to-[#86868b] font-semibold text-white"
+                    aria-hidden="true"
+                  >
+                    M
+                  </span>
+                  <span class="text-xs text-muted">Maya</span>
+                </div>
+                <div class="flex flex-1 flex-col justify-end gap-2 px-6 py-4">
+                  <p class="max-w-[60%] self-start rounded-2xl bg-line px-4 py-2">Dinner tonight? 🍝</p>
+                  <p class="max-w-[60%] self-end rounded-2xl bg-[#0a84ff] px-4 py-2 text-white">Yes please! Where?</p>
+                  <p class="max-w-[60%] self-start rounded-2xl bg-line px-4 py-2">The Italian place, at eight</p>
+                </div>
+                <div class="mx-5 mb-5 rounded-full border border-line px-4 py-2">
+                  <DemoField sample={samples.messages} />
+                </div>
+              </div>
+            )
+          }
+
+          {
+            app.id === 'safari' && (
+              <div class="flex min-h-0 flex-1 flex-col">
+                <div class="flex items-center gap-3 border-b border-line bg-band px-4 py-2 text-muted">
+                  <svg viewBox="0 0 20 20" class="size-5 fill-none stroke-current stroke-[1.4]" aria-hidden="true">
+                    <rect x="2.5" y="4" width="15" height="12" rx="2.5" />
+                    <path d="M8 4v12" />
+                  </svg>
+                  <svg viewBox="0 0 20 20" class="size-5 fill-none stroke-current stroke-[1.6]" aria-hidden="true">
+                    <path d="M12 5 7 10l5 5" />
+                  </svg>
+                  <svg viewBox="0 0 20 20" class="size-5 fill-none stroke-current stroke-[1.6] opacity-40" aria-hidden="true">
+                    <path d="m8 5 5 5-5 5" />
+                  </svg>
+                  <div class="mx-auto flex w-full max-w-md items-center justify-center gap-1.5 rounded-lg bg-card px-3 py-1 text-sm">
+                    <svg viewBox="0 0 16 16" class="size-3 fill-current opacity-60" aria-hidden="true">
+                      <path d="M4.5 7V5a3.5 3.5 0 0 1 7 0v2h.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zm1.5 0h4V5a2 2 0 0 0-4 0z" />
+                    </svg>
+                    <span class="text-ink">northwindbooks.com</span>
+                  </div>
+                  <svg viewBox="0 0 20 20" class="size-5 fill-none stroke-current stroke-[1.4]" aria-hidden="true">
+                    <path d="M10 3v9M6.5 6.5 10 3l3.5 3.5M5 10v6h10v-6" />
+                  </svg>
+                  <svg viewBox="0 0 20 20" class="size-5 fill-none stroke-current stroke-[1.6]" aria-hidden="true">
+                    <path d="M10 4v12M4 10h12" />
+                  </svg>
+                  <svg viewBox="0 0 20 20" class="size-5 fill-none stroke-current stroke-[1.4]" aria-hidden="true">
+                    <rect x="3" y="6" width="10" height="10" rx="2" />
+                    <path d="M7 3.5h8a2 2 0 0 1 2 2v8" />
+                  </svg>
+                </div>
+
+                <div class="flex min-h-0 flex-1 flex-col bg-[#fbf8f3] text-[#2b2622] dark:bg-[#1f1c19] dark:text-[#ece6de]">
+                  <div class="flex items-center justify-between border-b border-black/8 px-8 py-3 dark:border-white/8">
+                    <span class="font-serif text-lg font-semibold">Northwind Books</span>
+                    <span class="flex gap-6 text-sm opacity-60">
+                      <span>Books</span>
+                      <span>Authors</span>
+                      <span>Cart (1)</span>
+                    </span>
+                  </div>
+
+                  <div class="flex flex-1 gap-8 px-8 py-5">
+                    <div
+                      class="flex h-44 w-30 shrink-0 flex-col justify-between rounded-sm bg-gradient-to-br from-[#2f5d50] to-[#1d3b33] p-3 text-[#f3ecdf] shadow-md"
+                      aria-hidden="true"
+                    >
+                      <span class="font-serif text-base leading-tight">The Quiet Year</span>
+                      <span class="text-[10px] tracking-widest uppercase opacity-70">L. Moreau</span>
+                    </div>
+
+                    <div class="flex min-w-0 flex-1 flex-col">
+                      <p class="text-xs tracking-wider uppercase opacity-60">Write a review</p>
+                      <p class="font-serif text-xl">The Quiet Year</p>
+                      <p class="mt-0.5 text-lg tracking-wider" aria-hidden="true">
+                        <span class="text-[#e8a317]">★★★★</span><span class="opacity-25">★</span>
+                      </p>
+                      <div class="mt-2 min-h-20 rounded-md border border-black/15 bg-white px-3 py-2 dark:border-white/15 dark:bg-black/20">
+                        <DemoField sample={samples.safari} />
+                      </div>
+                      <span class="mt-3 self-start rounded-md bg-[#2f5d50] px-4 py-1.5 text-sm font-medium text-white">
+                        Post review
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          {
+            app.id === 'notion' && (
+              <div class="flex flex-1 flex-col">
+                <p class="px-5 pt-3 text-sm text-muted">Team / Q4 planning</p>
+                <div class="mx-auto w-full max-w-2xl flex-1 px-8 py-6">
+                  <p class="text-5xl" aria-hidden="true">
+                    🗓️
+                  </p>
+                  <p class="mt-3 text-3xl font-bold">Q4 planning</p>
+                  <ul class="mt-4 space-y-2">
+                    <li class="flex items-center gap-3 text-faint line-through">
+                      <span class="flex size-4 items-center justify-center rounded-sm bg-[#2383e2] text-[10px] text-white">
+                        ✓
+                      </span>
+                      Share the roadmap with the team
+                    </li>
+                    <li class="flex items-start gap-3">
+                      <span class="mt-1 size-4 shrink-0 rounded-sm border border-faint" />
+                      <DemoField sample={samples.notion} class="flex-1" />
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            )
+          }
+        </section>
+      ))
+    }
+
+  </div>
+
+  <!--
+    Below the window rather than over it: Slack and Messages keep their field
+    at the bottom, where a badge on top would cover the text being fixed.
+  -->
+  <div
+    class="pointer-events-none mt-5 flex h-11 justify-center opacity-0 transition-opacity duration-200"
+    aria-hidden="true"
+    data-showcase-badge
+  >
+    <DemoBadge />
+  </div>
+</div>
+
+<script>
+  import type { SamplePart } from '../data/hero-sample';
+  import {
+    fadeOut,
+    playCorrection,
+    reducesMotion,
+    showFinished,
+    sleep,
+    whenVisible,
+    type DemoElements,
+  } from '../scripts/correction-demo';
+
+  for (const root of document.querySelectorAll<HTMLElement>('[data-app-showcase]')) {
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>('[data-app-tab]')];
+    const windows = [...root.querySelectorAll<HTMLElement>('[data-app-window]')];
+    const badge = root.querySelector<HTMLElement>('[data-showcase-badge]')!;
+    const status = root.querySelector<HTMLElement>('[data-demo-badge-label]')!;
+    const key = root.querySelector<HTMLElement>('[data-demo-key]')!;
+
+    const demos = windows.map((window) => ({
+      sample: JSON.parse(window.dataset.sample ?? '[]') as Array<SamplePart>,
+      fixes: window.dataset.fixes ?? '0',
+      elements: {
+        body: window.querySelector<HTMLElement>('[data-demo-body]')!,
+        text: window.querySelector<HTMLElement>('[data-demo-text]')!,
+        overlay: window.querySelector<HTMLElement>('[data-demo-overlay]')!,
+        key,
+      } satisfies DemoElements,
+    }));
+
+    function show(index: number) {
+      for (const [position, tab] of tabs.entries()) {
+        tab.setAttribute('aria-selected', String(position === index));
+      }
+      for (const [position, window] of windows.entries()) {
+        window.toggleAttribute('data-hidden', position !== index);
+      }
+    }
+
+    let round: AbortController | undefined;
+
+    /** Plays from one app onwards, round and round, until another tab is picked. */
+    async function cycle(start: number) {
+      round?.abort();
+      const controller = new AbortController();
+      round = controller;
+      const { signal } = controller;
+
+      let index = start;
+
+      try {
+        for (;;) {
+          const demo = demos[index];
+          show(index);
+          await fadeOut(demo.elements, signal);
+          await sleep(300, signal);
+          await whenVisible(signal);
+
+          await playCorrection(demo.elements, {
+            sample: demo.sample,
+            signal,
+            onPhase: (phase) => {
+              if (phase === 'tapping') {
+                status.textContent = 'double-tap';
+                badge.style.opacity = '1';
+              }
+              if (phase === 'correcting') status.textContent = 'Correcting…';
+              if (phase === 'done') status.textContent = `${demo.fixes} fixes · 0 words rewritten`;
+            },
+          });
+
+          await sleep(1600, signal);
+          badge.style.opacity = '0';
+          await sleep(1400, signal);
+
+          index = (index + 1) % demos.length;
+        }
+      } catch (error) {
+        if (!signal.aborted) throw error;
+
+        /** Cut short: leave the window it was in finished rather than half typed. */
+        showFinished(demos[index].elements, demos[index].sample);
+        badge.style.opacity = '0';
+      }
+    }
+
+    for (const [index, tab] of tabs.entries()) {
+      tab.addEventListener('click', () => {
+        if (reducesMotion) {
+          show(index);
+          return;
+        }
+
+        void cycle(index);
+      });
+    }
+
+    /** Starts the first time the window is on screen, so the first app is not missed. */
+    if (!reducesMotion) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (!entries.some((entry) => entry.isIntersecting)) return;
+
+          observer.disconnect();
+          if (!round) void cycle(0);
+        },
+        { threshold: 0.4 },
+      );
+      observer.observe(root);
+    }
+  }
+</script>

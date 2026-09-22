@@ -1,9 +1,9 @@
 ---
 import { Image } from 'astro:assets';
 import Layout from '../layouts/Layout.astro';
-import Placeholder from '../components/Placeholder.astro';
 import SectionHeading from '../components/SectionHeading.astro';
 import HeroDemo from '../components/HeroDemo.astro';
+import AppShowcase from '../components/AppShowcase.astro';
 import ThemeToggle from '../components/ThemeToggle.astro';
 import icon from '../assets/logo.svg';
 
@@ -30,15 +30,14 @@ const steps = [
   },
 ];
 
-/** The four kinds of change the app allows. It promises to touch nothing else. */
+/** The kinds of change the app allows. It promises to touch nothing else. */
 const fixes = [
   { kind: 'Spelling', before: 'teh meeting', after: 'the meeting' },
+  { kind: 'Grammar', before: 'she go home', after: 'she goes home' },
   { kind: 'Punctuation', before: 'well done everyone', after: 'well done, everyone' },
   { kind: 'Capitals', before: 'i work at google', after: 'I work at Google' },
   { kind: 'Spacing', before: 'hello  world', after: 'hello world' },
 ];
-
-const apps = ['Mail', 'Slack', 'Notes', 'Messages', 'Safari', 'Notion'];
 
 const privacy = [
   {
@@ -65,7 +64,7 @@ const faq = [
   {
     question: 'How is this different from a grammar checker?',
     answer:
-      'A grammar checker suggests, and increasingly it rewrites: other words, another tone, sometimes another language. Typoless fixes typing mistakes and stops there. Every change is checked before it is written, and anything that is not spelling, punctuation, capitals or spacing is dropped.',
+      'A grammar checker suggests, and increasingly it rewrites: other words, another tone, sometimes another language. Typoless fixes typing mistakes and small grammar slips, like “she go” for “she goes”, and stops there. Every change is checked before it is written, and anything that is not spelling, a word ending, punctuation, capitals or spacing is dropped.',
   },
   {
     question: 'Does my text leave my Mac?',
@@ -92,7 +91,7 @@ const faq = [
 
 <Layout
   title="Typoless: fixes your typos, never rewrites your words"
-  description="A Mac menu bar app that corrects spelling, punctuation, capitals and spacing in any text field, on your Mac. It never rewrites what you wrote, and your text never leaves the Mac."
+  description="A Mac menu bar app that corrects spelling, grammar, punctuation, capitals and spacing in any text field, on your Mac. It never rewrites what you wrote, and your text never leaves the Mac."
 >
   <header class="sticky top-0 z-10 border-b border-line/70 bg-page/85 backdrop-blur">
     <nav class="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
@@ -127,7 +126,7 @@ const faq = [
           Your words.<br />Just <em class="text-accent-ink">spelled right.</em>
         </h1>
         <p class="mt-6 max-w-lg text-lg text-muted">
-          Double-tap ⌘ in any text field and Typoless fixes the spelling, punctuation, capitals and spacing. Your
+          Double-tap ⌘ in any text field and Typoless fixes the spelling, grammar, punctuation, capitals and spacing. Your
           words, your tone and your formatting stay exactly as you wrote them.
         </p>
         <div class="mt-8 flex flex-wrap items-center gap-3" id="download">
@@ -159,7 +158,23 @@ const faq = [
          * <HeroBeforeAfter />
          */
       }
-      <HeroDemo />
+      {
+        /**
+         * A second demo that fixes only a selection, set aside for now. To
+         * show it under this one, wrap both in a column and add it back:
+         *
+         * <div class="flex flex-col gap-5">
+         *   <HeroDemo title="Reply to Sam — Edited" />
+         *   <HeroDemo
+         *     sample={selectionSample}
+         *     scope="selection"
+         *     title="Reply to Sam — Edited"
+         *     description="A second animation: the second half of a sentence is selected before Command is pressed twice, and only the selected part is corrected. A misspelling before the selection is left as it was."
+         *   />
+         * </div>
+         */
+      }
+      <HeroDemo title="Reply to Sam — Edited" />
     </section>
 
     <!-- Highlights -->
@@ -240,9 +255,9 @@ const faq = [
       <div class="mx-auto grid max-w-6xl gap-14 px-6 lg:grid-cols-[1fr_1.2fr] lg:items-center">
         <SectionHeading
           eyebrow="What it fixes"
-          intro="Every change is checked before it is written. A change that is not one of these four is dropped, so a rephrased or translated sentence never reaches your text."
+          intro="Every change is checked before it is written. A change that is not one of these five is dropped, so a rephrased or translated sentence never reaches your text."
         >
-          Four kinds of mistake. <em class="text-accent-ink">Nothing else.</em>
+          Five kinds of mistake. <em class="text-accent-ink">Nothing else.</em>
         </SectionHeading>
 
         <ul class="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card">
@@ -274,11 +289,7 @@ const faq = [
         It works where you <em class="text-accent-ink">already write.</em>
       </SectionHeading>
 
-      <ul class="mt-10 flex flex-wrap justify-center gap-2">
-        {apps.map((app) => <li class="rounded-full border border-line bg-card px-4 py-1.5 text-sm">{app}</li>)}
-      </ul>
-
-      <Placeholder label="Screenshot: a Slack message corrected in place" ratio="16 / 9" class="mt-10" />
+      <AppShowcase />
     </section>
 
     <!-- Privacy -->
