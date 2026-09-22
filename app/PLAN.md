@@ -1,10 +1,10 @@
-# Spellbee
+# Typoless
 
 macOS menu bar app that fixes grammar, spelling, punctuation and casing in any text field,
 triggered by a global shortcut. Corrects only. Never rephrases, never rewrites.
 
-Bundle ID: `dev.zirkelc.spellbee`
-App Group (reserved): `group.dev.zirkelc.spellbee`
+Bundle ID: `dev.zirkelc.typoless`
+App Group (reserved): `group.dev.zirkelc.typoless`
 
 ## Scope decisions
 
@@ -137,7 +137,7 @@ a fraction of a second to several, so it is not a rare case.
 6. **Model refusals.** Foundation Models occasionally refuses ordinary text. The guardrail turns that into a no-op rather than a mangled message. Log the rate. `SystemLanguageModel(guardrails: .permissiveContentTransformations)` exists and is the right fit for a correct-don't-generate workload; try it first at M2 before assuming refusals are unavoidable.
 7. **Getting the user through the accessibility grant.** The system prompt cannot be relied on: it is the system's decision whether to show anything, and in testing it showed nothing. The setup window must therefore work for a user who has to add the app by hand with the **+** button in System Settings, which means naming that button, saying where the app lives, and detecting the grant the moment it lands. Treat the prompt as a bonus, not the path.
 8. **TCC identity.** Permissions key off signing identity + bundle ID. Stable bundle ID and a Developer ID cert from day one, or dev builds re-prompt endlessly.
-9. **A leftover sandbox container silently splits preferences in two.** `~/Library/Containers/dev.zirkelc.spellbee` survives from the sandboxed builds, and the system refuses to delete it. While it is there, `defaults write dev.zirkelc.spellbee …` resolves to the container while the unsandboxed app reads the host domain, so a setting appears to be written and has no effect. Write the path instead: `defaults write ~/Library/Preferences/dev.zirkelc.spellbee.plist …`, then `killall cfprefsd`.
+9. **A leftover sandbox container silently splits preferences in two.** `~/Library/Containers/dev.zirkelc.spellbee` survives from the sandboxed builds made under the old bundle ID, and the system refuses to delete it. No container exists for `dev.zirkelc.typoless`, which was never sandboxed, so this only matters for the old ID; the same trap applies to any ID that once had a sandboxed build. While it is there, `defaults write dev.zirkelc.typoless …` resolves to the container while the unsandboxed app reads the host domain, so a setting appears to be written and has no effect. Write the path instead: `defaults write ~/Library/Preferences/dev.zirkelc.typoless.plist …`, then `killall cfprefsd`.
 
 ## Why not the Mac App Store
 
@@ -186,30 +186,24 @@ M0-M5 is the app. M6 is shipping it.
 
 ### Releasing
 
-Sparkle is in the project and the menu, and does nothing until the two keys
-below are set. The menu item is hidden while either is empty, and Sparkle
-refuses an update it cannot verify, so an unconfigured build fails towards
-doing nothing rather than towards installing something unchecked.
+The why of each step is in the script or file that does it; this is the list.
 
-1. **Generate the signing key once.** Sparkle ships `generate_keys` in its
-   release artifacts. It puts the private key in the login keychain and prints
-   the public half. The private key is never in this repository, and losing it
-   means no existing install can ever be updated again, so it is worth a backup
-   somewhere a disk failure cannot reach.
-2. **Set `INFOPLIST_KEY_SUPublicEDKey`** to the printed public key, in both
-   build configurations.
-3. **Set `INFOPLIST_KEY_SUFeedURL`** to wherever the appcast is hosted. GitHub
-   Releases plus an `appcast.xml` at a stable raw URL needs no server.
-4. **Sign and notarize each build.** Sparkle installs over the running app, and
-   an unsigned or unnotarized update is refused by Gatekeeper on arrival. This
-   is the part that waits on the Developer ID certificate.
-5. **Sign each release with `generate_appcast`**, which writes the appcast
-   entry and the signature together from a folder of builds.
+1. **Back up the signing key.** Sparkle's private key is in the login keychain
+   and nowhere else; `SUPublicEDKey` in `Config/Info.plist` is its public half.
+2. **`./Config/release.sh <version>`** builds Release with the version and a
+   build number (the commit count, or `BUILD_NUMBER`), exports with Developer
+   ID, notarizes, staples, zips and writes the signed appcast. It stops if the
+   build number is not higher than the newest one in the appcast, because
+   Sparkle compares build numbers, not versions.
+3. **Upload** the zip and `appcast.xml` to the addresses the script prints.
+   The feed comes from `TYPOLESS_FEED_URL`, set for Release only, and the
+   downloads go in `releases/` beside it.
+4. **After any package change, run `./Config/make-acknowledgements.sh`** and
+   commit the result. It warns about vendored code it has no notice for.
 
-Automatic checking is off in the built app. Sparkle sends a profile of the
-machine to the update server when it checks, which is a strange thing to do
-silently in an app whose promise is that it keeps to itself, so it asks first
-and the answer is the user's.
+Debug builds have no feed, so they never start the updater or show its menu
+item. Release builds ask on the second launch whether to check automatically,
+and the answer can be changed in General settings.
 
 ### M5 notes
 
@@ -265,7 +259,8 @@ capitals, umlauts, typos and spacing are each their own answer.
 a sentence capital if what precedes it is nothing or a full stop, and a noun
 capital otherwise. The consequence is worth knowing: nothing here knows that
 `Anna` is a person and `test` is not, so turning noun capitals off in German
-also stops a name being capitalised mid-sentence. Pinned in `verify-engine.sh`.
+also stops a name being capitalised mid-sentence. Pinned in the `TypolessTests`
+target.
 
 **The global full stop switch is gone**, because the per-language rule replaced
 it. Leaving both in place was a real bug for the hour it existed: `settings(for:)`
@@ -307,11 +302,11 @@ A change the user asked us not to make says nothing about the model, so counting
 it would make a well-behaved model look like a rewriting one and throw away its
 other corrections.
 
-**An edit is described by the smallest thing that explains it**, so a misspelled
-word at the start of a sentence is one spelling edit rather than a spelling edit
-plus a capitalisation edit. Turning capitalisation off does not hold back the
-capital on a word that had to be respelled anyway. Pinned in `verify-engine.sh`,
-since it surprised me while writing the tests for it.
+**An edit that needs two permissions lands only with both.** A misspelled word
+at the start of a sentence ("teh" to "The") is a spelling fix and a capital in
+one change. With capitalisation off, the whole change is refused and the word
+stays as it was, rather than the capital slipping through with the fix. Pinned
+in the `TypolessTests` target.
 
 **The shortcut is recorded, not chosen from a list.** Which combinations are
 free depends on the system's own shortcuts, the keyboard layout, and whatever
@@ -362,7 +357,7 @@ out as placeholder glyphs. It checks layout, alignment and wording, not controls
 `Eval/` is a SwiftPM executable. `./build-metallib.sh` once, then `swift run`.
 Flags: `--language --model --variant --guardrail on|off|both --limit --failures`.
 
-It reuses the engine rather than copying it: `Sources/spellbee-eval/Engine/`
+It reuses the engine rather than copying it: `Sources/typoless-eval/Engine/`
 holds symlinks to the real files, so the prompt under test is always the
 shipped prompt. Renaming or removing an engine file means adding or dropping
 the matching symlink. `EvalPipeline` mirrors the correctors step for step
@@ -434,8 +429,8 @@ Two things the casing relaxation exposed, both worth knowing:
   blocked only because a model that capitalised it spent a third edit on the
   capital. So the same word change was refused or applied depending on where in
   the sentence it appeared. Closing it needs a rule about word endings rather
-  than a bigger or smaller budget. Pinned in `verify-engine.sh` so it cannot
-  change unnoticed.
+  than a bigger or smaller budget. Pinned in the `TypolessTests` target so it
+  cannot change unnoticed.
 
 ### M3 and M4 notes
 
@@ -559,8 +554,11 @@ retrying the identical request is pointless. A declined chunk is retried once
 with the English instructions, which answers often enough to be worth the second
 round trip. A chunk that is declined twice is left as the user wrote it.
 
-`./Config/verify-engine.sh` checks all of the above without a model or a
-running app. It should become a real test target.
+The `TypolessTests` target checks all of the above without a model:
+
+```sh
+xcodebuild test -project Typoless.xcodeproj -scheme Typoless -destination 'platform=macOS'
+```
 
 ### Comparing backends
 
@@ -667,11 +665,11 @@ rich-text risk open. Closed at M3.
 
 ### M0 notes
 
-One scheme, `Spellbee`, with `Debug` and `Release`. The project briefly carried a
+One scheme, `Typoless`, with `Debug` and `Release`. The project briefly carried a
 sandboxed pair alongside an unsandboxed one, on the assumption that the store was
 reachable; measuring that assumption removed the reason for the split.
 
-The Xcode project uses a synchronized folder group, so new files under `Spellbee/`
+The Xcode project uses a synchronized folder group, so new files under `Typoless/`
 are picked up without touching `project.pbxproj`.
 
 `kAXTrustedCheckOptionPrompt` is imported into Swift as a mutable global that
@@ -690,7 +688,7 @@ up the display's backing scale and silently produces everything at 2x, which
 while still reporting a successful build.
 
 Verified: the scheme builds clean; the built app is unsandboxed and keeps bundle
-ID `dev.zirkelc.spellbee`; `CFBundleIconName` is present; a first launch presents
+ID `dev.zirkelc.typoless`; `CFBundleIconName` is present; a first launch presents
 the setup window; a later launch stays silent in the menu bar.
 
 ## Deferred out of v1

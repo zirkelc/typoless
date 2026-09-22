@@ -28,7 +28,11 @@ struct TypolessApp: App {
  */
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let model = AppModel()
+    /**
+     Lazy so that a test run, which launches the app only to host the tests,
+     never builds it: the model arms global event monitors and loads a model.
+     */
+    private lazy var model = AppModel()
 
     private var statusItem: StatusItemController?
     private var onboarding: OnboardingWindowController?
@@ -36,6 +40,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var historyWindow: HistoryWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        guard !Self.isHostingTests else { return }
+
         let onboarding = OnboardingWindowController(model: model)
         self.onboarding = onboarding
 
@@ -188,6 +194,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     #endif
+
+    /**
+     Whether this launch only hosts the unit tests. Xcode sets the variable in
+     the host process before the tests load.
+     */
+    private static var isHostingTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
 }
 
 private extension Array {
