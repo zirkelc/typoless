@@ -154,14 +154,14 @@ final class CorrectionEngine {
              still needs an undo. Offering it costs nothing when nothing landed,
              since the record is only kept if the field actually moved.
              */
-            recordForRevert(target: target, editCount: fieldEdits.count)
+            await recordForRevert(target: target, editCount: fieldEdits.count)
 
             let message = (error as? TextWriteError)?.userMessage
             report(message, log: "Write failed: \(error)")
             return
         }
 
-        recordForRevert(target: target, editCount: fieldEdits.count)
+        await recordForRevert(target: target, editCount: fieldEdits.count)
         restoreCaret(for: target, after: fieldEdits, corrected: corrected)
 
         report(
@@ -277,7 +277,7 @@ final class CorrectionEngine {
      Reads what the field holds now rather than assuming the correction landed
      as intended, so a write that stopped partway can still be taken back.
      */
-    private func recordForRevert(target: TextTarget, editCount: Int) {
+    private func recordForRevert(target: TextTarget, editCount: Int) async {
         guard
             let after = target.element.string(kAXValueAttribute),
             after != target.text
@@ -299,7 +299,8 @@ final class CorrectionEngine {
             before: target.text,
             after: after,
             bundleID: target.bundleID,
-            editCount: editCount
+            editCount: editCount,
+            models: await corrector.modelsInLastPass()
         )
     }
 

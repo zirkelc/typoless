@@ -41,6 +41,9 @@ actor RoutingCorrector: Corrector {
     private let makeLocal: @Sendable () -> LocalModelCorrector
     private var local: LocalModelCorrector?
 
+    /** Which models answered the current or most recent pass, for the history. */
+    private var answered: [ModelChoice] = []
+
     init(
         defaultChoice: ModelChoice,
         detector: LanguageDetector = LanguageDetector(),
@@ -60,6 +63,7 @@ actor RoutingCorrector: Corrector {
 
     func corrections(for text: String, settings: AppSettings) async throws -> [TextEdit] {
         let deadline = deadline(for: settings)
+        answered = []
 
         return try await ChunkedCorrection.run(
             over: text,
@@ -68,7 +72,10 @@ actor RoutingCorrector: Corrector {
             appliesGuardrail: appliesGuardrail,
             deadline: deadline
         ) { source, language, startsText in
-            switch settings.model(for: language) ?? self.defaultChoice {
+            let choice = settings.model(for: language) ?? self.defaultChoice
+            await self.note(choice)
+
+            switch choice {
             case .appleOnDevice:
                 return await self.apple.corrected(
                     source,
@@ -106,6 +113,14 @@ actor RoutingCorrector: Corrector {
         }
 
         return CorrectionDeadline()
+    }
+
+    func modelsInLastPass() -> [String] {
+        answered.map(\.displayName)
+    }
+
+    private func note(_ choice: ModelChoice) {
+        if !answered.contains(choice) { answered.append(choice) }
     }
 
     private func loadedLocal() -> LocalModelCorrector {

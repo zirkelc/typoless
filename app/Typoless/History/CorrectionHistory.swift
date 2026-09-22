@@ -79,6 +79,11 @@ final class CorrectionHistory {
         let before: String
         let after: String
         let editCount: Int
+        /**
+         The models that answered, named for a person. Recorded with the entry
+         rather than asked for later, since the setting may have changed since.
+         */
+        let models: [String]
     }
 
     /**
@@ -105,7 +110,7 @@ final class CorrectionHistory {
 
     private(set) var entries: [Entry] = []
 
-    func record(before: String, after: String, bundleID: String?, editCount: Int) {
+    func record(before: String, after: String, bundleID: String?, editCount: Int, models: [String] = []) {
         guard retention.keepsHistory, before != after else { return }
 
         entries.insert(
@@ -114,7 +119,8 @@ final class CorrectionHistory {
                 bundleID: bundleID,
                 before: before,
                 after: after,
-                editCount: editCount
+                editCount: editCount,
+                models: models
             ),
             at: 0
         )

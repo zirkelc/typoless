@@ -20,9 +20,18 @@ protocol Corrector: Sendable {
      plain characters would be lost on the way.
      */
     func corrections(for text: String, settings: AppSettings) async throws -> [TextEdit]
+
+    /**
+     The names of the models that answered the most recent pass, in the order
+     they first answered. More than one where languages route to different
+     models. Empty where the corrector does not know.
+     */
+    func modelsInLastPass() async -> [String]
 }
 
 extension Corrector {
+    func modelsInLastPass() async -> [String] { [] }
+
     /** The corrected text, for callers that want the result rather than the changes. */
     func correct(_ text: String, settings: AppSettings = .permissive) async throws -> String {
         TextDiff.apply(try await corrections(for: text, settings: settings), to: text)

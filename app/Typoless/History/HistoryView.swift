@@ -22,9 +22,9 @@ struct HistoryView: View {
     let onOpenSettings: () -> Void
 
     /**
-     Which model is answering, asked at the moment a report is written rather
-     than stored per entry: a report is about what the app does now, and the
-     model is the first thing anyone reading the report will want to know.
+     Which model is answering now, for a report on an entry that did not
+     record its own models. The model is the first thing anyone reading the
+     report will want to know.
      */
     let describeModel: () -> String
 
@@ -125,6 +125,11 @@ private struct HistoryRow: View {
 
                 Text(entry.editCount == 1 ? "1 change" : "\(entry.editCount) changes")
                     .foregroundStyle(.secondary)
+
+                if !entry.models.isEmpty {
+                    Text(entry.models.joined(separator: ", "))
+                        .foregroundStyle(.secondary)
+                }
 
                 Spacer()
 
@@ -230,7 +235,7 @@ private struct HistoryRow: View {
             appName: app?.name,
             bundleID: entry.bundleID,
             editCount: entry.editCount,
-            backend: describeModel(),
+            backend: entry.models.isEmpty ? describeModel() : entry.models.joined(separator: ", "),
             appVersion: Self.appVersion,
             systemVersion: ProcessInfo.processInfo.operatingSystemVersionString
         )
@@ -267,7 +272,8 @@ private struct HistoryRow: View {
         before: "i think we shoud meet on tuesday, does that work for you",
         after: "I think we should meet on Tuesday, does that work for you",
         bundleID: "com.apple.Mail",
-        editCount: 3
+        editCount: 3,
+        models: ["Apple on-device"]
     )
 
     return HistoryView(history: history, onOpenSettings: {}, describeModel: { "Apple on-device" })
