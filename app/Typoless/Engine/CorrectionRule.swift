@@ -23,6 +23,13 @@ enum CorrectionRule: String, CaseIterable, Sendable {
     case apostrophes
     case umlauts
     case typos
+    /**
+     A real word put into the form the sentence needs: "wegen dem Termin" to
+     "wegen des Termins", "she go" to "she goes". Only the ending of the word
+     changes, and the word it starts from has to be in the dictionary, which is
+     what keeps a typo at the end of a word out of this rule.
+     */
+    case grammar
 
     var displayName: String {
         switch self {
@@ -35,6 +42,7 @@ enum CorrectionRule: String, CaseIterable, Sendable {
         case .apostrophes: return "Apostrophes"
         case .umlauts: return "Umlauts"
         case .typos: return "Typos"
+        case .grammar: return "Grammar"
         }
     }
 

@@ -108,7 +108,7 @@ struct EvalPipeline: Sendable {
                 continue
             }
 
-            let verdict = EditGuardrail.filter(chunkEdits, in: text, protectedBy: protected)
+            let verdict = EditGuardrail.filter(chunkEdits, in: text, protectedBy: protected, language: language)
             guarded.editsRejected += verdict.rejectedCount
 
             guard verdict.isTrustworthy else {
@@ -133,7 +133,7 @@ struct EvalPipeline: Sendable {
     ) async -> String? {
         let first = await backend.reply(
             instructions: variant.instructions(language, startsText),
-            prompt: variant.userPrompt(language, source),
+            prompt: variant.userPrompt(language, source, backend.usesGuidedGeneration),
             freeTextSuffix: variant.freeTextSuffix,
             within: deadline?.allowance()
         )

@@ -22,6 +22,17 @@ struct EveryRuleToldApartTests {
         RuleCase("umlaut", "gruesse", "grüße", expect: [.umlauts]),
         RuleCase("typo", "teh meeting", "the meeting", expect: [.typos]),
         RuleCase("not a correction", "the meeting", "the appointment", expect: []),
+        RuleCase("a verb put into its form", "she go home", "she goes home", in: .english, expect: [.grammar]),
+        RuleCase("an article put into its case", "wegen dem", "wegen des", in: .german, expect: [.grammar]),
+        /** "Termin" is a German word, so the ending is grammar, and its capital is still asked about. */
+        RuleCase("a noun put into its case", "wegen des termin", "wegen des Termins", in: .german, expect: [.grammar, .nounCapitalisation]),
+        RuleCase("a verb longer than a typo allows", "wir hat zeit", "wir haben zeit", in: .german, expect: [.grammar]),
+        /** "helo" is not a word, so the same shape is a typo. */
+        RuleCase("a typo at the end of a word", "helo world", "hello world", in: .english, expect: [.typos]),
+        /** The stem changes, which is beyond an ending. */
+        RuleCase("an irregular form is not an ending", "they was late", "they were late", in: .english, expect: []),
+        /** Without a dictionary a changed ending can only be judged as a typo. */
+        RuleCase("no language, no grammar", "wegen dem", "wegen des", expect: [.typos]),
     ]
 
     @Test(arguments: cases)
@@ -30,7 +41,7 @@ struct EveryRuleToldApartTests {
         let expected = row.expected
 
         // Act
-        let rules = Guardrail.rules(row.original, row.corrected)
+        let rules = Guardrail.rules(row.original, row.corrected, in: row.language)
 
         // Assert
         #expect(rules == expected)

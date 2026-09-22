@@ -133,6 +133,12 @@ enum TextDiff {
      and judging those separately allows the first and refuses the second, which
      silently deletes a word. Seen as a single change it is plainly just spacing
      and capitalisation.
+
+     A space typed in the wrong place is the same problem the other way round:
+     "shouldw e" becoming "should we" reads as one word losing a letter and
+     another gaining one. Two neighbouring changes are joined when, taken
+     together, they hold the same letters in the same order and only the
+     spacing moved.
      */
     private static func merging(_ edits: [TextEdit], in text: String) -> [TextEdit] {
         var merged: [TextEdit] = []
@@ -147,28 +153,36 @@ enum TextDiff {
             }
 
             /**
-             Only an insertion gets absorbed into its neighbour. Joining two
-             substantive changes because a space happens to sit between them
+             Only an insertion gets absorbed into its neighbour, or a pair that
+             together only moves a space. Joining two substantive changes
+             because a space happens to sit between them
              would chain unrelated corrections into one oversized change, which
              is then judged, and refused, as a whole.
              */
             let gap = text[previous.range.upperBound..<edit.range.lowerBound]
+            let joined = TextEdit(
+                range: previous.range.lowerBound..<edit.range.upperBound,
+                original: previous.original + gap + edit.original,
+                replacement: previous.replacement + gap + edit.replacement
+            )
+
             guard
                 gap.allSatisfy(\.isWhitespace),
-                previous.original.isEmpty || edit.original.isEmpty
+                previous.original.isEmpty || edit.original.isEmpty || movesOnlySpacing(joined)
             else {
                 merged.append(edit)
                 continue
             }
 
-            merged[merged.count - 1] = TextEdit(
-                range: previous.range.lowerBound..<edit.range.upperBound,
-                original: previous.original + gap + edit.original,
-                replacement: previous.replacement + gap + edit.replacement
-            )
+            merged[merged.count - 1] = joined
         }
 
         return merged
+    }
+
+    /** Whether a change keeps every other character and only moves or changes whitespace. */
+    private static func movesOnlySpacing(_ edit: TextEdit) -> Bool {
+        edit.original.filter { !$0.isWhitespace } == edit.replacement.filter { !$0.isWhitespace }
     }
 
     /** Applies edits back to front, so earlier ranges stay valid as later ones change. */

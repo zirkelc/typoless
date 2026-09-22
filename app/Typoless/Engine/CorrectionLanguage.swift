@@ -68,6 +68,7 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
         case .english:
             return [
                 RuleExample(rule: .typos, before: "teh meeting", after: "the meeting"),
+                RuleExample(rule: .grammar, before: "she go home", after: "she goes home"),
                 RuleExample(rule: .capitalisation, before: "hello there", after: "Hello there"),
                 /**
                  English does not capitalise nouns as a class, so this was left
@@ -86,6 +87,7 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
         case .german:
             return [
                 RuleExample(rule: .typos, before: "der Termn", after: "der Termin"),
+                RuleExample(rule: .grammar, before: "wegen dem Termin", after: "wegen des Termins"),
                 RuleExample(rule: .umlauts, before: "gruesse", after: "grüße"),
                 RuleExample(rule: .capitalisation, before: "hallo zusammen", after: "Hallo zusammen"),
                 RuleExample(rule: .nounCapitalisation, before: "ein test", after: "ein Test"),
@@ -97,6 +99,7 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
         case .french:
             return [
                 RuleExample(rule: .typos, before: "le rendez-vus", after: "le rendez-vous"),
+                RuleExample(rule: .grammar, before: "ils mange", after: "ils mangent"),
                 RuleExample(rule: .capitalisation, before: "bonjour à tous", after: "Bonjour à tous"),
                 RuleExample(rule: .apostrophes, before: "j ai compris", after: "j'ai compris"),
                 RuleExample(rule: .commas, before: "si tu peux dis-moi", after: "si tu peux, dis-moi"),
@@ -107,6 +110,7 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
         case .spanish:
             return [
                 RuleExample(rule: .typos, before: "la reunon", after: "la reunión"),
+                RuleExample(rule: .grammar, before: "ellos come", after: "ellos comen"),
                 RuleExample(rule: .capitalisation, before: "hola a todos", after: "Hola a todos"),
                 RuleExample(rule: .commas, before: "si puedes avísame", after: "si puedes, avísame"),
                 RuleExample(rule: .sentenceEndings, before: "hasta mañana", after: "hasta mañana."),
@@ -116,6 +120,7 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
         case .italian:
             return [
                 RuleExample(rule: .typos, before: "la riunone", after: "la riunione"),
+                RuleExample(rule: .grammar, before: "loro mangia", after: "loro mangiano"),
                 RuleExample(rule: .capitalisation, before: "ciao a tutti", after: "Ciao a tutti"),
                 RuleExample(rule: .apostrophes, before: "l idea", after: "l'idea"),
                 RuleExample(rule: .commas, before: "se puoi fammi sapere", after: "se puoi, fammi sapere"),
@@ -126,6 +131,7 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
         case .dutch:
             return [
                 RuleExample(rule: .typos, before: "de vergaderng", after: "de vergadering"),
+                RuleExample(rule: .grammar, before: "zij loop", after: "zij lopen"),
                 RuleExample(rule: .capitalisation, before: "hallo allemaal", after: "Hallo allemaal"),
                 RuleExample(rule: .apostrophes, before: "s morgens", after: "'s morgens"),
                 RuleExample(rule: .commas, before: "als je kunt laat het weten", after: "als je kunt, laat het weten"),
@@ -136,6 +142,7 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
         case .portuguese:
             return [
                 RuleExample(rule: .typos, before: "a reunio", after: "a reunião"),
+                RuleExample(rule: .grammar, before: "eles come", after: "eles comem"),
                 RuleExample(rule: .capitalisation, before: "olá a todos", after: "Olá a todos"),
                 RuleExample(rule: .commas, before: "se puderes avisa-me", after: "se puderes, avisa-me"),
                 RuleExample(rule: .sentenceEndings, before: "até amanhã", after: "até amanhã."),
@@ -292,8 +299,19 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
      fenced block and a "here is a message" framing were all tried, and all
      three sent the model into a runaway generation on some inputs, taking p95
      from under two seconds to about fifty.
+
+     - Parameter quoted: Puts the text in quotation marks, followed by a line
+       break, which Apple's model needs and a downloaded one does not. Guided
+       generation appends its own instructions straight after the prompt, and
+       a text that stops mid-sentence ran into them: the model took them for
+       more of the text and wrote "response format in json" into its answer, on
+       17 of the 182 dataset cases. Quoted, it did so on none, with the score
+       unchanged under the guardrail and 14 cases better without it. Gemma,
+       which has nothing appended, lost 13 cases to the quotes.
      */
-    func prompt(for text: String) -> String {
+    func prompt(for text: String, quoted: Bool = false) -> String {
+        let text = quoted ? "\"\(text)\"\n" : text
+
         switch self {
         case .german:
             return "Korrigiere:\n\n\(text)"

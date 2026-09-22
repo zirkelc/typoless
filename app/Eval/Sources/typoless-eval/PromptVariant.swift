@@ -25,8 +25,11 @@ struct PromptVariant: Sendable {
      */
     let instructions: @Sendable (CorrectionLanguage, Bool) -> String
 
-    /** The turn that carries the text. */
-    let userPrompt: @Sendable (CorrectionLanguage, String) -> String
+    /**
+     The turn that carries the text. The flag says whether the backend uses
+     guided generation, which is where the app quotes the text.
+     */
+    let userPrompt: @Sendable (CorrectionLanguage, String, Bool) -> String
 
     /**
      Appended by backends that answer in free text.
@@ -71,7 +74,7 @@ extension PromptVariant {
         id: "shipping",
         summary: "The wording the app ships",
         instructions: { $0.instructions(startsText: $1) },
-        userPrompt: { language, text in language.prompt(for: text) },
+        userPrompt: { language, text, guided in language.prompt(for: text, quoted: guided) },
         freeTextSuffix: defaultFreeTextSuffix
     )
 
@@ -97,7 +100,7 @@ extension PromptVariant {
             default: return language.instructions(startsText: true)
             }
         },
-        userPrompt: { language, text in language.prompt(for: text) },
+        userPrompt: { language, text, _ in language.prompt(for: text) },
         freeTextSuffix: defaultFreeTextSuffix
     )
 
@@ -158,7 +161,7 @@ extension PromptVariant {
             default: return language.instructions(startsText: true)
             }
         },
-        userPrompt: { language, text in language.prompt(for: text) },
+        userPrompt: { language, text, _ in language.prompt(for: text) },
         freeTextSuffix: defaultFreeTextSuffix
     )
 
@@ -201,7 +204,7 @@ extension PromptVariant {
             default: return language.instructions(startsText: true)
             }
         },
-        userPrompt: { language, text in language.prompt(for: text) },
+        userPrompt: { language, text, _ in language.prompt(for: text) },
         freeTextSuffix: defaultFreeTextSuffix
     )
 
@@ -244,7 +247,7 @@ extension PromptVariant {
             default: return language.instructions(startsText: true)
             }
         },
-        userPrompt: { language, text in language.prompt(for: text) },
+        userPrompt: { language, text, _ in language.prompt(for: text) },
         freeTextSuffix: defaultFreeTextSuffix
     )
 
@@ -285,7 +288,7 @@ extension PromptVariant {
             default: return language.instructions(startsText: true)
             }
         },
-        userPrompt: { language, text in language.prompt(for: text) },
+        userPrompt: { language, text, _ in language.prompt(for: text) },
         freeTextSuffix: defaultFreeTextSuffix
     )
 
@@ -338,7 +341,7 @@ extension PromptVariant {
             default: return language.instructions(startsText: true)
             }
         },
-        userPrompt: { language, text in language.prompt(for: text) },
+        userPrompt: { language, text, _ in language.prompt(for: text) },
         freeTextSuffix: defaultFreeTextSuffix
     )
 
@@ -394,7 +397,7 @@ extension PromptVariant {
             default: return language.instructions(startsText: true)
             }
         },
-        userPrompt: { language, text in language.prompt(for: text) },
+        userPrompt: { language, text, _ in language.prompt(for: text) },
         freeTextSuffix: defaultFreeTextSuffix
     )
 }
@@ -460,7 +463,7 @@ extension PromptVariant {
 
                     return startsText ? body + (opening ?? "") : body
                 },
-                userPrompt: { language, text in
+                userPrompt: { language, text, _ in
                     let template = language == .german ? definition.deUserPrompt : definition.enUserPrompt
                     return template.replacingOccurrences(of: textPlaceholder, with: text)
                 },

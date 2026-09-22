@@ -61,6 +61,23 @@ struct CorrectionsAppliedTests {
             expect: "Thanks, and yes, that works"
         ),
         /**
+         A space typed one letter late.
+
+         Word by word it reads as "shouldw" losing a letter and "e" becoming
+         "we", and the second looks like a new word. Joined, the two are the
+         same letters with the space in another place, which is spacing.
+         */
+        GuardrailCase("a space typed one letter late", "Very nice, shouldw e add", "Very nice, should we add", expect: "Very nice, should we add"),
+        GuardrailCase("a space typed one letter early", "can w eadd it", "can we add it", expect: "can we add it"),
+        /** Moving a space is spacing, so it needs the spacing rule like any other. */
+        GuardrailCase(
+            "a moved space is refused where spacing is not allowed",
+            "shouldw e add",
+            "should we add",
+            allowing: [.typos, .commas],
+            expect: "shouldw e add"
+        ),
+        /**
          A doubled word is still a word, and removing one is still a deletion, so the
          alignment has to survive the repetition without the guardrail's answer
          changing. It refuses, as it refuses every deletion. That is deliberate: the
@@ -88,6 +105,108 @@ struct CorrectionsAppliedTests {
 }
 
 /** A rewrite is refused, and the user's wording is kept. */
+/**
+ A model that carries on past the end of the text.
+
+ Apple's model does this to a message that stops mid-sentence: it reads the
+ instructions the framework appends after the prompt as more of the text, and
+ writes them into its answer. The words after the end are never a correction,
+ so they are cut off before the rest is judged, and the fixes before them still
+ land. The cut counts as one refusal, since the model did stray.
+ */
+struct ContinuationTests {
+    static let cases: Array<GuardrailCase> = [
+        GuardrailCase(
+            "words added after the end are cut off",
+            "Very nice, shouldw e add",
+            "Very nice, should we add a response format in json.",
+            expect: "Very nice, should we add"
+        ),
+        GuardrailCase(
+            "a fixed last word keeps its fix and loses what follows it",
+            "thanks, and one more thing about teh",
+            "Thanks, and one more thing about the response",
+            expect: "Thanks, and one more thing about the"
+        ),
+        GuardrailCase(
+            "a word split in two at the end is not a continuation",
+            "see you soon tim,i",
+            "See you soon Tim, I",
+            expect: "See you soon Tim, I"
+        ),
+        GuardrailCase("a full stop at the end is not a continuation", "hello world", "Hello world.", expect: "Hello world."),
+        /** Cut or not, a model that answered the text has still rewritten it. */
+        GuardrailCase(
+            "an answer is still refused whole",
+            "what is the capital of france",
+            "The capital of France is Paris.",
+            expect: "what is the capital of france"
+        ),
+    ]
+
+    @Test(arguments: cases)
+    func `the field ends up as expected`(_ row: GuardrailCase) {
+        // Arrange
+        let expected = row.expected
+
+        // Act
+        let result = Guardrail.corrected(row)
+
+        // Assert
+        #expect(result == expected)
+    }
+}
+
+/** Grammar is a rule of its own, asked separately from typos. */
+struct GrammarTests {
+    static let cases: Array<GuardrailCase> = [
+        GuardrailCase(
+            "a word form lands where grammar is allowed",
+            "danke, und wegen dem termin am",
+            "Danke, und wegen des Termins am",
+            in: .german,
+            expect: "Danke, und wegen des Termins am"
+        ),
+        GuardrailCase(
+            "and stays as written where it is not",
+            "danke, und wegen dem termin am",
+            "Danke, und wegen des Termins am",
+            allowing: Set(CorrectionRule.allCases).subtracting([.grammar]),
+            in: .german,
+            expect: "Danke, und wegen dem termin am"
+        ),
+        /** Turning grammar off must not take typos with it, nor the other way round. */
+        GuardrailCase(
+            "a typo still lands with grammar off",
+            "teh cat sat",
+            "the cat sat",
+            allowing: Set(CorrectionRule.allCases).subtracting([.grammar]),
+            in: .english,
+            expect: "the cat sat"
+        ),
+        GuardrailCase(
+            "a verb form lands with typos off",
+            "she go home",
+            "she goes home",
+            allowing: Set(CorrectionRule.allCases).subtracting([.typos]),
+            in: .english,
+            expect: "she goes home"
+        ),
+    ]
+
+    @Test(arguments: cases)
+    func `the field ends up as expected`(_ row: GuardrailCase) {
+        // Arrange
+        let expected = row.expected
+
+        // Act
+        let result = Guardrail.corrected(row)
+
+        // Assert
+        #expect(result == expected)
+    }
+}
+
 struct RewritingRefusedTests {
     static let cases: Array<GuardrailCase> = [
         GuardrailCase("word inserted", "hello world", "hello beautiful world", expect: "hello world"),

@@ -1,5 +1,5 @@
 {
-  "policy": "Expected text fixes only spelling, punctuation, capitalisation and spacing. It never adds a terminal full stop that the input does not have, because a chat message written without one is not wrong, and adding one is the over-correction this app exists to avoid. Protected spans (URLs, emails, @handles, #channels, backticked code, emoji, deliberately lower-case product names) are always identical in input and expected. A case whose expected text equals its input is a negative and must come back byte-identical.",
+  "policy": "Expected text fixes only spelling, grammar (a word put into the form the sentence needs, such as a verb ending or a German case ending), punctuation, capitalisation and spacing. Where the language accepts more than one form, the other one is listed under alternatives and scores as a match. It never adds a terminal full stop that the input does not have, because a chat message written without one is not wrong, and adding one is the over-correction this app exists to avoid. Protected spans (URLs, emails, @handles, #channels, backticked code, emoji, deliberately lower-case product names) are always identical in input and expected. A case whose expected text equals its input is a negative and must come back byte-identical.",
   "cases": [
     {
       "id": "en-neg-01",
@@ -839,6 +839,143 @@
         "spelling",
         "code",
         "protected"
+      ]
+    },
+    {
+      "id": "en-unfinished-01",
+      "input": "Very nice, shouldw e add",
+      "expected": "Very nice, should we add",
+      "tags": [
+        "unfinished",
+        "spacing",
+        "spelling"
+      ]
+    },
+    {
+      "id": "en-unfinished-02",
+      "input": "i was thinking maybe we could",
+      "expected": "I was thinking maybe we could",
+      "tags": [
+        "unfinished",
+        "casing"
+      ]
+    },
+    {
+      "id": "en-unfinished-03",
+      "input": "thanks, and one more thing about teh",
+      "expected": "Thanks, and one more thing about the",
+      "tags": [
+        "unfinished",
+        "casing",
+        "spelling"
+      ]
+    },
+    {
+      "id": "en-unfinished-04",
+      "input": "what do you think about adding",
+      "expected": "What do you think about adding",
+      "tags": [
+        "unfinished",
+        "casing"
+      ]
+    },
+    {
+      "id": "en-unfinished-05",
+      "input": "Let me check if the",
+      "expected": "Let me check if the",
+      "tags": [
+        "unfinished",
+        "negative"
+      ]
+    },
+    {
+      "id": "en-unfinished-06",
+      "input": "Looks good, but can you also add",
+      "expected": "Looks good, but can you also add",
+      "tags": [
+        "unfinished",
+        "negative"
+      ]
+    },
+    {
+      "id": "en-unfinished-07",
+      "input": "how do i reset the",
+      "expected": "How do I reset the",
+      "tags": [
+        "unfinished",
+        "casing"
+      ]
+    },
+    {
+      "id": "en-unfinished-08",
+      "input": "The build is green now. Next I will",
+      "expected": "The build is green now. Next I will",
+      "tags": [
+        "unfinished",
+        "negative"
+      ]
+    },
+    {
+      "id": "en-grammar-01",
+      "input": "she go to the office every day",
+      "expected": "She goes to the office every day",
+      "tags": [
+        "grammar",
+        "casing"
+      ]
+    },
+    {
+      "id": "en-grammar-02",
+      "input": "i has a question about the invoice",
+      "expected": "I have a question about the invoice",
+      "tags": [
+        "grammar",
+        "casing"
+      ]
+    },
+    {
+      "id": "en-grammar-03",
+      "input": "we have two meeting tomorrow",
+      "expected": "We have two meetings tomorrow",
+      "tags": [
+        "grammar",
+        "casing"
+      ]
+    },
+    {
+      "id": "en-grammar-04",
+      "input": "he have already finished the report",
+      "expected": "He has already finished the report",
+      "tags": [
+        "grammar",
+        "casing"
+      ]
+    },
+    {
+      "id": "en-grammar-05",
+      "input": "these file are too big to send",
+      "expected": "These files are too big to send",
+      "tags": [
+        "grammar",
+        "casing"
+      ]
+    },
+    {
+      "id": "en-grammar-06",
+      "input": "the tests passes now",
+      "expected": "The tests pass now",
+      "tags": [
+        "grammar",
+        "casing"
+      ]
+    },
+    {
+      "id": "en-grammar-07",
+      "input": "She goes to the office every day.",
+      "expected": "She goes to the office every day.",
+      "tags": [
+        "grammar",
+        "negative"
       ]
     }
   ]

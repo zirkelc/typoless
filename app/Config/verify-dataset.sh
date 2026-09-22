@@ -24,12 +24,14 @@ out = []
 for language in ("en", "de"):
     data = json.load(open(f"Eval/Datasets/{language}.json"))
     for case in data["cases"]:
-        out.append({
-            "id": case["id"],
-            "language": language,
-            "input": case["input"],
-            "expected": case["expected"],
-        })
+        answers = [case["expected"]] + case.get("alternatives", [])
+        for index, answer in enumerate(answers):
+            out.append({
+                "id": case["id"] if index == 0 else f"{case['id']} (alternative {index})",
+                "language": language,
+                "input": case["input"],
+                "expected": answer,
+            })
 json.dump(out, open(sys.argv[1], "w"), ensure_ascii=False)
 PYTHON
 
@@ -50,6 +52,7 @@ cat \
     Typoless/Engine/TextDiff.swift \
     Typoless/Engine/CorrectionRule.swift \
     Typoless/Engine/EditGuardrail.swift \
+    Typoless/Engine/WordList.swift \
     Typoless/Engine/ProtectedSpans.swift \
     Typoless/Engine/AppSettings.swift \
     Typoless/Engine/CorrectionLanguage.swift \
@@ -81,7 +84,8 @@ for item in items {
         TextDiff.edits(from: item.input, to: item.expected),
         in: item.input,
         allowing: language.applicableRules,
-        protectedBy: ProtectedSpans.find(in: item.input)
+        protectedBy: ProtectedSpans.find(in: item.input),
+        language: language
     )
     let result = verdict.isTrustworthy ? TextDiff.apply(verdict.accepted, to: item.input) : item.input
 

@@ -15,9 +15,18 @@ struct EvalCase: Decodable, Sendable {
     let id: String
     let input: String
     let expected: String
+    /**
+     Other answers that are just as right, where the language allows more than
+     one. "wegen dem Termin" is accepted German and "wegen des Termins" is the
+     written standard, and a model that picks either has not made a mistake.
+     */
+    var alternatives: [String]? = nil
     let tags: [String]
 
     var isNegative: Bool { expected == input }
+
+    /** The expected answer first, then the alternatives. */
+    var acceptedAnswers: [String] { [expected] + (alternatives ?? []) }
 }
 
 /** A language's worth of cases, one file per language. */

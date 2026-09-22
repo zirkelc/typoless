@@ -1,5 +1,5 @@
 {
-  "policy": "Der erwartete Text korrigiert ausschliesslich Rechtschreibung, Satzzeichen, Gross- und Kleinschreibung und Abstaende. Ein fehlender Punkt am Ende einer Chatnachricht gilt nicht als Fehler und wird nie ergaenzt, weil genau das die Ueberkorrektur waere, die diese App vermeiden soll. Geschuetzte Bereiche (URLs, E-Mail-Adressen, @Namen, #Kanaele, Code in Backticks, Emojis, kleingeschriebene Produktnamen) sind in Eingabe und Erwartung identisch. Ein Fall, dessen Erwartung der Eingabe entspricht, ist ein Negativfall und muss unveraendert zurueckkommen.",
+  "policy": "Der erwartete Text korrigiert ausschliesslich Rechtschreibung, Grammatik (ein Wort in der Form, die der Satz verlangt, etwa eine Verbendung oder eine Kasusendung), Satzzeichen, Gross- und Kleinschreibung und Abstaende. Wo die Sprache mehr als eine Form zulaesst, steht die andere unter alternatives und zaehlt als Treffer. Ein fehlender Punkt am Ende einer Chatnachricht gilt nicht als Fehler und wird nie ergaenzt, weil genau das die Ueberkorrektur waere, die diese App vermeiden soll. Geschuetzte Bereiche (URLs, E-Mail-Adressen, @Namen, #Kanaele, Code in Backticks, Emojis, kleingeschriebene Produktnamen) sind in Eingabe und Erwartung identisch. Ein Fall, dessen Erwartung der Eingabe entspricht, ist ein Negativfall und muss unveraendert zurueckkommen.",
   "cases": [
     {
       "id": "de-neg-01",
@@ -831,6 +831,140 @@
         "umlaut",
         "url",
         "protected"
+      ]
+    },
+    {
+      "id": "de-unfinished-01",
+      "input": "Sieht gut aus, sollten wir noch",
+      "expected": "Sieht gut aus, sollten wir noch",
+      "tags": [
+        "unfinished",
+        "negative"
+      ]
+    },
+    {
+      "id": "de-unfinished-02",
+      "input": "kannst du mir bitte die",
+      "expected": "Kannst du mir bitte die",
+      "tags": [
+        "unfinished",
+        "casing"
+      ]
+    },
+    {
+      "id": "de-unfinished-03",
+      "input": "ich wollte fragen ob wir",
+      "expected": "Ich wollte fragen, ob wir",
+      "tags": [
+        "unfinished",
+        "casing",
+        "comma",
+        "subordinate-clause"
+      ]
+    },
+    {
+      "id": "de-unfinished-04",
+      "input": "danke, und wegen dem termin am",
+      "expected": "Danke, und wegen dem Termin am",
+      "alternatives": [
+        "Danke, und wegen des Termins am"
+      ],
+      "tags": [
+        "unfinished",
+        "casing",
+        "noun-capitalisation",
+        "grammar"
+      ]
+    },
+    {
+      "id": "de-unfinished-05",
+      "input": "Wir müssten noch die",
+      "expected": "Wir müssten noch die",
+      "tags": [
+        "unfinished",
+        "negative"
+      ]
+    },
+    {
+      "id": "de-unfinished-06",
+      "input": "das sieht schon gut aus, aber koennten wir",
+      "expected": "Das sieht schon gut aus, aber könnten wir",
+      "tags": [
+        "unfinished",
+        "casing",
+        "umlaut"
+      ]
+    },
+    {
+      "id": "de-grammar-01",
+      "input": "wegen dem wetter fällt das training aus",
+      "expected": "Wegen des Wetters fällt das Training aus",
+      "alternatives": [
+        "Wegen dem Wetter fällt das Training aus"
+      ],
+      "tags": [
+        "grammar",
+        "casing",
+        "noun-capitalisation"
+      ]
+    },
+    {
+      "id": "de-grammar-02",
+      "input": "wir hat morgen keine zeit",
+      "expected": "Wir haben morgen keine Zeit",
+      "tags": [
+        "grammar",
+        "casing",
+        "noun-capitalisation"
+      ]
+    },
+    {
+      "id": "de-grammar-03",
+      "input": "ich gehen heute früher nach hause",
+      "expected": "Ich gehe heute früher nach Hause",
+      "tags": [
+        "grammar",
+        "casing",
+        "noun-capitalisation"
+      ]
+    },
+    {
+      "id": "de-grammar-04",
+      "input": "die kinder spielt im garten",
+      "expected": "Die Kinder spielen im Garten",
+      "tags": [
+        "grammar",
+        "casing",
+        "noun-capitalisation"
+      ]
+    },
+    {
+      "id": "de-grammar-05",
+      "input": "wir haben zwei termin am montag",
+      "expected": "Wir haben zwei Termine am Montag",
+      "tags": [
+        "grammar",
+        "casing",
+        "noun-capitalisation"
+      ]
+    },
+    {
+      "id": "de-grammar-06",
+      "input": "ich komme mit den auto",
+      "expected": "Ich komme mit dem Auto",
+      "tags": [
+        "grammar",
+        "casing",
+        "noun-capitalisation"
+      ]
+    },
+    {
+      "id": "de-grammar-07",
+      "input": "Wir haben morgen keine Zeit.",
+      "expected": "Wir haben morgen keine Zeit.",
+      "tags": [
+        "grammar",
+        "negative"
       ]
     }
   ]

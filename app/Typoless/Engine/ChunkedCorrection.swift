@@ -125,7 +125,8 @@ enum ChunkedCorrection {
                 chunkEdits,
                 in: text,
                 allowing: settings.rules(for: language),
-                protectedBy: protected
+                protectedBy: protected,
+                language: language
             )
 
             guard verdict.isTrustworthy else {

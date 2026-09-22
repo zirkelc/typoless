@@ -39,7 +39,7 @@ enum AboutPanel {
         let text = NSMutableAttributedString()
 
         text.append(NSAttributedString(
-            string: "Corrects spelling, punctuation, capitals and spacing on this Mac. Your text never leaves it.\n",
+            string: "Corrects spelling, grammar, punctuation, capitals and spacing on this Mac. Your text never leaves it.\n",
             attributes: plain
         ))
 

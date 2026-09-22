@@ -68,9 +68,10 @@ automatically if a permission is later revoked.
 
 ## Menu bar
 
-Icon states: idle / working (animated) / paused / needs-attention.
-Menu: **Fix Now**, **Revert Last Fix**, Pause for 1h, Language ▸ (Auto / English / German),
-recent fixes as before→after, Settings…, Setup Guide, Quit.
+Icon states: idle (the logo mark) / working / paused / needs-attention / downloading.
+Menu: status and the trigger to press, Undo, History…, Pause, Models ▸, Settings…,
+Set Up…, About, Quit. No "Fix Now": the trigger does that from the app being typed
+in, and menu key equivalents only work while the menu is open.
 
 ## Settings
 
@@ -431,6 +432,48 @@ Two things the casing relaxation exposed, both worth knowing:
   the sentence it appeared. Closing it needs a rule about word endings rather
   than a bigger or smaller budget. Pinned in the `TypolessTests` target so it
   cannot change unnoticed.
+
+**Unfinished text leaked the framework's own instructions** (2026-09-22). A
+message that stops mid-sentence ("Very nice, shouldw e add") came back as
+"…should we add a response format in json. name: CorrectedText schema: {".
+Guided generation appends its schema instructions straight after the prompt,
+and with no end to the sentence the model read them as more of the text. It
+happened on 17 of the 182 cases, 14 of them in the new `unfinished` tag. What
+was tried, on Apple's model, correct cases with the guardrail on / off:
+
+| User turn | en | de | Leaks |
+|---|---|---|---|
+| Shipping, text bare | 76 / 63 | 59 / 52 | 17 |
+| Line break after the text | 72 / 67 | 63 / 57 | 8 |
+| "(End of text.)" after it | 66 / 31 | 47 / 38 | 4 |
+| An instruction never to finish the sentence | 67 / 59 | 55 / 49 | 14 |
+| **Text in quotation marks, then a line break** | **74 / 71** | **60 / 58** | **0** |
+
+Quoting ships for Apple's model only. Gemma has nothing appended to its
+prompt and lost 13 cases to the quotes (en 42 to 34, de 57 to 52, guardrail on).
+Telling the model not to continue made things worse in every column, so the
+instruction was not added.
+
+Two guardrail changes came out of the same case. A space typed one letter late
+("shouldw e") is spacing now: two neighbouring changes that together only move
+whitespace are judged as one. And words written past the end of a chunk are
+cut off before the rest is judged, counting as one refusal, so a fix on the
+last word survives a continuation after it.
+
+**Grammar is a rule of its own.** "wegen dem termin" came back as "wegen des
+Termins", and it passed only by looking like a typo: one letter changed, first
+letter kept. Bigger forms ("hat" to "haben") were refused, and turning Typos off
+took grammar with it. A changed word is now grammar when only its ending changes
+(two shared letters at least, half the shorter word, endings of at most three
+letters) and both words are in the Mac's dictionary for the language. The
+dictionary is what separates "dem" to "des" from "helo" to "hello", which has
+the same shape. Irregular forms ("was" to "were", "ist" to "sind") change the
+stem and stay refused. Stored rule sets now record which rules the user has
+seen, so a rule added later starts on.
+
+The datasets gained 14 `grammar` cases and an `alternatives` field for cases
+where the language accepts two forms. Apple's model fixed 14 of the 15 grammar
+cases with the shipping prompt, so the prompt does not mention grammar.
 
 ### M3 and M4 notes
 

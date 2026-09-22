@@ -304,6 +304,12 @@ final class Preferences {
             var value: [String: Any] = [
                 "enabled": entry.value.isEnabled,
                 "rules": entry.value.allowedRules.map(\.rawValue),
+                /**
+                 Every rule the user has been shown, on or off, so a rule added
+                 in a later version can start on rather than read as one they
+                 turned off.
+                 */
+                "known": entry.key.applicableRules.map(\.rawValue),
             ]
 
             /**
@@ -333,6 +339,14 @@ final class Preferences {
 
             let rules = (entry["rules"] as? [String])?.compactMap(CorrectionRule.init)
 
+            /**
+             Rules the stored answer predates. A version that did not record
+             what it had shown knew every rule but grammar, which came later.
+             */
+            let known = (entry["known"] as? [String]).map { Set($0.compactMap(CorrectionRule.init)) }
+                ?? language.applicableRules.subtracting([.grammar])
+            let unseen = language.applicableRules.subtracting(known)
+
             return (language, LanguageSettings(
                 isEnabled: entry["enabled"] as? Bool ?? language.isEnabledByDefault,
                 /**
@@ -343,6 +357,7 @@ final class Preferences {
                 model: (entry["model"] as? String).flatMap(ModelChoice.init(storageKey:)),
                 /** Only rules the language has, so a stored set cannot resurrect one. */
                 allowedRules: Set(rules ?? Array(language.applicableRules))
+                    .union(unseen)
                     .intersection(language.applicableRules)
             ))
         })

@@ -42,18 +42,30 @@ enum EditGuardrail {
         }
     }
 
+    /**
+     - Parameter language: Which dictionary tells a grammar fix from a typo.
+       Without one, a changed word ending can only be judged as a typo.
+     */
     static func filter(
         _ edits: [TextEdit],
         in text: String,
         allowing rules: Set<CorrectionRule> = Set(CorrectionRule.allCases),
-        protectedBy protected: [Range<String.Index>] = []
+        protectedBy protected: [Range<String.Index>] = [],
+        language: CorrectionLanguage? = nil
     ) -> Verdict {
         var accepted: [TextEdit] = []
         var rejected = 0
         var protectedCount = 0
 
+        var edits = edits
+        if let cut = cuttingContinuation(from: edits, in: text) {
+            Log.app.info("Cut off words the model added after the end of the text")
+            edits = cut
+            rejected += 1
+        }
+
         for edit in edits {
-            guard let kinds = classify(edit, in: text) else {
+            guard let kinds = classify(edit, in: text, language: language) else {
                 Log.app.info("Rejected an edit that was not a correction")
                 rejected += 1
                 continue
@@ -102,6 +114,55 @@ enum EditGuardrail {
     }
 
     /**
+     The edits with anything the model wrote past the end of the text removed,
+     or nil when it wrote nothing there.
+
+     A text that stops mid-sentence invites a small model to carry on, and
+     Apple's does so with the instructions the framework appends after the
+     prompt. Words after the end are never a correction, but left in place
+     they join the last word's change, or stand as an insertion of their own,
+     and are refused together with the real fix beside them.
+
+     The last change keeps as much of its replacement as it takes to spell as
+     many letters as it replaced, to the end of that word. What follows is the
+     continuation. A full stop, or a word split in two, has no letters beyond
+     that point, so neither is taken for one.
+     */
+    static func cuttingContinuation(from edits: [TextEdit], in text: String) -> [TextEdit]? {
+        guard let last = edits.last, last.range.upperBound == text.endIndex else { return nil }
+
+        let needed = last.original.filter(isLetterOrNumber).count
+        let replacement = last.replacement
+        var cut = replacement.startIndex
+        var letters = 0
+
+        while cut < replacement.endIndex, letters < needed {
+            if isLetterOrNumber(replacement[cut]) { letters += 1 }
+            cut = replacement.index(after: cut)
+        }
+
+        /** To the end of the word the count stopped in, so a fix is never cut in half. */
+        while cut < replacement.endIndex, !replacement[cut].isWhitespace {
+            cut = replacement.index(after: cut)
+        }
+
+        guard replacement[cut...].contains(where: isLetterOrNumber) else { return nil }
+
+        let kept = String(replacement[..<cut])
+        var trimmed = Array(edits.dropLast())
+
+        if kept != last.original, !(kept.isEmpty && last.original.isEmpty) {
+            trimmed.append(TextEdit(range: last.range, original: last.original, replacement: kept))
+        }
+
+        return trimmed
+    }
+
+    private static func isLetterOrNumber(_ character: Character) -> Bool {
+        character.isLetter || character.isNumber
+    }
+
+    /**
      Every question this edit raises, or nil if it is not a correction at all.
 
      A set rather than one label, which was the important thing to get right.
@@ -112,7 +173,11 @@ enum EditGuardrail {
      normalised away, so `buero` to `Büro` reports both the umlaut and the
      capital and needs permission for both.
      */
-    static func classify(_ edit: TextEdit, in text: String) -> Set<CorrectionRule>? {
+    static func classify(
+        _ edit: TextEdit,
+        in text: String,
+        language: CorrectionLanguage? = nil
+    ) -> Set<CorrectionRule>? {
         let original = edit.original
         let replacement = edit.replacement
 
@@ -216,11 +281,16 @@ enum EditGuardrail {
             kinds.insert(startsASentence(edit, in: text) ? .capitalisation : .nounCapitalisation)
         }
 
-        /** Anything still different is a change of letters, which has to look like a typo. */
+        /**
+         Anything still different is a change of letters, which has to look
+         like a typo or like a word put into another form of itself.
+         */
         if foldedOriginal.lowercased() != foldedReplacement.lowercased() {
-            guard isSpellingFix(from: original, to: replacement) else { return nil }
+            guard let letterKinds = letterChanges(from: original, to: replacement, language: language) else {
+                return nil
+            }
 
-            kinds.insert(.typos)
+            kinds.formUnion(letterKinds)
 
             /**
              A typo fix may also change a capital, and then it is both.
@@ -402,12 +472,18 @@ enum EditGuardrail {
     }
 
     /**
-     A spelling fix keeps every word in place and changes letters within them.
+     What kind of change each changed word is, or nil if any of them is not a
+     correction.
 
-     Requiring the word count to match is what stops the model from quietly
-     adding a clarifying word or dropping a redundant one.
+     Every word stays in place and only letters within words change. Requiring
+     the word count to match is what stops the model from quietly adding a
+     clarifying word or dropping a redundant one.
      */
-    private static func isSpellingFix(from original: String, to replacement: String) -> Bool {
+    private static func letterChanges(
+        from original: String,
+        to replacement: String,
+        language: CorrectionLanguage?
+    ) -> Set<CorrectionRule>? {
         let originalWords = original.split(whereSeparator: \.isWhitespace)
         let replacementWords = replacement.split(whereSeparator: \.isWhitespace)
 
@@ -415,49 +491,100 @@ enum EditGuardrail {
             originalWords.count == replacementWords.count,
             !originalWords.isEmpty
         else {
+            return nil
+        }
+
+        var kinds: Set<CorrectionRule> = []
+
+        for (before, after) in zip(originalWords, replacementWords) where before != after {
+            if let language, isWordForm(from: String(before), to: String(after), in: language) {
+                kinds.insert(.grammar)
+            } else if isSpellingFix(from: String(before), to: String(after)) {
+                kinds.insert(.typos)
+            } else {
+                return nil
+            }
+        }
+
+        return kinds
+    }
+
+    /**
+     A real word turned into another form of itself: "dem" to "des", "go" to
+     "goes", "hat" to "haben".
+
+     Only the ending may change. The two share at least their first two
+     letters and at least half of the shorter word, and neither ending is
+     longer than three letters, which covers inflection and not much else:
+     "was" to "were" or "ist" to "sind" change the stem and stay refused.
+
+     The word it starts from has to be in the dictionary, and so does the
+     result. That is the whole difference from a typo at the end of a word,
+     since "helo" to "hello" has exactly the same shape.
+     */
+    private static func isWordForm(from before: String, to after: String, in language: CorrectionLanguage) -> Bool {
+        let base = String(withoutPunctuation(before))
+        let form = String(withoutPunctuation(after))
+        let lowerBase = Array(base.lowercased())
+        let lowerForm = Array(form.lowercased())
+
+        guard lowerBase != lowerForm, scripts(of: form).isSubset(of: scripts(of: base)) else {
             return false
         }
 
-        return zip(originalWords, replacementWords).allSatisfy { before, after in
-            guard before != after else { return true }
+        let shared = zip(lowerBase, lowerForm).prefix { $0 == $1 }.count
+        let shorter = min(lowerBase.count, lowerForm.count)
 
-            /**
-             A typo rarely lands on the first letter, while a word swapped for a
-             different one usually starts differently. Without this, "is" to
-             "has" reads as a one-character spelling fix and quietly changes what
-             the sentence says.
-             */
-            guard
-                let firstBefore = before.first?.lowercased(),
-                let firstAfter = after.first?.lowercased(),
-                firstBefore == firstAfter
-            else {
-                return false
-            }
-
-            /**
-             A typo stays in the alphabet the word was written in. A model that
-             has come off the rails does not: `Danke` came back as `Danke퀎4`,
-             which is two edits away and passes every other test here. Nothing a
-             correction legitimately does introduces a letter from another
-             script.
-             */
-            guard scripts(of: after).isSubset(of: scripts(of: before)) else { return false }
-
-            /**
-             Measured without case, because case is not a spelling mistake and
-             counting it as one refuses real fixes. `wendesday` to `wednesday`
-             is two edits and allowed; the same fix written `Wednesday`, which
-             is what a model returns at the start of a sentence, was three and
-             refused. Nothing is loosened by ignoring case here: a change that
-             is only case never reaches this point, since it is classified as
-             capitalisation several checks earlier.
-             */
-            let lowercasedBefore = before.lowercased()
-            let distance = editDistance(lowercasedBefore, after.lowercased())
-
-            return distance <= maximumSpellingDistance && distance < lowercasedBefore.count
+        guard
+            shared >= 2,
+            shared * 2 >= shorter,
+            lowerBase.count - shared <= 3,
+            lowerForm.count - shared <= 3
+        else {
+            return false
         }
+
+        return WordList.contains(base, in: language) && WordList.contains(form, in: language)
+    }
+
+    /** A spelling fix to one word. */
+    private static func isSpellingFix(from before: String, to after: String) -> Bool {
+        /**
+         A typo rarely lands on the first letter, while a word swapped for a
+         different one usually starts differently. Without this, "is" to
+         "has" reads as a one-character spelling fix and quietly changes what
+         the sentence says.
+         */
+        guard
+            let firstBefore = before.first?.lowercased(),
+            let firstAfter = after.first?.lowercased(),
+            firstBefore == firstAfter
+        else {
+            return false
+        }
+
+        /**
+         A typo stays in the alphabet the word was written in. A model that
+         has come off the rails does not: `Danke` came back as `Danke퀎4`,
+         which is two edits away and passes every other test here. Nothing a
+         correction legitimately does introduces a letter from another
+         script.
+         */
+        guard scripts(of: after).isSubset(of: scripts(of: before)) else { return false }
+
+        /**
+         Measured without case, because case is not a spelling mistake and
+         counting it as one refuses real fixes. `wendesday` to `wednesday`
+         is two edits and allowed; the same fix written `Wednesday`, which
+         is what a model returns at the start of a sentence, was three and
+         refused. Nothing is loosened by ignoring case here: a change that
+         is only case never reaches this point, since it is classified as
+         capitalisation several checks earlier.
+         */
+        let lowercasedBefore = before.lowercased()
+        let distance = editDistance(lowercasedBefore, after.lowercased())
+
+        return distance <= maximumSpellingDistance && distance < lowercasedBefore.count
     }
 
     /**

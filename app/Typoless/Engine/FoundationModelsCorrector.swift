@@ -83,7 +83,7 @@ actor FoundationModelsCorrector: Corrector {
         if let result = await respond(
             to: text,
             using: language.instructions(startsText: startsText),
-            asking: language.prompt(for: text),
+            asking: language.prompt(for: text, quoted: true),
             within: deadline?.allowance()
         ) {
             return result

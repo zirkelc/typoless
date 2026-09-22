@@ -52,8 +52,10 @@ enum Scoring {
         output: EvalPipeline.Outcome,
         seconds: Double
     ) -> CaseResult {
-        let required = TextDiff.edits(from: testCase.input, to: testCase.expected)
-        let defects = TextDiff.edits(from: testCase.expected, to: output.text)
+        /** Scored against the alternative the output chose, where it chose one. */
+        let reference = testCase.acceptedAnswers.first { $0 == output.text } ?? testCase.expected
+        let required = TextDiff.edits(from: testCase.input, to: reference)
+        let defects = TextDiff.edits(from: reference, to: output.text)
 
         /** Where each required correction ended up in the expected text. */
         let targets = images(of: required, in: testCase.input)
@@ -62,7 +64,7 @@ enum Scoring {
         var falsePositives = 0
 
         for defect in defects {
-            let span = offsets(of: defect.range, in: testCase.expected)
+            let span = offsets(of: defect.range, in: reference)
             let hits = targets.indices.filter { targets[$0].overlaps(span) }
 
             if hits.isEmpty {
@@ -82,7 +84,7 @@ enum Scoring {
             required: required.count,
             fixed: required.count - missed.count,
             falsePositives: falsePositives,
-            exactMatch: output.text == testCase.expected,
+            exactMatch: testCase.acceptedAnswers.contains(output.text),
             untouched: output.text == testCase.input,
             seconds: seconds,
             chunksDropped: output.chunksDropped,

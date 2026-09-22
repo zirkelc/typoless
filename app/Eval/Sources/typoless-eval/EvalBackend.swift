@@ -32,10 +32,14 @@ protocol EvalBackend: Sendable {
 
     /** Frees the weights, which are the largest thing this process ever holds. */
     func release() async
+
+    /** Whether replies are shaped by guided generation, which changes how the app quotes the text. */
+    var usesGuidedGeneration: Bool { get }
 }
 
 extension EvalBackend {
     func release() async {}
+    var usesGuidedGeneration: Bool { false }
 }
 
 /** Every backend the app can be configured with, in a fixed order. */
@@ -187,6 +191,7 @@ struct AppleBackend: EvalBackend {
 
     var id: String { CorrectorBackend.appleOnDevice.rawValue + schema.suffix }
     var displayName: String { CorrectorBackend.appleOnDevice.displayName + schema.suffix }
+    var usesGuidedGeneration: Bool { schema.isGuided }
 
     private var model: SystemLanguageModel {
         SystemLanguageModel(guardrails: .permissiveContentTransformations)
