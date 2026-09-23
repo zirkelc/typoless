@@ -78,10 +78,10 @@ in, and menu key equivalents only work while the menu is open.
 - **General** — launch at login, double-⌘ on/off, conventional hotkey recorder, revert shortcut, show icon.
 - **Models** — every model, its size, whether it is on disk, a download button, and which one is the default.
 - **Languages** — the languages added, with an Add menu, and a per-language model override.
-- **Corrections** — whether the guardrail applies, a table of rules per added language (each shown with an example in that language, and disabled while the guardrail is off), and how long a correction stays undoable in history.
+- **Corrections** — a table of rules per added language (each shown with an example in that language), and how long a correction stays undoable in history. Whether the guardrail applies is not a setting: it always does, and the switch that used to say so is now a debug-build item.
 - **Sentence-final punctuation** — whether a message with no closing mark gets one. A per-language rule, enforced in the guardrail rather than asked of the model, which does not work: the eval variant that named terminal punctuation made Gemma start deleting full stops from text that was already correct. It was briefly a per-app override too, and that was removed: singling out one rule because it is the noisiest is a reason to fix the rule, and it made the effective rule set depend on which window was in front in a way nothing in the UI showed.
 - **Apps** — deny-list, plus per-app overrides for the settings above. Default-denied: terminals, Xcode, VS Code, password managers.
-- **Privacy** — "nothing leaves your Mac", opt-in local log. The one exception is a bug report, which the user reads and submits themselves from the history window.
+- **Privacy** — "nothing leaves your Mac", opt-in local log. The one exception is a bug report, which the user reads and submits themselves from the history window. It is a prefilled issue on the public tracker, `zirkelc/typoless`, and the app asks before opening the browser, every time and with no way to switch the question off: the report carries the user's own writing into a page anyone can read.
 
 ## Overlay animation
 
@@ -210,7 +210,69 @@ Debug builds have no feed, so they never start the updater or show its menu
 item. Release builds ask on the second launch whether to check automatically,
 and the answer can be changed in General settings.
 
+**Betas ride the same feed.** A version that says beta, which is what
+`MARKETING_VERSION` says today, goes into the appcast's beta channel, and only a
+build whose own version says beta asks for that channel. So one feed carries
+both, a stable release is never offered a beta, and a beta is offered the next
+beta as well as any stable release that follows it. The app decides in
+`UpdateController`, the feed in `release.sh`, and both read the same string, so
+1.0 leaves the beta channel behind without anyone editing either.
+
 ### M5 notes
+
+**The guardrail is no longer a setting.** It was "Strict mode" on the
+Corrections page, and it is now always on, with a debug-build menu item for the
+one job the off position did well: seeing what a model really returned.
+
+Measured on Apple's on-device model with the shipping wording, off against on:
+off buys 1 English fix and 7 German ones, and costs 15 and 22 changes nobody
+asked for (en 27 to 42 in 12 cases to 18, de 13 to 35 in 6 cases to 12). The two
+worst answers the app has ever applied, a reply returned entirely in capitals
+and Apple's schema text written into the message, both reached the field with it
+off. A switch whose off position is worse on every measure a user has is a
+trap, and the person who flips it is the one least likely to connect the later
+mess to it.
+
+**Telling the model which rules are off does not work.** The obvious
+alternative, since a switched-off rule meant nothing at all while the guardrail
+was off. One sentence per rule, in the language of the text, appended to the
+instructions, measured as the same cases asked both ways. The count that matters
+is the changes the model proposed that touch the switched-off rule, taken before
+the guardrail sees them:
+
+| rule off | lang | silent | told | exact match, guardrail off |
+|---|---|---|---|---|
+| noun capitals | de | 94 | 86 | 70% → 58% |
+| commas | de | 24 | 23 | 70% → 67% |
+| apostrophes | en | 15 | 15 | 78% → 79% |
+| sentence endings | en | 2 | 0 | 78% → 76% |
+
+The model ignores a prohibition between 91% and 100% of the time and charges up
+to 12 points of exact match for being asked. That is the same finding as every
+earlier sweep: naming a rule to a model this small costs more than it buys. The
+harness keeps the flags (`--disable-rule`, `--tell-model`) and the two columns,
+so the question can be re-asked of a different model rather than argued about.
+
+**A mark at the edge of a change is asked about separately.** With the rules
+always applied, a change refused for one switched-off rule takes everything else
+in the same word with it, and that is not rare: 20 of 94 refusals with German
+noun capitals off, 5 of 24 with commas off, 6 of 15 with English apostrophes
+off. `gruesse` to `grüße,` is two umlauts and a comma in one change.
+
+Only the marks at either end are taken off, and only where the user wrote none
+there. Cutting by character was tried first and is unsafe: that same change
+aligns as `u` becoming `üß` and `sse` becoming `,`, so keeping the allowed half
+writes `grüßesse` into the text. The pieces are applied and compared against the
+change they came from before any of them is used.
+
+What it buys is small and worth naming honestly. With German commas off, fix
+recall goes from 64% to 65%, about three corrections that used to disappear with
+the comma next to them. With noun capitals off it recovers nothing, because
+those changes are entangled inside the word rather than sitting at its edge, and
+nothing can separate `buero` becoming `Büro` into an umlaut and a capital
+without inventing a spelling. With everything allowed, which is how the app
+ships, the datasets do not move at all: en 80% and de 72% exact match, the same
+run as before the change.
 
 **A settings write that is not a property list fails silently.** Each language's
 entry was built with `["model": value.model?.rawValue as Any]` and then run

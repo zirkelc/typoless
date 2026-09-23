@@ -200,6 +200,14 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
+        /**
+         Beside About rather than beside History, because this is the report
+         with no correction behind it: something is wrong, or missing, and there
+         is no entry to point at. A report about one correction starts from that
+         correction, in the history window.
+         */
+        add(to: menu, title: "Report a Problem…", keyEquivalent: "", action: #selector(reportProblem))
+
         add(to: menu, title: "About Typoless", keyEquivalent: "", action: #selector(showAbout))
 
         /**
@@ -235,6 +243,20 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         observing.state = model.typingObserver.isRunning ? .on : .off
         menu.addItem(observing)
 
+        /**
+         The switch the settings page used to carry. It is here rather than
+         there because the only reason to turn the guardrail off is to see what
+         a model really returned.
+         */
+        let guarded = NSMenuItem(
+            title: "Strict Mode",
+            action: #selector(toggleGuardrail),
+            keyEquivalent: ""
+        )
+        guarded.target = self
+        guarded.state = model.preferences.isGuardrailEnabled ? .on : .off
+        menu.addItem(guarded)
+
         add(to: menu, title: "Report Typing Observations", keyEquivalent: "", action: #selector(reportTypingObservations))
         add(to: menu, title: "Flash Overlay", keyEquivalent: "", action: #selector(flashOverlay))
         add(
@@ -249,29 +271,36 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
     #endif
 
+    /**
+     "Beta" while the version says so, and nothing once it does not.
+
+     Read from the version rather than written here, so the tag appears in every
+     beta build and disappears at 1.0 without anyone remembering to remove it.
+     The About panel carries the full version; the menu only needs the word.
+     */
+    private static var betaTag: String? {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+
+        return version.localizedCaseInsensitiveContains("beta") ? "Beta" : nil
+    }
+
     /** Nil when both triggers are off, since then there is nothing to press. */
     private var triggerHint: String? {
-        let preferences = model.preferences
-        var keys: [String] = []
-
-        if preferences.isDoubleTapEnabled {
-            keys.append("\(preferences.doubleTapModifier.symbol) twice")
-        }
-        if preferences.isHotKeyEnabled {
-            keys.append(preferences.hotKey.displayName)
-        }
-
-        guard !keys.isEmpty else { return nil }
-
-        return "Press \(keys.joined(separator: " or ")) to fix text"
+        model.preferences.triggerDescription.map { "\($0) to fix" }
     }
 
     private var headerTitle: String {
         guard let progress = model.downloadProgress else {
+            /**
+             The guardrail is not mentioned. It used to add "rewriting allowed"
+             whenever it was off, which was worth saying while that was a switch
+             on the settings page. It is not one any more: a shipped build is
+             always guarded, and the only way to turn it off is a debug menu
+             item that shows its own state.
+             */
             let state = model.engine.lastMessage ?? model.status.label
 
-            /** Never let an unguarded state be a silent one. */
-            return model.preferences.isGuardrailEnabled ? state : "\(state) — rewriting allowed"
+            return [state, Self.betaTag].compactMap { $0 }.joined(separator: " · ")
         }
 
         /** Same wording as the badge, so the two never disagree. */
@@ -369,6 +398,21 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         AboutPanel.show()
     }
 
+    /**
+     Opens a prefilled issue with nothing in it but the versions and the model.
+
+     No confirmation here, unlike a report about a correction: there is no text
+     of the user's in it, so there is nothing to warn about beyond the tracker
+     being public, which the page itself makes plain.
+     */
+    @objc private func reportProblem() {
+        let report = ProblemReport(model: model.activeModel.displayName, environment: .current)
+
+        guard let url = report.url else { return }
+
+        NSWorkspace.shared.open(url)
+    }
+
     @objc private func checkForUpdates() {
         model.updates?.checkForUpdates()
     }
@@ -390,6 +434,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     #if DEBUG
+    @objc private func toggleGuardrail() {
+        model.preferences.isGuardrailEnabled.toggle()
+    }
+
     @objc private func toggleTypingObservation() {
         let observer = model.typingObserver
         observer.isRunning ? observer.stop() : observer.start()

@@ -90,6 +90,7 @@ private struct HistoryRow: View {
     let describeModel: () -> String
 
     @State private var isShowingClipboardNotice = false
+    @State private var isConfirmingReport = false
 
     /** Resolved once per row rather than on each redraw, since it hits LaunchServices. */
     private var app: InstalledApp? {
@@ -136,9 +137,9 @@ private struct HistoryRow: View {
                 Button("Copy Original") { copyOriginal() }
                     .controlSize(.small)
 
-                Button("Report…") { report() }
+                Button("Report…") { isConfirmingReport = true }
                     .controlSize(.small)
-                    .help("Opens a prefilled e-mail in your mail app. Nothing is sent until you send it.")
+                    .help("Opens a prefilled issue on GitHub. Nothing is posted until you submit it.")
             }
             .font(.callout)
 
@@ -157,7 +158,28 @@ private struct HistoryRow: View {
         } message: {
             Text("""
             This correction is too long to carry in a link, so it has been \
-            copied instead. Paste it into the e-mail that just opened.
+            copied instead. Paste it into the issue that just opened.
+            """)
+        }
+        /**
+         Asked every time, with no way to switch it off. The text in a report is
+         the user's own writing, and the tracker is public: that is worth one
+         click, every time, from an app whose whole promise is that text stays
+         on the Mac.
+         */
+        .confirmationDialog(
+            "Report this correction on GitHub?",
+            isPresented: $isConfirmingReport,
+            titleVisibility: .visible
+        ) {
+            Button("Open GitHub…") { report() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("""
+            The issue is filled in for you, including the text before and after, \
+            and it opens in your browser. The tracker is public, so read it and \
+            delete anything you would rather not share. Nothing is posted until \
+            you press Submit there.
             """)
         }
     }
@@ -222,11 +244,11 @@ private struct HistoryRow: View {
     }
 
     /**
-     Hands the report to the mail app, filled in but unsent.
+     Opens the issue form, filled in but unsubmitted.
 
-     The user reads the draft, edits or deletes anything they would rather not
-     share, and sends it themselves. This is the only place text leaves the Mac,
-     so it leaves by their hand and in plain sight.
+     The user reads it, edits or deletes anything they would rather not share,
+     and submits it themselves. This is the only place text leaves the Mac, so
+     it leaves by their hand and in plain sight.
      */
     private func report() {
         let report = CorrectionReport(
@@ -236,8 +258,7 @@ private struct HistoryRow: View {
             bundleID: entry.bundleID,
             editCount: entry.editCount,
             backend: entry.models.isEmpty ? describeModel() : entry.models.joined(separator: ", "),
-            appVersion: Self.appVersion,
-            systemVersion: ProcessInfo.processInfo.operatingSystemVersionString
+            environment: .current
         )
 
         if let url = report.url {
@@ -246,23 +267,15 @@ private struct HistoryRow: View {
         }
 
         /**
-         A long field makes a link the mail app might silently cut in half, so
-         the body travels on the clipboard and the draft opens empty.
+         A long field makes a link the tracker answers with an error rather than
+         a form, so the body travels on the clipboard and the form opens empty.
          */
-        guard let blank = report.blankDraftURL else { return }
+        guard let blank = report.blankIssueURL else { return }
 
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(report.body, forType: .string)
         NSWorkspace.shared.open(blank)
         isShowingClipboardNotice = true
-    }
-
-    private static var appVersion: String {
-        let info = Bundle.main.infoDictionary
-        let short = info?["CFBundleShortVersionString"] as? String ?? "?"
-        let build = info?["CFBundleVersion"] as? String ?? "?"
-
-        return "\(short) (\(build))"
     }
 }
 

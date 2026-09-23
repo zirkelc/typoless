@@ -5,8 +5,8 @@ import Testing
 /**
  A report carries the correction, and nothing else leaves.
 
- The text is the reproduction, so everything has to survive the trip through a
- `mailto:` link exactly, and nothing may be cut without the user seeing it.
+ The text is the reproduction, so everything has to survive the trip through the
+ link exactly, and nothing may be cut without the user seeing it.
  */
 struct CorrectionReportTests {
     private func report(before: String, after: String = "x") -> CorrectionReport {
@@ -17,22 +17,21 @@ struct CorrectionReportTests {
             bundleID: "com.tinyspeck.slackmacgap",
             editCount: 2,
             backend: "Apple on-device",
-            appVersion: "1.0 (4)",
-            systemVersion: "Version 26.6.2 (Build 25G83)"
+            environment: ReportEnvironment(appVersion: "1.0 (4)", systemVersion: "Version 26.6.2 (Build 25G83)")
         )
     }
 
-    @Test func `the draft goes to the feedback address`() throws {
+    @Test func `the report opens a new issue on the tracker`() throws {
         // Arrange
         let simple = report(before: "hallo anna", after: "Hallo Anna")
 
         // Act
         let url = try #require(simple.url)
-        let components = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false))
 
         // Assert
-        #expect(components.scheme == "mailto")
-        #expect(components.path == CorrectionReport.address)
+        #expect(url.scheme == "https")
+        #expect(url.host == "github.com")
+        #expect(url.path == "/\(IssueTracker.repository)/issues/new")
     }
 
     @Test func `the body names the model, the app and both versions`() {
@@ -50,7 +49,8 @@ struct CorrectionReportTests {
         #expect(body.contains("com.tinyspeck.slackmacgap"))
         #expect(body.contains("hallo anna, danke fuer die rueckmeldung"))
         #expect(body.contains("Hallo Anna, danke für die Rückmeldung"))
-        #expect(simple.subject == "Wrong correction: hallo anna, danke fuer die rueckmeldung")
+        #expect(body.contains("Typoless: 1.0 (4)"))
+        #expect(simple.title == "Wrong correction: hallo anna, danke fuer die rueckmeldung")
     }
 
     @Test func `text survives encoding exactly`() throws {
@@ -69,7 +69,30 @@ struct CorrectionReportTests {
         #expect(!address.contains("#1"))
         #expect(address.contains("%2B"))
         #expect(!address.contains("ü"))
-        #expect(body?.contains("Grüße & Co #1 + 2 = drei?\r\nzweite Zeile") == true)
+        #expect(body?.contains(before) == true)
+    }
+
+    /**
+     A report is very often about markup, so the block that carries the text has
+     to be longer than anything inside it.
+     */
+    @Test func `a fence is always longer than the backticks it encloses`() {
+        // Arrange
+        let plain = "hello"
+        let code = "use `map` here"
+        let block = "```swift\nlet x = 1\n```"
+
+        // Act
+        let fencedPlain = IssueTracker.fenced(plain)
+        let fencedCode = IssueTracker.fenced(code)
+        let fencedBlock = IssueTracker.fenced(block)
+
+        // Assert
+        #expect(fencedPlain.hasPrefix("```text\n"))
+        #expect(fencedCode.hasPrefix("```text\n"))
+        #expect(fencedBlock.hasPrefix("````text\n"))
+        #expect(fencedBlock.hasSuffix("\n````"))
+        #expect(fencedBlock.contains(block))
     }
 
     @Test func `a long field is cut, and says where`() {
@@ -114,13 +137,12 @@ struct CorrectionReportTests {
             bundleID: nil,
             editCount: 1,
             backend: "Apple on-device",
-            appVersion: "1.0 (4)",
-            systemVersion: "26.6.2"
+            environment: ReportEnvironment(appVersion: "1.0 (4)", systemVersion: "26.6.2")
         )
 
         // Act
         let url = overflowing.url
-        let blank = overflowing.blankDraftURL?.absoluteString
+        let blank = overflowing.blankIssueURL?.absoluteString
 
         // Assert
         #expect(url == nil)

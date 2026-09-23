@@ -85,3 +85,17 @@ jobs:
       # apply. Needs no model.
       - name: Verify datasets
         run: ./Config/verify-dataset.sh
+
+      # The version the built app calls itself, written where a run can be read
+      # at a glance. A beta says so here as well as in the app, so a run that
+      # was meant to be a release candidate and still says beta is visible
+      # without opening the build.
+      - name: Report the version
+        run: |
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" \
+            build/DerivedData/Build/Products/Release/Typoless.app/Contents/Info.plist)
+          case "$VERSION" in
+            *[Bb]eta*) CHANNEL="beta" ;;
+            *) CHANNEL="stable" ;;
+          esac
+          echo "Typoless $VERSION ($CHANNEL channel)" >> "$GITHUB_STEP_SUMMARY"

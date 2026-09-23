@@ -106,8 +106,11 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
          A page whose content can grow, such as a language opening to show its
          rules, would otherwise be clipped by a window sized before it did.
          */
-        let root = tab.view(model: model)
-            .frame(width: tab.width)
+        let root = VStack(spacing: 0) {
+            SetupBanner(model: model)
+            tab.view(model: model)
+        }
+        .frame(width: tab.width)
             .background(
                 GeometryReader { [weak self] proxy in
                     Color.clear.onChange(of: proxy.size.height, initial: true) { _, height in
@@ -163,6 +166,14 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
     func windowDidBecomeKey(_ notification: Notification) {
         model.preferences.refreshLaunchAtLogin()
         model.updates?.refresh()
+
+        /**
+         Coming back from System Settings is also how a permission is granted,
+         and the banner above every page has to answer for it. Accessibility
+         posts a notification of its own, but whether Apple's model is ready has
+         no such signal and is only ever found out by asking.
+         */
+        model.permissions.refresh()
     }
 
     /**

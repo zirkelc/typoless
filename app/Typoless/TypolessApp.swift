@@ -196,6 +196,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     #endif
 
     /**
+     Ends a correction that is in flight before the process goes away.
+
+     A pass finishes by writing its edits into another application's field, and
+     that is several accessibility writes rather than one. Quitting between two
+     of them leaves the field with half its corrections applied and nothing to
+     undo it with, since history is deliberately kept in memory only and dies
+     with the process.
+
+     The wait is capped. A quit that hangs is worse than a write that was cut,
+     and a model already generating cannot be stopped at all, only ignored.
+     */
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard !Self.isHostingTests, model.engine.isRunning else { return .terminateNow }
+
+        Log.app.info("Quitting while a correction is running, giving it up first")
+        model.engine.cancel()
+
+        Task {
+            let deadline = ContinuousClock.now + .seconds(1)
+
+            while model.engine.isRunning, ContinuousClock.now < deadline {
+                try? await Task.sleep(for: .milliseconds(20))
+            }
+
+            NSApp.reply(toApplicationShouldTerminate: true)
+        }
+
+        return .terminateLater
+    }
+
+    /**
      Whether this launch only hosts the unit tests. Xcode sets the variable in
      the host process before the tests load.
      */

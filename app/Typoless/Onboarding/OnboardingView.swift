@@ -2,144 +2,151 @@ import AppKit
 import SwiftUI
 
 /**
- The setup checklist.
+ First-run setup, one step at a time.
 
- Rows poll their own status, so granting a permission in System Settings turns
- the row green without the user coming back and clicking anything. The final
- step is a live text field inside our own window: the user should see the whole
- pipeline work somewhere harmless before pointing it at a real message.
+ Rows poll their own status, so granting a permission in System Settings turns a
+ row green without the user coming back and clicking anything.
+
+ Each step is blocked until it is satisfied, which is the point of the shape: the
+ sample field at the end cannot be reached until there is a permission, a
+ language and a trigger behind it, so it can only ever demonstrate the app
+ working. The single window this replaces let anyone reach the field first, press
+ the button, and watch nothing happen.
+
+ One fixed size for every step, so the window does not resize under the pointer
+ between one Continue and the next.
  */
 struct OnboardingView: View {
     let model: AppModel
     let onDone: () -> Void
 
     @AppStorage(DefaultsKey.hasCompletedOnboarding) private var hasCompletedOnboarding = false
-    @State private var sampleText = "i  think its ready , lets see if this works"
-    @FocusState private var isSampleFocused: Bool
+    @State private var page: OnboardingPage = .welcome
 
     private var permissions: PermissionsModel { model.permissions }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            header
+            progressBar
 
-            Divider()
-
-            VStack(alignment: .leading, spacing: 4) {
-                accessibilityRow
-                intelligenceRow
+            VStack(alignment: .leading, spacing: 20) {
+                header
+                content
+                Spacer(minLength: 0)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-
-            Divider()
-
-            tryItOut
+            .padding(24)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             Divider()
 
             footer
         }
-        .frame(width: 520)
+        .frame(width: 520, height: 520)
         /**
          Starting and stopping the poller belongs to the window controller, which
          is told when it closes; this view is not. Re-arming the triggers is
          already wired through `PermissionsModel.onChange`, so doing it here as
          well only made it look as though it happened solely while setup was open.
          */
-        .onAppear {
-            NSApp.activate(ignoringOtherApps: true)
-            isSampleFocused = true
+        .onAppear { NSApp.activate(ignoringOtherApps: true) }
+    }
+
+    private var progressBar: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(.quaternary)
+
+                Capsule()
+                    .fill(.tint)
+                    .frame(width: proxy.size.width * page.progress)
+            }
         }
-    }
-
-    private var accessibilityRow: PermissionRow {
-        PermissionRow(
-            title: "Accessibility",
-            rationale: "Lets Typoless read the text in the field you are typing in, and write the corrections back.",
-            isSatisfied: permissions.isAccessibilityTrusted,
-            actionTitle: "Open Settings…",
-            action: { permissions.openAccessibilitySettings() }
-        )
-    }
-
-    private var intelligenceRow: PermissionRow {
-        let availability = permissions.modelAvailability
-        let canAct = availability.isActionable
-
-        return PermissionRow(
-            title: "Apple Intelligence",
-            rationale: availability.explanation,
-            isSatisfied: availability == .available,
-            actionTitle: canAct ? "Open Settings…" : nil,
-            action: canAct ? { permissions.openAppleIntelligenceSettings() } : nil
-        )
+        .frame(height: 4)
+        .padding(.horizontal, 24)
+        .padding(.top, 28)
+        .animation(.easeInOut(duration: 0.2), value: page)
+        .accessibilityHidden(true)
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Set Up Typoless")
-                .font(.largeTitle.bold())
-            Text("Two things to allow. Everything runs on this Mac; your text is never sent anywhere.")
+            Text(page.title)
+                .font(.title.bold())
+
+            Text(page.subtitle)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20)
     }
 
-    private var tryItOut: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Try it out")
-                .font(.headline)
-            Text("Correcting this field uses the same path as any other app.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            TextEditor(text: $sampleText)
-                .focused($isSampleFocused)
-                .font(.body)
-                .frame(height: 60)
-                .scrollContentBackground(.hidden)
-                .padding(6)
-                .background(.quinary, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-
-            /**
-             Runs the same pass as the shortcut, which reads whatever field has
-             focus. So the field is focused first: a click on the button would
-             otherwise leave nothing focused on a Mac with full keyboard access,
-             where buttons take focus too.
-             */
-            Button("Fix This Text") {
-                isSampleFocused = true
-                model.trigger()
-            }
-            .disabled(!permissions.isReady || model.isPaused)
+    @ViewBuilder private var content: some View {
+        switch page {
+        case .welcome: WelcomePage()
+        case .permissions: PermissionsPage(permissions: permissions)
+        case .languages: LanguagesPage(preferences: model.preferences)
+        case .triggers: TriggersPage(preferences: model.preferences)
+        case .tryIt: TryItPage(model: model)
         }
-        .padding(20)
     }
 
     private var footer: some View {
-        HStack {
-            if permissions.isReady {
-                Label("Ready to go", systemImage: "checkmark.seal.fill")
-                    .foregroundStyle(.green)
-            } else {
-                Text("Typoless stays inactive until both are allowed.")
+        HStack(spacing: 12) {
+            if let previous = page.previous {
+                Button("Back") { page = previous }
+            }
+
+            if let blocked {
+                Text(blocked)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
-            Spacer()
+            Spacer(minLength: 8)
 
-            Button("Done") {
-                hasCompletedOnboarding = true
-                onDone()
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(!permissions.isReady)
+            Button(page.advanceTitle) { advance() }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(blocked != nil)
         }
         .padding(20)
+    }
+
+    /**
+     Why the button is disabled, or nil when it is not.
+
+     The reason is shown rather than only the disabled button, since a button
+     that does nothing and says nothing is the commonest way a setup window
+     traps someone.
+     */
+    private var blocked: String? {
+        switch page {
+        case .permissions:
+            guard !permissions.isReady else { return nil }
+            return "Typoless stays inactive until both are allowed."
+
+        case .languages:
+            guard model.preferences.enabledLanguages.isEmpty else { return nil }
+            return "Add at least one language."
+
+        case .triggers:
+            guard model.preferences.triggerDescription == nil else { return nil }
+            return "Keep at least one way to start a correction."
+
+        case .welcome, .tryIt:
+            return nil
+        }
+    }
+
+    private func advance() {
+        guard let next = page.next else {
+            hasCompletedOnboarding = true
+            onDone()
+            return
+        }
+
+        page = next
     }
 }

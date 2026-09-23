@@ -33,9 +33,22 @@ cd "$(dirname "$0")/.."
 
 VERSION=${1:-}
 if [ -z "$VERSION" ]; then
-    echo "usage: $0 <version>   e.g. $0 0.2.0"
+    echo "usage: $0 <version>   e.g. $0 0.2.0 or $0 0.2.0-beta"
     exit 2
 fi
+
+# A version that calls itself a beta goes into the beta channel of the feed.
+# Sparkle ignores a channel the build has not asked for, and only a build whose
+# own version says beta asks for that one, so one feed can carry both and
+# nobody on a stable release is ever offered a beta. The app decides the same
+# way, from the same string, in UpdateController.
+CHANNEL_ARGS=()
+case "$VERSION" in
+    *[Bb]eta*)
+        CHANNEL_ARGS=(--channel beta)
+        echo "==> $VERSION goes into the beta channel"
+        ;;
+esac
 
 NOTARY_PROFILE=${NOTARY_PROFILE:-typoless}
 RELEASE_BUCKET=${RELEASE_BUCKET:-typoless-releases}
@@ -158,7 +171,12 @@ ditto -c -k --keepParent "$APP" "$RELEASES/Typoless-$VERSION.zip"
 # generate_appcast signs every archive in the folder with the key from the
 # keychain and writes the feed, so the signature and the entry cannot disagree.
 echo "==> Writing the appcast"
-"$SPARKLE_BIN/generate_appcast" --download-url-prefix "$DOWNLOAD_PREFIX" "$RELEASES"
+# The odd expansion is for bash 3.2, which is what macOS ships: under `set -u`
+# an empty array expanded plainly is an unbound variable and stops the script.
+"$SPARKLE_BIN/generate_appcast" \
+    --download-url-prefix "$DOWNLOAD_PREFIX" \
+    ${CHANNEL_ARGS[@]+"${CHANNEL_ARGS[@]}"} \
+    "$RELEASES"
 
 # The downloads go up first and the feed last. A file in the bucket is
 # invisible until the feed names it, so an upload that stops halfway leaves

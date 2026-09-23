@@ -53,6 +53,15 @@ final class UpdateController {
     @ObservationIgnored private let updater: SPUStandardUpdaterController
 
     /**
+     Held here because Sparkle does not retain its delegate.
+
+     Without this property the channel answer would be given by an object that
+     has already gone, which is the same as never giving it: a beta build would
+     read the feed and find nothing addressed to it.
+     */
+    @ObservationIgnored private let channels = ChannelDelegate()
+
+    /**
      Whether Sparkle checks on its own, once a day.
 
      Stored rather than read through, because a computed property is invisible
@@ -70,7 +79,7 @@ final class UpdateController {
          */
         updater = SPUStandardUpdaterController(
             startingUpdater: true,
-            updaterDelegate: nil,
+            updaterDelegate: channels,
             userDriverDelegate: nil
         )
         refresh()
@@ -105,5 +114,25 @@ final class UpdateController {
 
     var lastCheck: Date? {
         updater.updater.lastUpdateCheckDate
+    }
+}
+
+/**
+ Which parts of the feed this build is allowed to see.
+
+ One feed carries every release. An entry may name a channel, and Sparkle
+ ignores any channel the build has not asked for, so a beta can sit beside a
+ stable release without anyone on the stable one ever being offered it.
+
+ Read from the version rather than written here, exactly as the menu's tag is:
+ a build that calls itself a beta takes betas, and 1.0 stops taking them without
+ anyone remembering to change this. The default channel, which has no name, is
+ always allowed and needs no mention.
+ */
+private final class ChannelDelegate: NSObject, SPUUpdaterDelegate {
+    nonisolated func allowedChannels(for updater: SPUUpdater) -> Set<String> {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+
+        return version.localizedCaseInsensitiveContains("beta") ? ["beta"] : []
     }
 }

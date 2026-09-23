@@ -44,6 +44,12 @@ final class CorrectionEngine {
      */
     private var wasCancelled = false
 
+    /**
+     The model call in flight, kept so a pass can be given up on from outside
+     as well as by the cancel key. Quitting is the other way a pass ends early.
+     */
+    private var work: Task<[TextEdit], Error>?
+
     /** Everything needed to put a field back the way the user left it. */
     private struct Fix {
         let element: AXUIElement
@@ -62,6 +68,21 @@ final class CorrectionEngine {
         self.overlay = overlay
         self.preferences = preferences
         self.history = history
+    }
+
+    /**
+     Gives up on the pass that is running, if there is one.
+
+     The same promise the cancel key makes: nothing will be written. Setting the
+     flag matters as much as cancelling the task, because cancellation is
+     cooperative and a model already generating has nowhere to check until it is
+     done. The flag is read again just before the write.
+     */
+    func cancel() {
+        guard isRunning else { return }
+
+        wasCancelled = true
+        work?.cancel()
     }
 
     func run() async {
@@ -190,11 +211,12 @@ final class CorrectionEngine {
             """
         )
         let work = Task { try await corrector.corrections(for: text, settings: settings) }
+        self.work = work
+        defer { self.work = nil }
 
         escape.onPress = { [weak self] in
             Log.app.info("Cancelled by Escape")
-            self?.wasCancelled = true
-            work.cancel()
+            self?.cancel()
         }
         escape.start(preferences.cancelKey)
 
