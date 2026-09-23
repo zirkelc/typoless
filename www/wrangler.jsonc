@@ -1,6 +1,7 @@
 /**
- * Serves the built site from Cloudflare's edge as static assets. There is no
- * Worker script: every request is answered from the files in `dist`.
+ * Serves the built site from Cloudflare's edge as static assets. The Worker
+ * script runs only for `/releases/*`, which it answers from the R2 bucket;
+ * every other request is answered from the files in `dist` without it.
  *
  * `pnpm deploy` builds and uploads to typoless.app, which needs typoless.app to
  * be a zone in the same Cloudflare account. `pnpm deploy:preview` uploads the
@@ -11,17 +12,23 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "typoless-www",
   "compatibility_date": "2026-09-19",
+  "main": "./worker/index.ts",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
     "not_found_handling": "404-page",
     "html_handling": "drop-trailing-slash",
+    "run_worker_first": ["/releases/*"],
   },
+  "r2_buckets": [{ "binding": "RELEASES", "bucket_name": "typoless-releases" }],
   "routes": [{ "pattern": "typoless.app", "custom_domain": true }],
   "workers_dev": false,
   "env": {
+    /** Bindings are not inherited by an environment, so the bucket is named again. */
     "preview": {
       "workers_dev": true,
       "routes": [],
+      "r2_buckets": [{ "binding": "RELEASES", "bucket_name": "typoless-releases" }],
     },
   },
 }

@@ -19,6 +19,9 @@
 #      the built app as SUPublicEDKey. Generated once with Sparkle's
 #      generate_keys; if it is ever lost, no existing install can be updated
 #      again, by anyone, ever.
+#   4. Wrangler logged in to the Cloudflare account that serves typoless.app,
+#      with the R2 bucket named below. The site's Worker serves /releases/
+#      from it.
 #
 # Notarization is not optional here even though this app is not sandboxed:
 # Gatekeeper refuses an unnotarized app on first launch, and Sparkle installs
@@ -35,6 +38,8 @@ if [ -z "$VERSION" ]; then
 fi
 
 NOTARY_PROFILE=${NOTARY_PROFILE:-typoless}
+RELEASE_BUCKET=${RELEASE_BUCKET:-typoless-releases}
+WEBSITE="$PWD/../www"
 BUILD=build/release
 ARCHIVE="$BUILD/Typoless.xcarchive"
 EXPORTED="$BUILD/export"
@@ -73,6 +78,13 @@ echo "==> Checking for a Developer ID certificate"
 if ! security find-identity -v -p codesigning | grep -q "Developer ID Application"; then
     echo "No Developer ID Application certificate in the keychain."
     echo "Xcode > Settings > Accounts > your team > Manage Certificates > + > Developer ID Application"
+    exit 1
+fi
+
+echo "==> Checking the release bucket"
+if ! (cd "$WEBSITE" && pnpm exec wrangler r2 bucket info "$RELEASE_BUCKET" >/dev/null 2>&1); then
+    echo "Cannot reach the R2 bucket $RELEASE_BUCKET. Log in with 'pnpm exec wrangler login' in www,"
+    echo "and create it with 'pnpm exec wrangler r2 bucket create $RELEASE_BUCKET'."
     exit 1
 fi
 
@@ -148,7 +160,29 @@ ditto -c -k --keepParent "$APP" "$RELEASES/Typoless-$VERSION.zip"
 echo "==> Writing the appcast"
 "$SPARKLE_BIN/generate_appcast" --download-url-prefix "$DOWNLOAD_PREFIX" "$RELEASES"
 
+# The downloads go up first and the feed last. A file in the bucket is
+# invisible until the feed names it, so an upload that stops halfway leaves
+# nobody pointed at something missing.
+echo "==> Uploading to R2 ($RELEASE_BUCKET)"
+upload() {
+    (cd "$WEBSITE" && pnpm exec wrangler r2 object put "$RELEASE_BUCKET/$(basename "$1")" \
+        --file "$1" --content-type "$2" --remote)
+}
+
+upload "$PWD/$RELEASES/Typoless-$VERSION.zip" application/zip
+
+# Deltas are small and named for the two builds they join, so sending all of
+# them again costs little and keeps the bucket complete if an earlier
+# release's upload was interrupted.
+for delta in "$RELEASES"/*.delta; do
+    [ -e "$delta" ] || continue
+    upload "$PWD/$delta" application/octet-stream
+done
+
+cp "$RELEASES/appcast.xml" "$WEBSITE/public/appcast.xml"
+
 echo
-echo "Done. Upload these:"
-echo "  $RELEASES/Typoless-$VERSION.zip  ->  ${DOWNLOAD_PREFIX}Typoless-$VERSION.zip"
-echo "  $RELEASES/appcast.xml  ->  $FEED_URL"
+echo "Done. $VERSION is in the bucket, and the feed is in www/public/appcast.xml."
+echo "Nothing is offered to anyone until the site is deployed with that feed:"
+echo "  cd www && pnpm deploy"
+echo "Keep $RELEASES: Sparkle builds the next release's deltas from the archives in it."
