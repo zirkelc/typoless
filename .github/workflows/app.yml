@@ -14,6 +14,10 @@ on:
   pull_request:
     paths: ['app/**', '.github/workflows/app.yml']
 
+  # Run by hand from the Actions tab, which is the only way to check a change
+  # to the workflow itself without pushing something that matches the filters.
+  workflow_dispatch:
+
 concurrency:
   group: app-${{ github.ref }}
   cancel-in-progress: true

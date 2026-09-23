@@ -9,6 +9,10 @@ on:
   pull_request:
     paths: ['www/**', '.github/workflows/www.yml']
 
+  # Run by hand from the Actions tab, which is the only way to check a change
+  # to the workflow itself without pushing something that matches the filters.
+  workflow_dispatch:
+
 concurrency:
   group: www-${{ github.ref }}
   cancel-in-progress: true
