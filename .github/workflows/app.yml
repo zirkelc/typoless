@@ -32,15 +32,16 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # The newest Xcode 27 on the image, which is what the project is built
-      # with. The image's default can lag behind or run ahead of it.
+      # The newest Xcode on the image, whichever that is. Asking for a major
+      # version by name was tried and failed on the first run: the project is
+      # built with Xcode 27 locally and the image carries 26.6, so a hard
+      # requirement meant the job could not start at all. The image catches up
+      # on its own, and until it does, building with what is there is worth
+      # more than not building.
       - name: Select Xcode
         run: |
-          XCODE=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)
-          if [ -z "$XCODE" ]; then
-            echo "No Xcode 27 on this image:"; ls -d /Applications/Xcode*.app
-            exit 1
-          fi
+          XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+          XCODE=${XCODE:-/Applications/Xcode.app}
           sudo xcode-select -s "$XCODE"
           xcodebuild -version
 
