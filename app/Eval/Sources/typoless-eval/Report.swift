@@ -19,7 +19,7 @@ enum Report {
         let header = [
             "model", "lang", "variant", "grd",
             "exact", "recall", "fp", "fp/case", "clean",
-            "med s", "p95 s", "drop", "rej",
+            "med s", "p95 s", "drop", "rej", "off", "mix",
         ]
 
         var rows = [header]
@@ -39,6 +39,8 @@ enum Report {
                 String(format: "%.2f", summary.p95Seconds),
                 "\(summary.chunksDropped)",
                 "\(summary.editsRejected)",
+                "\(summary.offRuleEdits)",
+                "\(summary.mixedOffRuleEdits)",
             ])
         }
 

@@ -64,6 +64,7 @@ struct EvalMain {
 
             for variant in variants {
               for masks in options.masking {
+                for tells in options.tellsModel {
                 for language in options.languages {
                     guard let dataset = datasets[language] else { continue }
 
@@ -72,11 +73,15 @@ struct EvalMain {
                         backend: backend,
                         variant: variant,
                         masks: masks,
-                        appliesDeadline: options.appliesDeadline
+                        appliesDeadline: options.appliesDeadline,
+                        disabledRules: options.disabledRules,
+                        tellsModel: tells
                     )
 
                     let maskLabel = masks ? "masked" : "unmasked"
-                    print("running \(backend.id) \(language.code) \(variant.id) \(maskLabel) (\(cases.count) cases)")
+                    /** Only when something is switched off, so an ordinary run reads as it always did. */
+                    let armLabel = options.disabledRules.isEmpty ? "" : (tells ? "/told" : "/silent")
+                    print("running \(backend.id) \(language.code) \(variant.id)\(armLabel) \(maskLabel) (\(cases.count) cases)")
 
                     /** One pass over the model, scored twice, once for each guardrail setting. */
                     var scored: [Bool: [Scoring.CaseResult]] = [:]
@@ -98,12 +103,12 @@ struct EvalMain {
                         let summary = Summary(
                             model: backend.id,
                             language: language.code,
-                            variant: masks ? variant.id : variant.id + "/raw",
+                            variant: (masks ? variant.id : variant.id + "/raw") + armLabel,
                             guardrail: guardrail,
                             results: results
                         )
                         summaries.append(summary)
-                        perConfiguration["\(backend.id) \(language.code) \(variant.id) \(maskLabel) guardrail=\(guardrail ? "on" : "off")"] = results
+                        perConfiguration["\(backend.id) \(language.code) \(variant.id)\(armLabel) \(maskLabel) guardrail=\(guardrail ? "on" : "off")"] = results
 
                         print("  guardrail \(guardrail ? "on " : "off"): "
                             + "exact \(Report.percent(summary.exactMatchRate)), "
@@ -115,6 +120,7 @@ struct EvalMain {
                             print(Report.failures(results))
                         }
                     }
+                }
                 }
               }
             }

@@ -45,6 +45,10 @@ enum Scoring {
         let modelDeclined: Int
         /** Chunks asked about twice because the markers did not survive. */
         let maskRetries: Int
+        /** Changes the model proposed that touch a rule the user switched off. */
+        var offRuleEdits = 0
+        /** Of those, the ones that also carry a rule the user still wants. */
+        var mixedOffRuleEdits = 0
     }
 
     static func score(
@@ -90,7 +94,9 @@ enum Scoring {
             chunksDropped: output.chunksDropped,
             editsRejected: output.editsRejected,
             modelDeclined: output.modelDeclined,
-            maskRetries: output.maskRetries
+            maskRetries: output.maskRetries,
+            offRuleEdits: output.offRuleEdits,
+            mixedOffRuleEdits: output.mixedOffRuleEdits
         )
     }
 
@@ -151,6 +157,10 @@ struct Summary: Codable, Sendable {
     let modelDeclined: Int
     /** Chunks asked about twice because the markers did not survive the first reply. */
     let maskRetries: Int
+    /** Changes proposed that touch a rule the user switched off, over the whole dataset. */
+    let offRuleEdits: Int
+    /** Of those, the ones that also carry a rule the user still wants. */
+    let mixedOffRuleEdits: Int
 
     var exactMatchRate: Double { cases == 0 ? 0 : Double(exactMatches) / Double(cases) }
     var fixRecall: Double { requiredTotal == 0 ? 0 : Double(fixedTotal) / Double(requiredTotal) }
@@ -188,6 +198,8 @@ struct Summary: Codable, Sendable {
         editsRejected = results.reduce(0) { $0 + $1.editsRejected }
         modelDeclined = results.reduce(0) { $0 + $1.modelDeclined }
         maskRetries = results.reduce(0) { $0 + $1.maskRetries }
+        offRuleEdits = results.reduce(0) { $0 + $1.offRuleEdits }
+        mixedOffRuleEdits = results.reduce(0) { $0 + $1.mixedOffRuleEdits }
     }
 }
 

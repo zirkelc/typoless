@@ -23,6 +23,13 @@ struct EvalPipeline: Sendable {
     let masks: Bool
     /** False lets a stuck request run, which is what the app used to do. */
     let appliesDeadline: Bool
+
+    /** Rules the user has switched off. Empty is the app's own configuration. */
+    var disabledRules: Set<CorrectionRule> = []
+
+    /** Whether the prompt names the rules that are off, which is the thing under test. */
+    var tellsModel = false
+
     let detector = LanguageDetector()
 
     struct Outcome: Sendable {
@@ -35,6 +42,25 @@ struct EvalPipeline: Sendable {
         var modelDeclined = 0
         /** Chunks asked about twice because the markers did not survive the first reply. */
         var maskRetries = 0
+        /**
+         Changes the model proposed that touch a rule the user switched off.
+
+         Counted before the guardrail sees them, so it says what the model did
+         rather than what survived. It is the whole point of telling the model:
+         with the prompt silent this is what a switched-off rule costs, either
+         as a change the user did not want (strict mode off) or as a wanted fix
+         thrown away with it (strict mode on).
+         */
+        var offRuleEdits = 0
+        /**
+         Of those, the ones that also carry a rule the user still wants.
+
+         `TextDiff` merges neighbouring changes, so restoring an umlaut and
+         adding a comma can arrive as one edit. The filter judges an edit by the
+         whole set, so a single switched-off rule takes the wanted fix with it.
+         This counts how often that happens before anything is built to stop it.
+         */
+        var mixedOffRuleEdits = 0
     }
 
     struct Pass: Sendable {
@@ -102,13 +128,39 @@ struct EvalPipeline: Sendable {
 
             unguardedEdits += chunkEdits
 
+            /** Both outcomes get the same count: it describes the reply, not the filtering. */
+            if !disabledRules.isEmpty {
+                var offRule = 0
+                var mixed = 0
+
+                for edit in chunkEdits {
+                    guard let kinds = EditGuardrail.classify(edit, in: text, language: language),
+                          !kinds.isDisjoint(with: disabledRules)
+                    else { continue }
+
+                    offRule += 1
+                    if !kinds.subtracting(disabledRules).isEmpty { mixed += 1 }
+                }
+
+                guarded.offRuleEdits += offRule
+                unguarded.offRuleEdits += offRule
+                guarded.mixedOffRuleEdits += mixed
+                unguarded.mixedOffRuleEdits += mixed
+            }
+
             if detector.detect(corrected) != language || EditGuardrail.isShouting(corrected, over: source) {
                 guarded.chunksDropped += 1
                 guarded.editsRejected += chunkEdits.count
                 continue
             }
 
-            let verdict = EditGuardrail.filter(chunkEdits, in: text, protectedBy: protected, language: language)
+            let verdict = EditGuardrail.filter(
+                chunkEdits,
+                in: text,
+                allowing: Set(CorrectionRule.allCases).subtracting(disabledRules),
+                protectedBy: protected,
+                language: language
+            )
             guarded.editsRejected += verdict.rejectedCount
 
             guard verdict.isTrustworthy else {
@@ -125,6 +177,23 @@ struct EvalPipeline: Sendable {
         return Pass(guarded: guarded, unguarded: unguarded)
     }
 
+    /**
+     The variant's wording, with the switched-off rules named after it when the
+     arm under test says so.
+
+     Said last on purpose. The sweeps found that whatever comes last is what
+     this model does, which is why the protection list had to move to the top:
+     read last, "leave this as it is" became advice about the whole text. A
+     prohibition is meant to be read that way round, so it goes where the
+     emphasis is.
+     */
+    private func instructions(_ language: CorrectionLanguage, _ startsText: Bool) -> String {
+        let body = variant.instructions(language, startsText)
+        guard tellsModel else { return body }
+
+        return body + RuleExclusions.text(for: disabledRules, in: language)
+    }
+
     private func answer(
         for source: String,
         language: CorrectionLanguage,
@@ -132,7 +201,7 @@ struct EvalPipeline: Sendable {
         within deadline: CorrectionDeadline?
     ) async -> String? {
         let first = await backend.reply(
-            instructions: variant.instructions(language, startsText),
+            instructions: instructions(language, startsText),
             prompt: variant.userPrompt(language, source, backend.usesGuidedGeneration),
             freeTextSuffix: variant.freeTextSuffix,
             within: deadline?.allowance()
@@ -142,7 +211,7 @@ struct EvalPipeline: Sendable {
         guard language != .english, deadline?.hasExpired() != true else { return nil }
 
         return await backend.reply(
-            instructions: variant.retryInstructions(startsText: startsText),
+            instructions: instructions(.english, startsText),
             prompt: variant.retryPrompt(language, source),
             freeTextSuffix: variant.freeTextSuffix,
             within: deadline?.allowance()

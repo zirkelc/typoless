@@ -31,6 +31,24 @@ struct Options: Sendable {
      the deadline cannot say which of the two moved the number.
      */
     var appliesDeadline = true
+
+    /**
+     Rules the user has switched off, which the guardrail then filters out.
+
+     Empty is the app's own configuration, where everything is allowed. Naming
+     one here is how the question "does a switched-off rule mean anything"
+     becomes a measurement.
+     */
+    var disabledRules: Set<CorrectionRule> = []
+
+    /**
+     Whether the prompt says which rules are off.
+
+     Swept rather than fixed, since the whole question is paired: the same
+     cases, with the same rules off, asked both ways.
+     */
+    var tellsModel: [Bool] = [false]
+
     var limit: Int?
     var output: URL?
     var datasets: URL?
@@ -100,6 +118,22 @@ struct Options: Sendable {
                 default: throw EvalError.unknownArgument("--masking \(value)")
                 }
 
+            case "--disable-rule":
+                let value = try next(argument)
+                guard let rule = CorrectionRule.matching(value) else {
+                    throw EvalError.unknownArgument("--disable-rule \(value)")
+                }
+                options.disabledRules.insert(rule)
+
+            case "--tell-model":
+                let value = try next(argument)
+                switch value {
+                case "on": options.tellsModel = [true]
+                case "off": options.tellsModel = [false]
+                case "both": options.tellsModel = [false, true]
+                default: throw EvalError.unknownArgument("--tell-model \(value)")
+                }
+
             case "--deadline":
                 let value = try next(argument)
                 switch value {
@@ -155,6 +189,9 @@ struct Options: Sendable {
           --variant, -v    \(PromptVariant.all.map(\.id).joined(separator: " | "))
           --guardrail, -g  on | off | both        (default both)
           --deadline       on | off               (default on, as the app runs)
+          --disable-rule   \(CorrectionRule.allCases.map(\.rawValue).joined(separator: " | "))
+          --tell-model     on | off | both        (default off: the prompt says
+                                                   nothing about a rule that is off)
           --limit, -n      first N cases per language
           --out, -o        where to write the per-case JSON
           --datasets       directory holding the dataset files
@@ -169,5 +206,11 @@ extension CorrectionLanguage {
 
     static func matching(_ value: String) -> CorrectionLanguage? {
         allCases.first { $0.code == value || $0.rawValue == value }
+    }
+}
+
+extension CorrectionRule {
+    static func matching(_ value: String) -> CorrectionRule? {
+        allCases.first { $0.rawValue.lowercased() == value.lowercased() }
     }
 }
