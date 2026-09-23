@@ -48,3 +48,13 @@ static file that `release.sh` writes into `public/`.
 on changes under `app/`, and the site's format, lint, type check and build on
 changes under `www/`. Neither needs secrets: nothing is signed, released or
 deployed there.
+
+## Reporting
+
+Bugs and wrong corrections go to [issues](https://github.com/zirkelc/typoless/issues).
+The app opens a prefilled one from the History window or from its menu, and it
+asks first, because a report about a correction carries the text it was made on.
+
+## Licence
+
+[MIT](LICENSE).
