@@ -235,12 +235,17 @@ struct EditNeedsEveryPermissionTests {
             allowing: [.umlauts, .typos, .spacing],
             expect: "das ist mein buero"
         ),
+        /**
+         The comma sits at the edge of the change, so it is taken off and
+         refused on its own and the umlauts land. A change that can only be
+         refused whole, such as the capital above, still is.
+         */
         GuardrailCase(
-            "an umlaut may not smuggle in a comma",
+            "a comma at the edge is refused without the umlaut",
             "gruesse dich",
             "grüße, dich",
             allowing: [.umlauts, .typos, .spacing],
-            expect: "gruesse dich"
+            expect: "grüße dich"
         ),
         GuardrailCase(
             "with both allowed it lands",
@@ -265,6 +270,56 @@ struct EditNeedsEveryPermissionTests {
 
     @Test(arguments: cases)
     func `the edit lands only when every rule is permitted`(_ row: GuardrailCase) {
+        // Arrange
+        let expected = row.expected
+
+        // Act
+        let result = Guardrail.corrected(row)
+
+        // Assert
+        #expect(result == expected)
+    }
+}
+
+/**
+ A mark added at the edge of a change is asked about on its own.
+
+ A change is found one word at a time, so the model restoring an umlaut and
+ adding a comma to the same word arrives as one thing to allow or refuse. The
+ mark at the edge can be taken off without inventing anything, since what is
+ left is the word the model wrote, and then each half is asked about separately.
+
+ Nothing else may be cut. A mark the user typed is never peeled, and a change
+ that reaches into the letters is still judged whole.
+ */
+struct EdgeMarkSplitTests {
+    static let cases: Array<GuardrailCase> = [
+        GuardrailCase(
+            "a full stop is refused without the umlaut",
+            "das ist mein buero",
+            "das ist mein Büro.",
+            allowing: [.umlauts, .nounCapitalisation],
+            expect: "das ist mein Büro"
+        ),
+        GuardrailCase(
+            "the mark lands where it is allowed",
+            "das ist mein buero",
+            "das ist mein Büro.",
+            allowing: [.umlauts, .nounCapitalisation, .sentenceEndings],
+            expect: "das ist mein Büro."
+        ),
+        /** The user wrote a mark there, so there is nothing to peel and the change stays whole. */
+        GuardrailCase(
+            "a mark the user typed is never taken off",
+            "hallo!",
+            "Hallo?",
+            allowing: Set(CorrectionRule.allCases).subtracting([.otherPunctuation]),
+            expect: "hallo!"
+        ),
+    ]
+
+    @Test(arguments: cases)
+    func `the field ends up as expected`(_ row: GuardrailCase) {
         // Arrange
         let expected = row.expected
 

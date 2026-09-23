@@ -80,18 +80,30 @@ enum EditGuardrail {
              counting it would make a well-behaved model look like a rewriting
              one and throw away its other corrections.
              */
-            guard rules.isSuperset(of: kinds) else { continue }
+            guard rules.isSuperset(of: kinds) else {
+                /**
+                 A change is found one word at a time, so one of them can hold a
+                 rule the user turned off and a rule they still want: `buero` to
+                 `Büro,` is an umlaut, a capital and a comma at once. Refusing
+                 the whole word threw the wanted fixes away with the unwanted
+                 one, on a fifth to two fifths of the changes refused this way.
 
-            /**
-             An insertion has an empty range, and `overlaps` is false for an
-             empty range however it sits, so protection used to be blind to
-             every insertion: a comma could be dropped into the middle of a URL
-             or a code span and nothing would stop it. Containment has to be
-             asked separately.
-             */
-            let isProtected = protected.contains { span in
-                span.overlaps(edit.range)
-                    || (span.lowerBound < edit.range.lowerBound && edit.range.lowerBound < span.upperBound)
+                 Each piece is judged on its own, with nothing counted against
+                 the model, and a piece the rules still refuse is simply left
+                 out. A change that cannot be cut arrives back whole and is
+                 skipped as before.
+                 */
+                for part in TextDiff.splitting(edit, in: text) where part != edit {
+                    guard
+                        let partKinds = classify(part, in: text, language: language),
+                        rules.isSuperset(of: partKinds),
+                        !isProtected(part, by: protected)
+                    else { continue }
+
+                    accepted.append(part)
+                }
+
+                continue
             }
 
             /**
@@ -101,7 +113,7 @@ enum EditGuardrail {
              those votes decide trustworthiness meant that two @names in one
              Slack line threw away the real typo fix alongside them.
              */
-            guard !isProtected else {
+            guard !isProtected(edit, by: protected) else {
                 Log.app.info("Rejected an edit inside protected text")
                 protectedCount += 1
                 continue
@@ -111,6 +123,21 @@ enum EditGuardrail {
         }
 
         return Verdict(accepted: accepted, rejectedCount: rejected, protectedCount: protectedCount)
+    }
+
+    /**
+     Whether an edit lands in text the model was told to leave alone.
+
+     An insertion has an empty range, and `overlaps` is false for an empty range
+     however it sits, so protection used to be blind to every insertion: a comma
+     could be dropped into the middle of a URL or a code span and nothing would
+     stop it. Containment has to be asked separately.
+     */
+    private static func isProtected(_ edit: TextEdit, by protected: [Range<String.Index>]) -> Bool {
+        protected.contains { span in
+            span.overlaps(edit.range)
+                || (span.lowerBound < edit.range.lowerBound && edit.range.lowerBound < span.upperBound)
+        }
     }
 
     /**

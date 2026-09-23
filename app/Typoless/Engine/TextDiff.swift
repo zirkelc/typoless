@@ -1,7 +1,7 @@
 import Foundation
 
 /** One contiguous difference between the original text and a corrected version. */
-struct TextEdit: Sendable {
+struct TextEdit: Sendable, Equatable {
     let range: Range<String.Index>
     let original: String
     let replacement: String
@@ -178,6 +178,90 @@ enum TextDiff {
         }
 
         return merged
+    }
+
+    /**
+     A change with the marks it adds at either end taken off it, or the change
+     itself where there are none.
+
+     Changes are found one word at a time, which is the right size to judge and
+     the wrong size to judge *partly*. `gruesse` becoming `grüße,` restores two
+     umlauts and adds a comma in one change, so a user who turned commas off
+     lost the umlauts with it. Between a fifth and two fifths of the changes
+     refused for one switched-off rule also carried a rule the user still
+     wanted, measured with noun capitals, commas and apostrophes switched off in
+     turn.
+
+     Only marks at the edges, and never a cut through the letters. Cutting by
+     character was tried first and is not safe: `gruesse` to `grüße,` aligns as
+     `u` becoming `üß` and `sse` becoming `,`, so keeping the half that is
+     allowed writes `grüßesse` into the user's text. A mark at the edge is the
+     one piece that is separable by construction, since taking it off leaves the
+     word the model wrote.
+
+     The pieces are checked against the change they came from before they are
+     handed back: applied together they must produce exactly what it produced,
+     or nothing is cut. Nothing that reaches the user's text is assembled from a
+     guess.
+     */
+    static func splitting(_ edit: TextEdit, in text: String) -> [TextEdit] {
+        guard !edit.original.isEmpty, !edit.replacement.isEmpty else { return [edit] }
+
+        var core = Substring(edit.replacement)
+        var trailing = ""
+        var leading = ""
+
+        /** Only where the user wrote no mark there, so nothing existing is peeled off. */
+        if let last = edit.original.last, !isMark(last) {
+            while let mark = core.last, isMark(mark) {
+                trailing.insert(mark, at: trailing.startIndex)
+                core = core.dropLast()
+            }
+        }
+
+        if let first = edit.original.first, !isMark(first) {
+            while let mark = core.first, isMark(mark) {
+                leading.append(mark)
+                core = core.dropFirst()
+            }
+        }
+
+        guard !leading.isEmpty || !trailing.isEmpty, !core.isEmpty else { return [edit] }
+
+        var parts: [TextEdit] = []
+
+        if !leading.isEmpty {
+            parts.append(
+                TextEdit(
+                    range: edit.range.lowerBound..<edit.range.lowerBound,
+                    original: "",
+                    replacement: leading
+                )
+            )
+        }
+
+        if core != edit.original {
+            parts.append(TextEdit(range: edit.range, original: edit.original, replacement: String(core)))
+        }
+
+        if !trailing.isEmpty {
+            parts.append(
+                TextEdit(
+                    range: edit.range.upperBound..<edit.range.upperBound,
+                    original: "",
+                    replacement: trailing
+                )
+            )
+        }
+
+        guard apply(parts, to: text) == apply([edit], to: text) else { return [edit] }
+
+        return parts
+    }
+
+    /** A mark writing uses, as opposed to a letter, a digit or spacing. */
+    private static func isMark(_ character: Character) -> Bool {
+        character.isPunctuation || character.isSymbol
     }
 
     /** Whether a change keeps every other character and only moves or changes whitespace. */

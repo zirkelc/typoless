@@ -173,14 +173,48 @@ final class Preferences {
         CorrectionLanguage.allCases.filter { languageSettings[$0]?.isEnabled ?? false }
     }
 
+    /**
+     How to start a correction, phrased as the user would do it, or nil when
+     both triggers are off.
+
+     Each trigger carries its own verb, since the two are not done the same way:
+     one is tapped twice and the other is pressed once, and "press ⌘ twice or
+     ⌃⌥⌘Space" made the second read as another double tap. Nil rather than an
+     empty string, because a hint that says to press nothing is worse than no
+     hint at all.
+     */
+    var triggerDescription: String? {
+        var phrases: [String] = []
+
+        if isDoubleTapEnabled {
+            phrases.append("double tap \(doubleTapModifier.symbol)")
+        }
+        if isHotKeyEnabled {
+            phrases.append("press \(hotKey.displayName)")
+        }
+
+        guard let first = phrases.first else { return nil }
+
+        return ([first.prefix(1).uppercased() + first.dropFirst()] + phrases.dropFirst())
+            .joined(separator: " or ")
+    }
+
     // MARK: Corrections
 
     /**
      Whether the model's changes are judged before being applied.
 
-     On by default, and the thing that makes this a correction tool rather than
-     a rewriting one. Off, whatever the model returns goes straight into the
-     field, which is useful for judging a model and risky for everything else.
+     Always on in a shipped build, and there is no switch for it.
+
+     There was one, and the measurements took it away. Off buys 1 English fix
+     and 7 German ones across the datasets and costs 15 and 22 changes nobody
+     asked for, and the two worst answers the app has ever applied, a reply
+     returned entirely in capitals and Apple's schema text written into the
+     message, both reached the field with it off.
+
+     It survives as a flag because judging a model means seeing what the model
+     did rather than what survived, which is what the debug menu offers and what
+     `Eval` reports in both columns.
      */
     var isGuardrailEnabled: Bool {
         didSet {
@@ -263,8 +297,13 @@ final class Preferences {
 
         languageSettings = Self.readLanguageSettings(from: defaults)
 
+        #if DEBUG
         /** Absent means never set, which should mean on rather than off. */
         isGuardrailEnabled = defaults.object(forKey: DefaultsKey.guardrailEnabled) as? Bool ?? true
+        #else
+        /** A value stored by a build that still had the switch is ignored. */
+        isGuardrailEnabled = true
+        #endif
 
         backend = defaults.string(forKey: DefaultsKey.correctorBackend)
             .flatMap(CorrectorBackend.init) ?? .appleOnDevice

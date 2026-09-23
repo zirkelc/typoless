@@ -12,9 +12,12 @@ import SwiftUI
  Only languages added under Languages appear, since a rule for a language that
  is never detected is a row nobody can act on.
 
- The guardrail and the history live here too. The rules only mean anything
- while the guardrail is on, so the switch that decides that belongs above them,
- and history is what makes a correction that got through undoable.
+ History lives here too, because it is what makes a correction that got through
+ undoable.
+
+ There is no switch for the guardrail any more. Every correction is checked, so
+ a rule here is the only thing the user decides, and it decides it in every
+ case rather than only while a second switch is on.
  */
 struct CorrectionSettingsView: View {
     @Bindable var preferences: Preferences
@@ -26,22 +29,9 @@ struct CorrectionSettingsView: View {
 
     var body: some View {
         SettingsSurface {
-            SettingsSection {
-                SettingsLine(
-                    "Strict mode",
-                    note: preferences.isGuardrailEnabled
-                        ? "Every change is checked against the rules below before it is applied. A change that breaks a rule is dropped, so some real fixes can be dropped too."
-                        : "Off: whatever the model returns is applied, including rewritten or translated text. History is the only way back."
-                ) {
-                    SettingsSwitch(isOn: $preferences.isGuardrailEnabled)
-                }
-            }
-
             SettingsSection(
                 "Rules",
-                footer: preferences.isGuardrailEnabled
-                    ? "Turning off a rule only drops that change and keeps the rest of the correction."
-                    : "Rules apply only while strict mode is on."
+                footer: "Every change is checked against these rules before it is applied, and a change that breaks one is dropped. Turning off a rule drops only that change and keeps the rest of the correction."
             ) {
                 if added.isEmpty {
                     Text("No languages yet. Add one under Languages.")
@@ -57,12 +47,6 @@ struct CorrectionSettingsView: View {
                     )
                 }
             }
-            /**
-             The rules are read only by the guardrail, so with it off every
-             switch here does nothing. Disabled rather than hidden, so turning
-             the guardrail back on does not make the page jump.
-             */
-            .disabled(!preferences.isGuardrailEnabled)
 
             SettingsSection("History") {
                 SettingsLine(
