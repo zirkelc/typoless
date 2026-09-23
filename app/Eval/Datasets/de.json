@@ -966,6 +966,120 @@
         "grammar",
         "negative"
       ]
+    },
+    {
+      "id": "de-first-01",
+      "input": "wir essen zuerst nud dann gehen wir",
+      "expected": "Wir essen zuerst und dann gehen wir",
+      "tags": [
+        "spelling",
+        "casing",
+        "first-letter"
+      ]
+    },
+    {
+      "id": "de-tools-01",
+      "input": "bitte mit pnpm installieren, nicht mit npm",
+      "expected": "Bitte mit pnpm installieren, nicht mit npm",
+      "tags": [
+        "casing",
+        "product-names",
+        "tools"
+      ]
+    },
+    {
+      "id": "de-tools-02",
+      "input": "vor dem commit bitte oxlint laufen lassen",
+      "expected": "Vor dem Commit bitte oxlint laufen lassen",
+      "tags": [
+        "casing",
+        "noun-capitalisation",
+        "product-names",
+        "tools"
+      ]
+    },
+    {
+      "id": "de-caps-01",
+      "input": "die api und das sdk sind aktualisiert",
+      "expected": "Die API und das SDK sind aktualisiert",
+      "tags": [
+        "casing",
+        "acronyms"
+      ]
+    },
+    {
+      "id": "de-caps-02",
+      "input": "BITTE NICHT STÖREN",
+      "expected": "BITTE NICHT STÖREN",
+      "tags": [
+        "negative",
+        "capitals"
+      ]
+    },
+    {
+      "id": "de-group-01",
+      "input": "wir ist morgen im büro",
+      "expected": "Wir sind morgen im Büro",
+      "tags": [
+        "grammar",
+        "grammar-group",
+        "casing",
+        "noun-capitalisation"
+      ]
+    },
+    {
+      "id": "de-group-02",
+      "input": "ich komme mit der auto",
+      "expected": "Ich komme mit dem Auto",
+      "tags": [
+        "grammar",
+        "grammar-group",
+        "casing",
+        "noun-capitalisation"
+      ]
+    },
+    {
+      "id": "de-group-03",
+      "input": "sie war gestern krank und die kinder war auch zuhause",
+      "expected": "Sie war gestern krank und die Kinder waren auch zuhause",
+      "alternatives": [
+        "Sie war gestern krank und die Kinder waren auch zu Hause"
+      ],
+      "tags": [
+        "grammar",
+        "grammar-group",
+        "casing",
+        "noun-capitalisation"
+      ]
+    },
+    {
+      "id": "de-group-04",
+      "input": "das ist einen gute idee",
+      "expected": "Das ist eine gute Idee",
+      "tags": [
+        "grammar",
+        "grammar-group",
+        "casing",
+        "noun-capitalisation"
+      ]
+    },
+    {
+      "id": "de-group-05",
+      "input": "Es war gestern fertig.",
+      "expected": "Es war gestern fertig.",
+      "tags": [
+        "negative",
+        "grammar-group"
+      ]
+    },
+    {
+      "id": "de-group-06",
+      "input": "Die Kinder sind im Garten.",
+      "expected": "Die Kinder sind im Garten.",
+      "tags": [
+        "negative",
+        "grammar-group"
+      ]
     }
   ]
 }

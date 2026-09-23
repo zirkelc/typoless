@@ -196,9 +196,13 @@ The why of each step is in the script or file that does it; this is the list.
    ID, notarizes, staples, zips and writes the signed appcast. It stops if the
    build number is not higher than the newest one in the appcast, because
    Sparkle compares build numbers, not versions.
-3. **Upload** the zip and `appcast.xml` to the addresses the script prints.
-   The feed comes from `TYPOLESS_FEED_URL`, set for Release only, and the
-   downloads go in `releases/` beside it.
+3. **Deploy the site** (`cd www && pnpm deploy`). The script has already put
+   the zip and any deltas in the R2 bucket `typoless-releases`, which the
+   site's Worker serves under `typoless.app/releases/`, and copied the feed to
+   `www/public/appcast.xml`. Nothing is offered until the feed is live, so the
+   downloads always arrive first. The feed comes from `TYPOLESS_FEED_URL`,
+   set for Release only.
+   Keep `build/releases`: the next release's deltas are made from it.
 4. **After any package change, run `./Config/make-acknowledgements.sh`** and
    commit the result. It warns about vendored code it has no notice for.
 
@@ -474,6 +478,49 @@ seen, so a rule added later starts on.
 The datasets gained 14 `grammar` cases and an `alternatives` field for cases
 where the language accepts two forms. Apple's model fixed 14 of the 15 grammar
 cases with the shipping prompt, so the prompt does not mention grammar.
+
+**A reply in capitals passed word by word** (Chrome, 2026-09-22). "we should
+sue the ectual enums here" came back entirely in capitals, and every word read
+as a capital fix on its own. A chunk is now refused when the reply turns at
+least three words, and more than half of all its words, into capitals. Real
+fixes ("api" to "API") touch a word or two. The dictionary could not settle it
+per word, since it knows "api" and "pdf" in lower case, and it accepts any word
+written in capitals, which had also let "ENUMES" pass as grammar. It is now
+asked about lower case only.
+
+Refined the same day: only a reply with every word in capitals is refused (at
+least two words of two letters, protected text left out, and not where the user
+wrote in capitals). A share-based threshold also refused "API, SDK and CLI
+docs", a line of real acronym fixes.
+
+The same case showed that a wrong first letter was always refused, so
+"ectual" could never become "actual", nor "hte" become "the". A first letter
+may now change when the word is not in the dictionary, the fix is, and the
+length stays the same. A non-word has no meaning to swap; the length rule
+keeps tool names safe, since "pnpm" and "oxlint" are not in the dictionary
+either and removing letters from their front makes "npm" and "lint". A real
+word keeps the rule: "sue" to "use" is a typo in fact, but it has the shape of
+"on" to "no". The datasets carry `first-letter`, `tools` and `capitals` cases
+for all of this.
+
+Two more first-letter cases were opened on purpose: two letters traded at the
+start are a typo even between real words ("sue" to "use"), with nothing else
+changed. "on" to "no" has the same shape; that is left to the model's context,
+the same risk already taken with "now" to "not". Apple's model does not make
+the "sue" fix on its own yet, so the rule only lets it through when it does.
+
+**Grammar groups** cover what the ending test cannot: forms of one word that
+share no ending, "was" to "were", "a" to "an", "ist" to "sind", "der" to "dem".
+A change inside one group is grammar; a change between groups ("is" to "has")
+is a different word and stays refused. Grouped by tense, never by verb, since
+"is" to "was" is a change of meaning. English and German only, the two
+languages with datasets. 12 `grammar-group` cases, 8 fixes and 4 negatives:
+all pass on Apple's model with both guardrail settings.
+
+Still open: "update-cart tool" came back as "Update-Cart Tool", which passes as
+names. The dictionary cannot tell names from words here: it knows "google",
+"apple", "slack" and "english" in lower case, so refusing capitals on known
+words would refuse "English" too.
 
 ### M3 and M4 notes
 

@@ -977,6 +977,216 @@
         "grammar",
         "negative"
       ]
+    },
+    {
+      "id": "en-caps-01",
+      "input": "we should sue the ectual enums here, not inlined strings",
+      "expected": "We should use the actual enums here, not inlined strings",
+      "tags": [
+        "spelling",
+        "casing",
+        "multi-error"
+      ]
+    },
+    {
+      "id": "en-caps-02",
+      "input": "which of tehse belong here vs update-cart tool?",
+      "expected": "Which of these belong here vs update-cart tool?",
+      "alternatives": [
+        "Which of these belong here vs. update-cart tool?"
+      ],
+      "tags": [
+        "spelling",
+        "casing",
+        "code"
+      ]
+    },
+    {
+      "id": "en-first-01",
+      "input": "hte build passed on the second try",
+      "expected": "The build passed on the second try",
+      "tags": [
+        "spelling",
+        "casing",
+        "first-letter"
+      ]
+    },
+    {
+      "id": "en-first-02",
+      "input": "i ectually like the new layout",
+      "expected": "I actually like the new layout",
+      "tags": [
+        "spelling",
+        "casing",
+        "first-letter"
+      ]
+    },
+    {
+      "id": "en-first-03",
+      "input": "the fix is in, can you rveiew it",
+      "expected": "The fix is in, can you review it",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "en-tools-01",
+      "input": "use pnpm for installs, not npm",
+      "expected": "Use pnpm for installs, not npm",
+      "tags": [
+        "casing",
+        "product-names",
+        "tools"
+      ]
+    },
+    {
+      "id": "en-tools-02",
+      "input": "run oxlint before you commit",
+      "expected": "Run oxlint before you commit",
+      "tags": [
+        "casing",
+        "product-names",
+        "tools"
+      ]
+    },
+    {
+      "id": "en-tools-03",
+      "input": "we switched from vite to rspack last week",
+      "expected": "We switched from vite to rspack last week",
+      "alternatives": [
+        "We switched from Vite to Rspack last week"
+      ],
+      "tags": [
+        "casing",
+        "product-names",
+        "tools"
+      ]
+    },
+    {
+      "id": "en-caps-03",
+      "input": "api, sdk and cli docs are updated",
+      "expected": "API, SDK and CLI docs are updated",
+      "tags": [
+        "casing",
+        "acronyms"
+      ]
+    },
+    {
+      "id": "en-caps-04",
+      "input": "PLEASE CALL ME BACK ASAP",
+      "expected": "PLEASE CALL ME BACK ASAP",
+      "tags": [
+        "negative",
+        "capitals"
+      ]
+    },
+    {
+      "id": "en-caps-05",
+      "input": "ok thanks, see you on monday",
+      "expected": "Ok thanks, see you on Monday",
+      "alternatives": [
+        "OK thanks, see you on Monday"
+      ],
+      "tags": [
+        "casing",
+        "capitals"
+      ]
+    },
+    {
+      "id": "en-caps-06",
+      "input": "URGENT: the deploy is broken",
+      "expected": "URGENT: the deploy is broken",
+      "tags": [
+        "negative",
+        "capitals"
+      ]
+    },
+    {
+      "id": "en-first-04",
+      "input": "can you sue the new helper for this",
+      "expected": "Can you use the new helper for this",
+      "tags": [
+        "spelling",
+        "casing",
+        "first-letter"
+      ]
+    },
+    {
+      "id": "en-first-05",
+      "input": "If they do not pay, we will sue them.",
+      "expected": "If they do not pay, we will sue them.",
+      "tags": [
+        "negative",
+        "first-letter"
+      ]
+    },
+    {
+      "id": "en-first-06",
+      "input": "No, the review is on Friday.",
+      "expected": "No, the review is on Friday.",
+      "tags": [
+        "negative",
+        "first-letter"
+      ]
+    },
+    {
+      "id": "en-group-01",
+      "input": "they was late for the standup",
+      "expected": "They were late for the standup",
+      "tags": [
+        "grammar",
+        "grammar-group",
+        "casing"
+      ]
+    },
+    {
+      "id": "en-group-02",
+      "input": "we is ready to ship",
+      "expected": "We are ready to ship",
+      "tags": [
+        "grammar",
+        "grammar-group",
+        "casing"
+      ]
+    },
+    {
+      "id": "en-group-03",
+      "input": "i found a issue in the build",
+      "expected": "I found an issue in the build",
+      "tags": [
+        "grammar",
+        "grammar-group",
+        "casing"
+      ]
+    },
+    {
+      "id": "en-group-04",
+      "input": "she do not want the meeting moved",
+      "expected": "She does not want the meeting moved",
+      "tags": [
+        "grammar",
+        "grammar-group",
+        "casing"
+      ]
+    },
+    {
+      "id": "en-group-05",
+      "input": "It was done yesterday.",
+      "expected": "It was done yesterday.",
+      "tags": [
+        "negative",
+        "grammar-group"
+      ]
+    },
+    {
+      "id": "en-group-06",
+      "input": "The report is done, it has been sent.",
+      "expected": "The report is done, it has been sent.",
+      "tags": [
+        "negative",
+        "grammar-group"
+      ]
     }
   ]
 }

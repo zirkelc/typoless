@@ -158,6 +158,53 @@ enum EditGuardrail {
         return trimmed
     }
 
+    /**
+     Whether the model answered in capitals.
+
+     Every word of a shouted reply is the same letters in another case, so
+     each one passes as a capital on its own, and a whole message came back in
+     capitals that way. It is only visible across the chunk, and only a reply
+     with every word in capitals is refused: a line of acronyms ("API, SDK and
+     CLI docs") puts most of its words into capitals and is still a fix.
+
+     Words of one letter do not count, since "I" and "A" are capitals either
+     way, and neither does protected text such as code, which the model leaves
+     as it was. Two words in capitals are enough, but only where the user did
+     not write them that way: text written in capitals may stay in capitals.
+     */
+    static func isShouting(_ reply: String, over source: String) -> Bool {
+        let words = countedWords(in: reply)
+        let shouted = words.filter(isInCapitals)
+
+        guard words.count >= 2, shouted.count == words.count else { return false }
+
+        return countedWords(in: source).filter(isInCapitals).count < shouted.count
+    }
+
+    /** Words of two letters or more, outside protected text. */
+    private static func countedWords(in text: String) -> [Substring] {
+        let protected = ProtectedSpans.find(in: text)
+        var visible = ""
+        var index = text.startIndex
+
+        /** Built in one pass, since replacing one span would move every index after it. */
+        while index < text.endIndex {
+            if let span = protected.first(where: { $0.contains(index) }) {
+                visible.append(" ")
+                index = span.upperBound
+            } else {
+                visible.append(text[index])
+                index = text.index(after: index)
+            }
+        }
+
+        return visible.split(whereSeparator: \.isWhitespace).filter { $0.count(where: \.isLetter) >= 2 }
+    }
+
+    private static func isInCapitals(_ word: Substring) -> Bool {
+        !word.contains(where: \.isLowercase)
+    }
+
     private static func isLetterOrNumber(_ character: Character) -> Bool {
         character.isLetter || character.isNumber
     }
@@ -497,9 +544,10 @@ enum EditGuardrail {
         var kinds: Set<CorrectionRule> = []
 
         for (before, after) in zip(originalWords, replacementWords) where before != after {
-            if let language, isWordForm(from: String(before), to: String(after), in: language) {
+            if let language, isGroupChange(from: String(before), to: String(after), in: language)
+                || isWordForm(from: String(before), to: String(after), in: language) {
                 kinds.insert(.grammar)
-            } else if isSpellingFix(from: String(before), to: String(after)) {
+            } else if isSpellingFix(from: String(before), to: String(after), language: language) {
                 kinds.insert(.typos)
             } else {
                 return nil
@@ -547,20 +595,51 @@ enum EditGuardrail {
         return WordList.contains(base, in: language) && WordList.contains(form, in: language)
     }
 
+    /** Whether both words are forms in one of the language's grammar groups. */
+    private static func isGroupChange(from before: String, to after: String, in language: CorrectionLanguage) -> Bool {
+        let word = withoutPunctuation(before).lowercased()
+        let form = withoutPunctuation(after).lowercased()
+
+        guard word != form else { return false }
+
+        return language.grammarGroups.contains { $0.contains(word) && $0.contains(form) }
+    }
+
     /** A spelling fix to one word. */
-    private static func isSpellingFix(from before: String, to after: String) -> Bool {
+    private static func isSpellingFix(from before: String, to after: String, language: CorrectionLanguage?) -> Bool {
         /**
          A typo rarely lands on the first letter, while a word swapped for a
          different one usually starts differently. Without this, "is" to
          "has" reads as a one-character spelling fix and quietly changes what
          the sentence says.
+
+         Unless the word is not a word at all and the fix is. "ectual" has no
+         meaning to change, so "actual" can only be a fix, and "hte" can only
+         be "the". The length has to stay the same, a letter swapped or two
+         traded: a tool name is not in the dictionary either, and removing a
+         letter from the front of "pnpm" makes "npm", a different tool.
+
+         Two letters traded at the start are a typo even between real words:
+         "sue" to "use". The same shape turns "on" into "no", which is the
+         model's call from context, and the same risk the guardrail already
+         takes with "now" to "not". Only the swap, with nothing else changed.
          */
-        guard
-            let firstBefore = before.first?.lowercased(),
-            let firstAfter = after.first?.lowercased(),
-            firstBefore == firstAfter
-        else {
+        guard let firstBefore = before.first?.lowercased(), let firstAfter = after.first?.lowercased() else {
             return false
+        }
+
+        if firstBefore != firstAfter, !swapsFirstTwoLetters(from: before, to: after) {
+            let word = String(withoutPunctuation(before))
+            let fix = String(withoutPunctuation(after))
+
+            guard
+                let language,
+                word.count == fix.count,
+                !WordList.contains(word, in: language),
+                WordList.contains(fix, in: language)
+            else {
+                return false
+            }
         }
 
         /**
@@ -585,6 +664,18 @@ enum EditGuardrail {
         let distance = editDistance(lowercasedBefore, after.lowercased())
 
         return distance <= maximumSpellingDistance && distance < lowercasedBefore.count
+    }
+
+    /** Whether the only change is the first two letters trading places. */
+    private static func swapsFirstTwoLetters(from before: String, to after: String) -> Bool {
+        let original = Array(before.lowercased())
+        let changed = Array(after.lowercased())
+
+        guard original.count >= 2, original.count == changed.count, original[0] != original[1] else {
+            return false
+        }
+
+        return original[0] == changed[1] && original[1] == changed[0] && original[2...] == changed[2...]
     }
 
     /**

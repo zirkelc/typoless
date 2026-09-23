@@ -27,10 +27,47 @@ struct EveryRuleToldApartTests {
         /** "Termin" is a German word, so the ending is grammar, and its capital is still asked about. */
         RuleCase("a noun put into its case", "wegen des termin", "wegen des Termins", in: .german, expect: [.grammar, .nounCapitalisation]),
         RuleCase("a verb longer than a typo allows", "wir hat zeit", "wir haben zeit", in: .german, expect: [.grammar]),
+        /** Forms of one word in one tense, which share no ending to compare. */
+        RuleCase("a verb from its group", "they was late", "they were late", in: .english, expect: [.grammar]),
+        RuleCase("an article from its group", "a apple", "an apple", in: .english, expect: [.grammar]),
+        RuleCase("a demonstrative from its group", "these file", "this file", in: .english, expect: [.grammar]),
+        RuleCase("a German verb from its group", "wir ist bereit", "wir sind bereit", in: .german, expect: [.grammar]),
+        RuleCase("a German article from its group", "das sieht der Kind", "das sieht das Kind", in: .german, expect: [.grammar]),
+        /** Tense is meaning, so present and past are different groups. */
+        RuleCase("a change of tense is not grammar", "it is done", "it was done", in: .english, expect: []),
+        RuleCase("a German change of tense is not grammar", "es ist fertig", "es war fertig", in: .german, expect: []),
+        /** Two different verbs, even where one would fix the sentence. */
+        RuleCase("one verb for another is not grammar", "it is done", "it has done", in: .english, expect: []),
         /** "helo" is not a word, so the same shape is a typo. */
         RuleCase("a typo at the end of a word", "helo world", "hello world", in: .english, expect: [.typos]),
-        /** The stem changes, which is beyond an ending. */
-        RuleCase("an irregular form is not an ending", "they was late", "they were late", in: .english, expect: []),
+        /** The stem changes, which is beyond an ending, and no group holds both. */
+        RuleCase("an irregular form outside the groups", "they go home", "they went home", in: .english, expect: []),
+        /**
+         The spell checker accepts any word in capitals, so the dictionary is
+         asked about lower case. "enumes" is not a word, so this is judged as
+         a typo, one letter away, and not as a word form.
+         */
+        RuleCase("a made-up form in capitals is not grammar", "the enums", "the ENUMES", in: .english, expect: [.typos, .nounCapitalisation]),
+        /** Not a word, so a wrong first letter cannot be a word swapped for another. */
+        RuleCase("a wrong first letter on a word that is not one", "the ectual enums", "the actual enums", in: .english, expect: [.typos]),
+        RuleCase("two letters traded at the start", "hte build", "the build", in: .english, expect: [.typos]),
+        /**
+         A tool name is not in the dictionary either, so a first-letter fix
+         also has to spell a real word, at the same length. Removing a letter
+         from the front of "pnpm" makes a different tool.
+         */
+        RuleCase("a letter removed from the front of a name", "use pnpm", "use npm", in: .english, expect: []),
+        RuleCase("letters removed from the front of a name", "run oxlint", "run lint", in: .english, expect: []),
+        /** A real word with another first letter is a different word, typo-shaped or not. */
+        RuleCase("a real word with another first letter", "it is done", "it has done", in: .english, expect: []),
+        /**
+         Two letters traded at the start are a typo even between real words.
+         The model decides from context whether "sue" was meant, and the risk
+         is the one already taken with "now" to "not".
+         */
+        RuleCase("a first-letter swap between real words", "we should sue them", "we should use them", in: .english, expect: [.typos]),
+        /** A swap, and nothing else: more changes on top of it make a different word. */
+        RuleCase("a swap with more changes is not a swap", "we saw it", "we was it", in: .english, expect: []),
         /** Without a dictionary a changed ending can only be judged as a typo. */
         RuleCase("no language, no grammar", "wegen dem", "wegen des", expect: [.typos]),
     ]

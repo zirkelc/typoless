@@ -102,7 +102,7 @@ struct EvalPipeline: Sendable {
 
             unguardedEdits += chunkEdits
 
-            if detector.detect(corrected) != language {
+            if detector.detect(corrected) != language || EditGuardrail.isShouting(corrected, over: source) {
                 guarded.chunksDropped += 1
                 guarded.editsRejected += chunkEdits.count
                 continue

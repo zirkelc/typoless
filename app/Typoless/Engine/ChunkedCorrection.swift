@@ -113,6 +113,11 @@ enum ChunkedCorrection {
                 continue
             }
 
+            if appliesGuardrail, EditGuardrail.isShouting(corrected, over: source) {
+                Log.app.info("Dropped a chunk the model returned in capitals")
+                continue
+            }
+
             let chunkEdits = TextDiff.edits(from: source, to: corrected)
                 .map { rebase($0, from: source, into: text, at: chunk) }
 

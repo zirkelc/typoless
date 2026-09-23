@@ -26,9 +26,13 @@ enum WordList {
         /**
          German nouns are only words with their capital, and every word may
          open a sentence, so the word counts if any of its common casings does.
+         Never as written in capitals, though: the spell checker accepts any
+         word in capitals as an acronym, "ENUMES" included.
          */
         let lowercased = word.lowercased()
-        let candidates = [word, lowercased, lowercased.prefix(1).uppercased() + lowercased.dropFirst()]
+        let capitalised = lowercased.prefix(1).uppercased() + lowercased.dropFirst()
+        let isShouted = word.contains(where: \.isLetter) && !word.contains(where: \.isLowercase)
+        let candidates = isShouted ? [lowercased, capitalised] : [word, lowercased, capitalised]
 
         lock.lock()
         defer { lock.unlock() }

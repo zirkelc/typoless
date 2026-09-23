@@ -173,6 +173,52 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
         }
     }
 
+    /**
+     Words that differ only in grammar, where the ending alone cannot show it.
+
+     "was" to "were" or "der" to "dem" change more than an ending, so the
+     ending test refuses them, yet each is the same word agreeing with the
+     sentence around it. A change within one group is grammar; a change from
+     one group to another is a different word and stays refused.
+
+     Grouped by tense, never by verb, since "is" to "was" changes when
+     something happened rather than how the sentence is built. Only the two
+     languages with datasets have groups; the others rely on the ending test
+     until they can be measured.
+     */
+    var grammarGroups: [Set<String>] {
+        switch self {
+        case .english:
+            return [
+                ["am", "is", "are"],
+                ["was", "were"],
+                ["have", "has"],
+                ["do", "does"],
+                ["a", "an"],
+                ["this", "these"],
+                ["that", "those"],
+            ]
+        case .german:
+            return [
+                ["bin", "bist", "ist", "sind", "seid"],
+                ["war", "warst", "waren", "wart"],
+                ["habe", "hast", "hat", "haben", "habt"],
+                ["hatte", "hattest", "hatten", "hattet"],
+                ["werde", "wirst", "wird", "werden", "werdet"],
+                ["der", "die", "das", "den", "dem", "des"],
+                ["ein", "eine", "einen", "einem", "einer", "eines"],
+                ["kein", "keine", "keinen", "keinem", "keiner", "keines"],
+                ["mein", "meine", "meinen", "meinem", "meiner", "meines"],
+                ["dein", "deine", "deinen", "deinem", "deiner", "deines"],
+                ["unser", "unsere", "unseren", "unserem", "unserer", "unseres"],
+                ["dieser", "diese", "dieses", "diesen", "diesem"],
+                ["welcher", "welche", "welches", "welchen", "welchem"],
+            ]
+        case .french, .spanish, .italian, .dutch, .portuguese:
+            return []
+        }
+    }
+
     var applicableRules: Set<CorrectionRule> {
         Set(rules.map(\.rule))
     }

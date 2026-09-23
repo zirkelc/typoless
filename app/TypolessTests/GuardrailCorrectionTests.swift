@@ -207,6 +207,70 @@ struct GrammarTests {
     }
 }
 
+/**
+ A reply in capitals is not a capitalisation fix.
+
+ Each word on its own reads as the same letters in another case, so every one
+ of them passed, and a whole message came back shouted. Whether that happened
+ is only visible across the line: a real fix puts a word or two into capitals,
+ a shouting model puts nearly all of them.
+ */
+struct ShoutingTests {
+    static let cases: Array<GuardrailCase> = [
+        GuardrailCase(
+            "a message returned in capitals is left as written",
+            "we should sue the ectual enums here, not inlined strings",
+            "WE SHOULD SUE THE EXACT ENUMES HERE, NOT INLINED STRINGS",
+            in: .english,
+            expect: "we should sue the ectual enums here, not inlined strings"
+        ),
+        GuardrailCase(
+            "acronyms still get their capitals",
+            "the api returns json and html",
+            "The API returns JSON and HTML",
+            in: .english,
+            expect: "The API returns JSON and HTML"
+        ),
+        /** Most words in capitals, but not all: acronyms, which is what real fixes look like. */
+        GuardrailCase(
+            "a line of acronyms is not shouting",
+            "api, sdk and cli docs are updated",
+            "API, SDK and CLI docs are updated",
+            in: .english,
+            expect: "API, SDK and CLI docs are updated"
+        ),
+        /** Code stays as written, so it cannot count against a reply that shouts everything else. */
+        GuardrailCase(
+            "shouting around code is still shouting",
+            "run `pnpm install` before you build",
+            "RUN `pnpm install` BEFORE YOU BUILD",
+            in: .english,
+            expect: "run `pnpm install` before you build"
+        ),
+        GuardrailCase("two words are enough to shout", "ok thanks", "OK THANKS", in: .english, expect: "ok thanks"),
+        GuardrailCase("one word in capitals is an acronym", "asap", "ASAP", in: .english, expect: "ASAP"),
+        GuardrailCase(
+            "text written in capitals may stay in capitals",
+            "PLEASE CALL ME BACK ASAP",
+            "PLEASE CALL ME BACK ASAP.",
+            in: .english,
+            expect: "PLEASE CALL ME BACK ASAP."
+        ),
+    ]
+
+    @Test(arguments: cases)
+    func `the field ends up as expected`(_ row: GuardrailCase) {
+        // Arrange
+        let expected = row.expected
+
+        // Act
+        let result = Guardrail.corrected(row)
+
+        // Assert
+        #expect(result == expected)
+    }
+}
+
 struct RewritingRefusedTests {
     static let cases: Array<GuardrailCase> = [
         GuardrailCase("word inserted", "hello world", "hello beautiful world", expect: "hello world"),
