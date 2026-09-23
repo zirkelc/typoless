@@ -1,0 +1,87 @@
+# Tests and builds the app on every push to main and every pull request that
+# touches it. No secrets and no signing: this checks that the code is right,
+# and releases are still made on a Mac with Config/release.sh.
+#
+# macOS minutes cost ten times Linux ones in a private repository, so the job
+# runs only when something under app/ changed, and a newer push cancels a run
+# still going for the same branch.
+name: App
+
+on:
+  push:
+    branches: [main]
+    paths: ['app/**', '.github/workflows/app.yml']
+  pull_request:
+    paths: ['app/**', '.github/workflows/app.yml']
+
+concurrency:
+  group: app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-26
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v5
+
+      # The newest Xcode 27 on the image, which is what the project is built
+      # with. The image's default can lag behind or run ahead of it.
+      - name: Select Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XCODE" ]; then
+            echo "No Xcode 27 on this image:"; ls -d /Applications/Xcode*.app
+            exit 1
+          fi
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      # The packages are the slow part of a cold build, MLX above all, and
+      # they change only when Package.resolved does.
+      - name: Cache packages
+        uses: actions/cache@v4
+        with:
+          path: app/build/DerivedData/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('app/Typoless.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      # Signing off: the runner has no certificate, and the tests need none.
+      # The linker still signs ad hoc, which is all Apple silicon asks for to
+      # launch the app that hosts the tests.
+      - name: Test
+        run: |
+          xcodebuild test \
+            -project Typoless.xcodeproj \
+            -scheme Typoless \
+            -destination 'platform=macOS' \
+            -derivedDataPath build/DerivedData \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM=""
+
+      - name: Build Release
+        run: |
+          xcodebuild build \
+            -project Typoless.xcodeproj \
+            -scheme Typoless \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            -derivedDataPath build/DerivedData \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM=""
+
+      # Every expected answer in the datasets must be one the guardrail would
+      # apply. Needs no model.
+      - name: Verify datasets
+        run: ./Config/verify-dataset.sh

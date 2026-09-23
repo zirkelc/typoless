@@ -1,0 +1,41 @@
+# Checks and builds the website on every push to main and every pull request
+# that touches it. Deploying stays a manual step.
+name: Website
+
+on:
+  push:
+    branches: [main]
+    paths: ['www/**', '.github/workflows/www.yml']
+  pull_request:
+    paths: ['www/**', '.github/workflows/www.yml']
+
+concurrency:
+  group: www-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: www
+    steps:
+      - uses: actions/checkout@v5
+
+      # The version comes from packageManager in package.json.
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: www/package.json
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: www/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm check
+      - run: pnpm build
