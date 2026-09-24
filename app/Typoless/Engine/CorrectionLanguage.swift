@@ -3,10 +3,10 @@ import NaturalLanguage
 /**
  A language the app knows how to correct.
 
- Two of these are tuned by measurement and the rest are not, which is recorded
- in `isTuned` rather than left for someone to discover. The eval covers English
- and German; anything else uses instructions built from the same template and
- has never been scored, so it is offered but not promised.
+ All seven have a dataset and have been scored against every model the app can
+ run, which is what `bestModel` reports. Two of them, English and German, have
+ also had their wording swept candidate by candidate; the other five use
+ instructions built from the same template, so they are measured but not tuned.
  */
 enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
     case english
@@ -40,21 +40,6 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
         case .italian: return .italian
         case .dutch: return .dutch
         case .portuguese: return .portuguese
-        }
-    }
-
-    /**
-     Whether the wording below has been *swept*, which is more than scored.
-
-     Every language has a dataset now and every one has been measured against
-     all three models. Only English and German have had their wording itself put
-     through candidate after candidate, which is what moved them most, so only
-     those two claim it.
-     */
-    var isTuned: Bool {
-        switch self {
-        case .english, .german: return true
-        case .french, .spanish, .italian, .dutch, .portuguese: return false
         }
     }
 

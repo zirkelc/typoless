@@ -78,16 +78,15 @@ struct LanguagesPage: View {
                     Divider()
                 }
 
+                /**
+                 No qualifier beside the name any more. It said "not measured"
+                 for the five languages that had no dataset, and now every one
+                 of the seven has one and has been scored against all three
+                 models. What differs between them is which model is best, and
+                 that is answered where the model is chosen, not here.
+                 */
                 Toggle(isOn: binding(for: language)) {
-                    HStack(spacing: 6) {
-                        Text(language.displayName)
-
-                        if !language.isTuned {
-                            Text("not measured")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                    Text(language.displayName)
                 }
                 .toggleStyle(.checkbox)
                 .padding(.vertical, 5)

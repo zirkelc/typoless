@@ -164,16 +164,21 @@ private struct LanguageRow: View {
     @ViewBuilder private var advice: some View {
         let best = language.bestModel
 
+        /**
+         Both models are named. "Better than what this language uses" reads as
+         a riddle in a row whose menu may well say "Default model", which is the
+         one wording that does not name a model either.
+         */
         if inUse == best.choice {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.green)
-                .help("\(best.choice.displayName) measured best for \(language.displayName), and is what this language uses.")
-                .accessibilityLabel("Best model for \(language.displayName)")
+                .help("\(best.choice.displayName) measured best for \(language.displayName), and corrects it.")
+                .accessibilityLabel("\(language.displayName) uses \(best.choice.displayName), which measured best")
         } else {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(.yellow)
-                .help("\(best.choice.displayName) measured \(best.margin) points better for \(language.displayName) than what this language uses.")
-                .accessibilityLabel("A better model is available for \(language.displayName)")
+                .help("\(best.choice.displayName) measured \(best.margin) points better than \(inUse.displayName) for \(language.displayName).")
+                .accessibilityLabel("\(best.choice.displayName) measured better than \(inUse.displayName) for \(language.displayName)")
         }
     }
 }

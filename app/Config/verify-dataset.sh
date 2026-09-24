@@ -43,7 +43,13 @@ PYTHON
 # stand-ins: the real ones bring the MLX packages, which a single swiftc call
 # cannot build.
 cat > "$SOURCE" <<'SWIFT'
-enum LocalModel: String, Equatable, Hashable, Sendable { case placeholder }
+// The real cases, because a language names the model that measured best for it
+// and the names have to resolve. Everything else about a model is irrelevant
+// here, which is why this stays a stand-in.
+enum LocalModel: String, Equatable, Hashable, Sendable {
+    case qwen35_2b
+    case gemma4_e4b
+}
 enum ModelChoice: Equatable, Hashable, Sendable {
     case appleOnDevice
     case local(LocalModel)
