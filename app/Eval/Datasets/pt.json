@@ -1,0 +1,550 @@
+{
+  "policy": "Português europeu. O texto esperado corrige apenas a ortografia (acentos incluídos), a gramática (uma palavra na forma que a frase pede, por exemplo uma terminação verbal ou uma concordância), a pontuação, as maiúsculas e os espaços. Onde a língua admite mais do que uma forma, a outra aparece em alternatives e conta como acerto. Um ponto final em falta no fim de uma mensagem não é um erro e nunca é acrescentado, porque seria precisamente a sobrecorreção que esta aplicação quer evitar. As zonas protegidas (URL, endereços de e-mail, @nomes, #canais, código entre acentos graves, emojis, nomes de produto em minúsculas) ficam como estão.",
+  "cases": [
+    {
+      "id": "pt-neg-01",
+      "input": "Encaminhei a fatura esta manhã.",
+      "expected": "Encaminhei a fatura esta manhã.",
+      "tags": [
+        "negative",
+        "accents"
+      ]
+    },
+    {
+      "id": "pt-neg-02",
+      "input": "Terça-feira dá-te jeito?",
+      "expected": "Terça-feira dá-te jeito?",
+      "tags": [
+        "negative",
+        "accents"
+      ]
+    },
+    {
+      "id": "pt-neg-03",
+      "input": "Está bem",
+      "expected": "Está bem",
+      "tags": [
+        "negative",
+        "fragment"
+      ]
+    },
+    {
+      "id": "pt-neg-04",
+      "input": "Obrigado pela resposta rápida.",
+      "expected": "Obrigado pela resposta rápida.",
+      "tags": [
+        "negative",
+        "accents"
+      ]
+    },
+    {
+      "id": "pt-neg-05",
+      "input": "Envio-te o documento antes do meio-dia.",
+      "expected": "Envio-te o documento antes do meio-dia.",
+      "tags": [
+        "negative"
+      ]
+    },
+    {
+      "id": "pt-neg-06",
+      "input": "Vemo-nos amanhã no escritório.",
+      "expected": "Vemo-nos amanhã no escritório.",
+      "tags": [
+        "negative",
+        "accents"
+      ]
+    },
+    {
+      "id": "pt-neg-07",
+      "input": "O link está em https://exemplo.pt/docs",
+      "expected": "O link está em https://exemplo.pt/docs",
+      "tags": [
+        "negative",
+        "url",
+        "protected"
+      ]
+    },
+    {
+      "id": "pt-neg-08",
+      "input": "Já perguntei à @sarah",
+      "expected": "Já perguntei à @sarah",
+      "tags": [
+        "negative",
+        "mention",
+        "protected"
+      ]
+    },
+    {
+      "id": "pt-neg-09",
+      "input": "Vê o `config.yaml` antes de publicar",
+      "expected": "Vê o `config.yaml` antes de publicar",
+      "tags": [
+        "negative",
+        "code",
+        "protected"
+      ]
+    },
+    {
+      "id": "pt-neg-10",
+      "input": "Já está publicado 🎉",
+      "expected": "Já está publicado 🎉",
+      "tags": [
+        "negative",
+        "emoji",
+        "protected"
+      ]
+    },
+    {
+      "id": "pt-neg-11",
+      "input": "Podes rever o PR quando tiveres um momento?",
+      "expected": "Podes rever o PR quando tiveres um momento?",
+      "tags": [
+        "negative",
+        "acronyms"
+      ]
+    },
+    {
+      "id": "pt-neg-12",
+      "input": "Recebido, obrigado.",
+      "expected": "Recebido, obrigado.",
+      "tags": [
+        "negative"
+      ]
+    },
+    {
+      "id": "pt-acc-01",
+      "input": "a reuniao e as tres",
+      "expected": "A reunião é às três",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-acc-02",
+      "input": "ainda nao respondeu",
+      "expected": "Ainda não respondeu",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-acc-03",
+      "input": "e muito mais simples assim",
+      "expected": "É muito mais simples assim",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-acc-04",
+      "input": "o codigo ja esta pronto",
+      "expected": "O código já está pronto",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-acc-05",
+      "input": "vou ver os numeros amanha",
+      "expected": "Vou ver os números amanhã",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-acc-06",
+      "input": "a versao nova funciona bem",
+      "expected": "A versão nova funciona bem",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-acc-07",
+      "input": "nao sei se esta certo",
+      "expected": "Não sei se está certo",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-acc-08",
+      "input": "obrigado pela tua atencao",
+      "expected": "Obrigado pela tua atenção",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-acc-09",
+      "input": "a proxima semana comecamos",
+      "expected": "A próxima semana começamos",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-acc-10",
+      "input": "e possivel fazer isso hoje",
+      "expected": "É possível fazer isso hoje",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-caps-01",
+      "input": "olá a todos",
+      "expected": "Olá a todos",
+      "tags": [
+        "casing",
+        "accents"
+      ]
+    },
+    {
+      "id": "pt-caps-02",
+      "input": "trabalho na google desde março",
+      "expected": "Trabalho na Google desde março",
+      "tags": [
+        "casing",
+        "proper-nouns"
+      ]
+    },
+    {
+      "id": "pt-caps-03",
+      "input": "esteve em lisboa a semana passada",
+      "expected": "Esteve em Lisboa a semana passada",
+      "tags": [
+        "casing",
+        "proper-nouns"
+      ]
+    },
+    {
+      "id": "pt-caps-04",
+      "input": "maria já enviou o relatório",
+      "expected": "Maria já enviou o relatório",
+      "tags": [
+        "casing",
+        "proper-nouns"
+      ]
+    },
+    {
+      "id": "pt-caps-05",
+      "input": "usamos slack para isso",
+      "expected": "Usamos Slack para isso",
+      "tags": [
+        "casing",
+        "proper-nouns"
+      ]
+    },
+    {
+      "id": "pt-caps-06",
+      "input": "vemo-nos na segunda",
+      "expected": "Vemo-nos na segunda",
+      "tags": [
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-comma-01",
+      "input": "se puderes avisa-me",
+      "expected": "Se puderes, avisa-me",
+      "tags": [
+        "comma",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-comma-02",
+      "input": "bom trabalho a todos",
+      "expected": "Bom trabalho, a todos",
+      "tags": [
+        "comma",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-comma-03",
+      "input": "não não é isso",
+      "expected": "Não, não é isso",
+      "tags": [
+        "comma",
+        "casing",
+        "accents"
+      ]
+    },
+    {
+      "id": "pt-comma-04",
+      "input": "está bem vou ver agora",
+      "expected": "Está bem, vou ver agora",
+      "tags": [
+        "comma",
+        "casing",
+        "accents"
+      ]
+    },
+    {
+      "id": "pt-space-01",
+      "input": "olá  a todos",
+      "expected": "Olá a todos",
+      "tags": [
+        "spacing",
+        "casing",
+        "accents"
+      ]
+    },
+    {
+      "id": "pt-space-02",
+      "input": "vou ver agora ,depois digo-te",
+      "expected": "Vou ver agora, depois digo-te",
+      "tags": [
+        "spacing",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-space-03",
+      "input": "o ficheiro está ali .",
+      "expected": "O ficheiro está ali.",
+      "tags": [
+        "spacing",
+        "casing",
+        "accents"
+      ]
+    },
+    {
+      "id": "pt-space-04",
+      "input": "já terminámos.podemos publicar",
+      "expected": "Já terminámos. Podemos publicar",
+      "tags": [
+        "spacing",
+        "casing",
+        "run-on"
+      ]
+    },
+    {
+      "id": "pt-typo-01",
+      "input": "envio-te o lnik",
+      "expected": "Envio-te o link",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-typo-02",
+      "input": "temos de corrigir o documnto",
+      "expected": "Temos de corrigir o documento",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-typo-03",
+      "input": "está muito bem feio",
+      "expected": "Está muito bem feito",
+      "tags": [
+        "spelling",
+        "casing",
+        "accents"
+      ]
+    },
+    {
+      "id": "pt-typo-04",
+      "input": "começamos na semna que vem",
+      "expected": "Começamos na semana que vem",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-typo-05",
+      "input": "podes mandar-me o lnik?",
+      "expected": "Podes mandar-me o link?",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-typo-06",
+      "input": "vou rever os númeors amanhã",
+      "expected": "Vou rever os números amanhã",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-typo-07",
+      "input": "a reuniao comeca agora",
+      "expected": "A reunião começa agora",
+      "tags": [
+        "spelling",
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-typo-08",
+      "input": "obrigado pela tua ajuda rápdia",
+      "expected": "Obrigado pela tua ajuda rápida",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-gram-01",
+      "input": "eles come muito depressa",
+      "expected": "Eles comem muito depressa",
+      "tags": [
+        "grammar",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-gram-02",
+      "input": "tu tem razão",
+      "expected": "Tu tens razão",
+      "tags": [
+        "grammar",
+        "casing",
+        "grammar-group"
+      ]
+    },
+    {
+      "id": "pt-gram-03",
+      "input": "os ficheiro estão prontos",
+      "expected": "Os ficheiros estão prontos",
+      "tags": [
+        "grammar",
+        "casing",
+        "accents"
+      ]
+    },
+    {
+      "id": "pt-gram-04",
+      "input": "nós temos de rever isto",
+      "expected": "Nós temos de rever isto",
+      "tags": [
+        "negative",
+        "accents"
+      ]
+    },
+    {
+      "id": "pt-gram-05",
+      "input": "elas é as responsáveis",
+      "expected": "Elas são as responsáveis",
+      "tags": [
+        "grammar",
+        "casing",
+        "grammar-group"
+      ]
+    },
+    {
+      "id": "pt-gram-06",
+      "input": "o versão nova já saiu",
+      "expected": "A versão nova já saiu",
+      "tags": [
+        "grammar",
+        "casing",
+        "grammar-group"
+      ]
+    },
+    {
+      "id": "pt-prot-01",
+      "input": "o lnik é https://exemplo.pt/DOCS",
+      "expected": "O link é https://exemplo.pt/DOCS",
+      "tags": [
+        "spelling",
+        "url",
+        "protected",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-prot-02",
+      "input": "perguntei à @sarah ontem",
+      "expected": "Perguntei à @sarah ontem",
+      "tags": [
+        "mention",
+        "protected",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-prot-03",
+      "input": "escreve à maria@exemplo.pt por favor",
+      "expected": "Escreve à maria@exemplo.pt por favor",
+      "tags": [
+        "email",
+        "protected",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-prot-04",
+      "input": "aqui usamos pnpm",
+      "expected": "Aqui usamos pnpm",
+      "tags": [
+        "product-names",
+        "protected",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-prot-05",
+      "input": "vê o ficheiro `Config.YAML` por favor",
+      "expected": "Vê o ficheiro `Config.YAML` por favor",
+      "tags": [
+        "code",
+        "protected",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-prot-06",
+      "input": "está pronto 🎉 vou publicar",
+      "expected": "Está pronto 🎉 vou publicar",
+      "tags": [
+        "accents",
+        "emoji",
+        "protected",
+        "casing"
+      ]
+    },
+    {
+      "id": "pt-multi-01",
+      "input": "olá maria\n\nobrigado pelo teu comentario. corrijo os dois pontos e devolvo-te o documento amanha de manha.\n\nbom dia",
+      "expected": "Olá Maria\n\nObrigado pelo teu comentário. Corrijo os dois pontos e devolvo-te o documento amanhã de manhã.\n\nBom dia",
+      "tags": [
+        "multiline",
+        "casing",
+        "accents",
+        "long"
+      ]
+    },
+    {
+      "id": "pt-multi-02",
+      "input": "a publicacao correu bem\nfalta so rever os logs",
+      "expected": "A publicação correu bem\nFalta só rever os logs",
+      "tags": [
+        "multiline",
+        "casing",
+        "accents"
+      ]
+    }
+  ]
+}

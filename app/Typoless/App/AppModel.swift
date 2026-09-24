@@ -144,10 +144,7 @@ final class AppModel {
 
     /** What the settings window points at, ignoring any override. */
     var defaultModel: ModelChoice {
-        switch preferences.backend {
-        case .appleOnDevice: return .appleOnDevice
-        case .local: return .local(preferences.localModel)
-        }
+        preferences.defaultModel
     }
 
     /** What actually corrects text right now. */

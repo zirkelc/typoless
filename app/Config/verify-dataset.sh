@@ -19,10 +19,13 @@ SOURCE="$SCRATCH/verify.swift"
 CASES="$SCRATCH/cases.json"
 
 python3 - "$CASES" <<'PYTHON'
-import json, sys
+import json, pathlib, sys
 out = []
-for language in ("en", "de"):
-    data = json.load(open(f"Eval/Datasets/{language}.json"))
+# Every dataset there is, so a new language is checked from the moment its file
+# lands rather than when someone remembers to name it here.
+for path in sorted(pathlib.Path("Eval/Datasets").glob("*.json")):
+    language = path.stem
+    data = json.load(open(path))
     for case in data["cases"]:
         answers = [case["expected"]] + case.get("alternatives", [])
         for index, answer in enumerate(answers):
@@ -79,7 +82,12 @@ func shown(_ text: String) -> String {
 var unreachable = 0
 
 for item in items {
-    let language: CorrectionLanguage = item.language == "de" ? .german : .english
+    guard let language = CorrectionLanguage.allCases.first(where: { $0.nlLanguage.rawValue == item.language })
+    else {
+        print("UNKNOWN LANGUAGE \(item.language) in \(item.id)")
+        unreachable += 1
+        continue
+    }
     let verdict = EditGuardrail.filter(
         TextDiff.edits(from: item.input, to: item.expected),
         in: item.input,

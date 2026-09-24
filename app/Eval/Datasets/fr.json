@@ -1,0 +1,583 @@
+{
+  "policy": "Le texte attendu corrige uniquement l'orthographe (accents compris), la grammaire (un mot dans la forme que la phrase demande, par exemple une terminaison de verbe ou un accord), la ponctuation, les majuscules et les espaces. Là où la langue permet plusieurs formes, l'autre figure dans alternatives et compte comme une réussite. Un point final absent à la fin d'un message n'est pas une faute et n'est jamais ajouté, parce que c'est exactement la surcorrection que cette application veut éviter. Les zones protégées (URL, adresses e-mail, @noms, #canaux, code entre accents graves, emojis, noms de produits en minuscules) restent telles quelles. L'espace avant ? et ! suit l'usage français et n'est ni ajouté ni retiré ici : les cas concernés l'écrivent déjà des deux côtés.",
+  "cases": [
+    {
+      "id": "fr-neg-01",
+      "input": "J'ai transféré la facture ce matin.",
+      "expected": "J'ai transféré la facture ce matin.",
+      "tags": [
+        "negative"
+      ]
+    },
+    {
+      "id": "fr-neg-02",
+      "input": "Est-ce que mardi te convient ?",
+      "expected": "Est-ce que mardi te convient ?",
+      "tags": [
+        "negative"
+      ]
+    },
+    {
+      "id": "fr-neg-03",
+      "input": "Ça marche",
+      "expected": "Ça marche",
+      "tags": [
+        "negative",
+        "fragment"
+      ]
+    },
+    {
+      "id": "fr-neg-04",
+      "input": "Merci pour ton retour rapide.",
+      "expected": "Merci pour ton retour rapide.",
+      "tags": [
+        "negative",
+        "accents"
+      ]
+    },
+    {
+      "id": "fr-neg-05",
+      "input": "Je t'envoie le document avant midi.",
+      "expected": "Je t'envoie le document avant midi.",
+      "tags": [
+        "negative",
+        "apostrophe"
+      ]
+    },
+    {
+      "id": "fr-neg-06",
+      "input": "On se voit demain au bureau.",
+      "expected": "On se voit demain au bureau.",
+      "tags": [
+        "negative"
+      ]
+    },
+    {
+      "id": "fr-neg-07",
+      "input": "Le lien est sur https://exemple.fr/docs",
+      "expected": "Le lien est sur https://exemple.fr/docs",
+      "tags": [
+        "negative",
+        "url",
+        "protected"
+      ]
+    },
+    {
+      "id": "fr-neg-08",
+      "input": "J'ai déjà demandé à @sarah pour l'accès",
+      "expected": "J'ai déjà demandé à @sarah pour l'accès",
+      "tags": [
+        "negative",
+        "mention",
+        "protected"
+      ]
+    },
+    {
+      "id": "fr-neg-09",
+      "input": "Regarde `config.yaml` avant de déployer",
+      "expected": "Regarde `config.yaml` avant de déployer",
+      "tags": [
+        "negative",
+        "code",
+        "protected"
+      ]
+    },
+    {
+      "id": "fr-neg-10",
+      "input": "C'est parti 🎉",
+      "expected": "C'est parti 🎉",
+      "tags": [
+        "negative",
+        "emoji",
+        "protected"
+      ]
+    },
+    {
+      "id": "fr-neg-11",
+      "input": "Peux-tu relire la PR quand tu as un moment ?",
+      "expected": "Peux-tu relire la PR quand tu as un moment ?",
+      "tags": [
+        "negative",
+        "acronyms"
+      ]
+    },
+    {
+      "id": "fr-neg-12",
+      "input": "Bien reçu, merci !",
+      "expected": "Bien reçu, merci !",
+      "tags": [
+        "negative",
+        "accents"
+      ]
+    },
+    {
+      "id": "fr-acc-01",
+      "input": "j'ai recu le document",
+      "expected": "J'ai reçu le document",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-acc-02",
+      "input": "la reunion est reportee",
+      "expected": "La réunion est reportée",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-acc-03",
+      "input": "il a deja repondu",
+      "expected": "Il a déjà répondu",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-acc-04",
+      "input": "c'est tres interessant",
+      "expected": "C'est très intéressant",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-acc-05",
+      "input": "nous avons termine hier",
+      "expected": "Nous avons terminé hier",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-acc-06",
+      "input": "il faut etre precis ici",
+      "expected": "Il faut être précis ici",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-acc-07",
+      "input": "la reponse arrive bientot",
+      "expected": "La réponse arrive bientôt",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-acc-08",
+      "input": "merci d'avoir verifie",
+      "expected": "Merci d'avoir vérifié",
+      "tags": [
+        "accents",
+        "casing",
+        "apostrophe"
+      ]
+    },
+    {
+      "id": "fr-acc-09",
+      "input": "le probleme vient du cache",
+      "expected": "Le problème vient du cache",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-acc-10",
+      "input": "j'ai mis a jour la these",
+      "expected": "J'ai mis à jour la thèse",
+      "tags": [
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-apo-01",
+      "input": "j ai compris",
+      "expected": "J'ai compris",
+      "tags": [
+        "apostrophe",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-apo-02",
+      "input": "l idee est bonne",
+      "expected": "L'idée est bonne",
+      "tags": [
+        "apostrophe",
+        "casing",
+        "accents"
+      ]
+    },
+    {
+      "id": "fr-apo-03",
+      "input": "je n ai pas eu le temps",
+      "expected": "Je n'ai pas eu le temps",
+      "tags": [
+        "apostrophe",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-apo-04",
+      "input": "c est pret pour la relecture",
+      "expected": "C'est prêt pour la relecture",
+      "tags": [
+        "apostrophe",
+        "casing",
+        "accents"
+      ]
+    },
+    {
+      "id": "fr-caps-01",
+      "input": "bonjour à tous",
+      "expected": "Bonjour à tous",
+      "tags": [
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-caps-02",
+      "input": "je travaille chez google",
+      "expected": "Je travaille chez Google",
+      "tags": [
+        "casing",
+        "proper-nouns"
+      ]
+    },
+    {
+      "id": "fr-caps-03",
+      "input": "il est parti à paris hier",
+      "expected": "Il est parti à Paris hier",
+      "tags": [
+        "casing",
+        "proper-nouns"
+      ]
+    },
+    {
+      "id": "fr-caps-04",
+      "input": "marie a envoyé le rapport",
+      "expected": "Marie a envoyé le rapport",
+      "tags": [
+        "casing",
+        "proper-nouns"
+      ]
+    },
+    {
+      "id": "fr-caps-05",
+      "input": "nous utilisons slack pour ça",
+      "expected": "Nous utilisons Slack pour ça",
+      "tags": [
+        "casing",
+        "proper-nouns"
+      ]
+    },
+    {
+      "id": "fr-caps-06",
+      "input": "on se voit lundi",
+      "expected": "On se voit lundi",
+      "tags": [
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-comma-01",
+      "input": "si tu peux dis-moi",
+      "expected": "Si tu peux, dis-moi",
+      "tags": [
+        "comma",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-comma-02",
+      "input": "bien joué tout le monde",
+      "expected": "Bien joué, tout le monde",
+      "tags": [
+        "comma",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-comma-03",
+      "input": "non ce n'est pas ça",
+      "expected": "Non, ce n'est pas ça",
+      "tags": [
+        "comma",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-comma-04",
+      "input": "d'accord je regarde ça",
+      "expected": "D'accord, je regarde ça",
+      "tags": [
+        "comma",
+        "casing",
+        "apostrophe"
+      ]
+    },
+    {
+      "id": "fr-space-01",
+      "input": "bonjour  à tous",
+      "expected": "Bonjour à tous",
+      "tags": [
+        "spacing",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-space-02",
+      "input": "je regarde ça ,puis je reviens",
+      "expected": "Je regarde ça, puis je reviens",
+      "tags": [
+        "spacing",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-space-03",
+      "input": "le fichier est là .",
+      "expected": "Le fichier est là.",
+      "tags": [
+        "spacing",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-space-04",
+      "input": "on a fini le projet.on peut livrer",
+      "expected": "On a fini le projet. On peut livrer",
+      "tags": [
+        "spacing",
+        "casing",
+        "run-on"
+      ]
+    },
+    {
+      "id": "fr-typo-01",
+      "input": "je t'envoei le lien",
+      "expected": "Je t'envoie le lien",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-typo-02",
+      "input": "il faut corriger le documnet",
+      "expected": "Il faut corriger le document",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-typo-03",
+      "input": "c'est vriament bien",
+      "expected": "C'est vraiment bien",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-typo-04",
+      "input": "on commence la semaine prochiane",
+      "expected": "On commence la semaine prochaine",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-typo-05",
+      "input": "tu peux m'envoyer le lein ?",
+      "expected": "Tu peux m'envoyer le lien ?",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-typo-06",
+      "input": "je vais verifer les chiffres",
+      "expected": "Je vais vérifier les chiffres",
+      "tags": [
+        "spelling",
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-typo-07",
+      "input": "la runion commence bientôt",
+      "expected": "La réunion commence bientôt",
+      "tags": [
+        "spelling",
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-typo-08",
+      "input": "merci pour ton aide precieuse",
+      "expected": "Merci pour ton aide précieuse",
+      "tags": [
+        "spelling",
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-gram-01",
+      "input": "ils mange trop vite",
+      "expected": "Ils mangent trop vite",
+      "tags": [
+        "grammar",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-gram-02",
+      "input": "tu a raison",
+      "expected": "Tu as raison",
+      "tags": [
+        "grammar",
+        "casing",
+        "grammar-group"
+      ]
+    },
+    {
+      "id": "fr-gram-03",
+      "input": "les fichier sont prêts",
+      "expected": "Les fichiers sont prêts",
+      "tags": [
+        "grammar",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-gram-04",
+      "input": "nous avons fini les tache",
+      "expected": "Nous avons fini les tâches",
+      "tags": [
+        "grammar",
+        "accents",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-gram-05",
+      "input": "elle sont déjà parties",
+      "expected": "Elles sont déjà parties",
+      "tags": [
+        "grammar",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-gram-06",
+      "input": "je suis aller au bureau",
+      "expected": "Je suis allé au bureau",
+      "tags": [
+        "grammar",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-prot-01",
+      "input": "le lein est https://exemple.fr/DOCS",
+      "expected": "Le lien est https://exemple.fr/DOCS",
+      "tags": [
+        "spelling",
+        "url",
+        "protected",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-prot-02",
+      "input": "j'ai demandé à @sarah hier",
+      "expected": "J'ai demandé à @sarah hier",
+      "tags": [
+        "negative",
+        "mention",
+        "protected"
+      ]
+    },
+    {
+      "id": "fr-prot-03",
+      "input": "écris à marie@exemple.fr stp",
+      "expected": "Écris à marie@exemple.fr stp",
+      "tags": [
+        "email",
+        "protected",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-prot-04",
+      "input": "on utilise pnpm ici",
+      "expected": "On utilise pnpm ici",
+      "tags": [
+        "product-names",
+        "protected",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-prot-05",
+      "input": "regarde le fichier `Config.YAML` stp",
+      "expected": "Regarde le fichier `Config.YAML` stp",
+      "tags": [
+        "code",
+        "protected",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-prot-06",
+      "input": "c'est prêt 🎉 je deploie",
+      "expected": "C'est prêt 🎉 je déploie",
+      "tags": [
+        "accents",
+        "emoji",
+        "protected",
+        "casing"
+      ]
+    },
+    {
+      "id": "fr-multi-01",
+      "input": "bonjour marie\n\nmerci pour le retour. je corrige les deux points et je te renvoie le document demain matin.\n\nbonne journee",
+      "expected": "Bonjour Marie\n\nMerci pour le retour. Je corrige les deux points et je te renvoie le document demain matin.\n\nBonne journée",
+      "tags": [
+        "multiline",
+        "casing",
+        "accents",
+        "long"
+      ]
+    },
+    {
+      "id": "fr-multi-02",
+      "input": "le deploiement est passe\nil reste a verifier les logs",
+      "expected": "Le déploiement est passé\nIl reste à vérifier les logs",
+      "tags": [
+        "multiline",
+        "casing",
+        "accents"
+      ]
+    }
+  ]
+}

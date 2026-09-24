@@ -1,0 +1,520 @@
+{
+  "policy": "De verwachte tekst corrigeert alleen de spelling, de grammatica (een woord in de vorm die de zin vraagt, bijvoorbeeld een werkwoordsuitgang of een meervoud), de leestekens, de hoofdletters en de spaties. Waar de taal meer dan één vorm toelaat, staat de andere in alternatives en telt als goed. Een ontbrekende punt aan het eind van een bericht is geen fout en wordt nooit toegevoegd, want dat is precies de overcorrectie die deze app wil vermijden. Beschermde delen (URL's, e-mailadressen, @namen, #kanalen, code tussen backticks, emoji, productnamen met kleine letter) blijven zoals ze zijn.",
+  "cases": [
+    {
+      "id": "nl-neg-01",
+      "input": "Ik heb de factuur vanochtend doorgestuurd.",
+      "expected": "Ik heb de factuur vanochtend doorgestuurd.",
+      "tags": [
+        "negative"
+      ]
+    },
+    {
+      "id": "nl-neg-02",
+      "input": "Schikt dinsdag jou?",
+      "expected": "Schikt dinsdag jou?",
+      "tags": [
+        "negative"
+      ]
+    },
+    {
+      "id": "nl-neg-03",
+      "input": "Prima",
+      "expected": "Prima",
+      "tags": [
+        "negative",
+        "fragment"
+      ]
+    },
+    {
+      "id": "nl-neg-04",
+      "input": "Bedankt voor de snelle reactie.",
+      "expected": "Bedankt voor de snelle reactie.",
+      "tags": [
+        "negative"
+      ]
+    },
+    {
+      "id": "nl-neg-05",
+      "input": "Ik stuur je het document voor de middag.",
+      "expected": "Ik stuur je het document voor de middag.",
+      "tags": [
+        "negative"
+      ]
+    },
+    {
+      "id": "nl-neg-06",
+      "input": "We zien elkaar morgen op kantoor.",
+      "expected": "We zien elkaar morgen op kantoor.",
+      "tags": [
+        "negative"
+      ]
+    },
+    {
+      "id": "nl-neg-07",
+      "input": "De link staat op https://voorbeeld.nl/docs",
+      "expected": "De link staat op https://voorbeeld.nl/docs",
+      "tags": [
+        "negative",
+        "url",
+        "protected"
+      ]
+    },
+    {
+      "id": "nl-neg-08",
+      "input": "Ik heb het al aan @sarah gevraagd",
+      "expected": "Ik heb het al aan @sarah gevraagd",
+      "tags": [
+        "negative",
+        "mention",
+        "protected"
+      ]
+    },
+    {
+      "id": "nl-neg-09",
+      "input": "Kijk naar `config.yaml` voor je uitrolt",
+      "expected": "Kijk naar `config.yaml` voor je uitrolt",
+      "tags": [
+        "negative",
+        "code",
+        "protected"
+      ]
+    },
+    {
+      "id": "nl-neg-10",
+      "input": "Het staat live 🎉",
+      "expected": "Het staat live 🎉",
+      "tags": [
+        "negative",
+        "emoji",
+        "protected"
+      ]
+    },
+    {
+      "id": "nl-neg-11",
+      "input": "Kun je de PR nakijken als je even tijd hebt?",
+      "expected": "Kun je de PR nakijken als je even tijd hebt?",
+      "tags": [
+        "negative",
+        "acronyms"
+      ]
+    },
+    {
+      "id": "nl-neg-12",
+      "input": "Ontvangen, bedankt.",
+      "expected": "Ontvangen, bedankt.",
+      "tags": [
+        "negative"
+      ]
+    },
+    {
+      "id": "nl-caps-01",
+      "input": "hallo allemaal",
+      "expected": "Hallo allemaal",
+      "tags": [
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-caps-02",
+      "input": "ik werk bij google sinds maart",
+      "expected": "Ik werk bij Google sinds maart",
+      "tags": [
+        "casing",
+        "proper-nouns"
+      ]
+    },
+    {
+      "id": "nl-caps-03",
+      "input": "hij was vorige week in amsterdam",
+      "expected": "Hij was vorige week in Amsterdam",
+      "tags": [
+        "casing",
+        "proper-nouns"
+      ]
+    },
+    {
+      "id": "nl-caps-04",
+      "input": "marie heeft het rapport gestuurd",
+      "expected": "Marie heeft het rapport gestuurd",
+      "tags": [
+        "casing",
+        "proper-nouns"
+      ]
+    },
+    {
+      "id": "nl-caps-05",
+      "input": "we gebruiken slack daarvoor",
+      "expected": "We gebruiken Slack daarvoor",
+      "tags": [
+        "casing",
+        "proper-nouns"
+      ]
+    },
+    {
+      "id": "nl-caps-06",
+      "input": "we spreken elkaar maandag",
+      "expected": "We spreken elkaar maandag",
+      "tags": [
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-caps-07",
+      "input": "volgende week ga ik naar rotterdam",
+      "expected": "Volgende week ga ik naar Rotterdam",
+      "tags": [
+        "casing",
+        "proper-nouns"
+      ]
+    },
+    {
+      "id": "nl-caps-08",
+      "input": "de nieuwe versie staat op github",
+      "expected": "De nieuwe versie staat op GitHub",
+      "tags": [
+        "casing",
+        "proper-nouns"
+      ]
+    },
+    {
+      "id": "nl-apo-01",
+      "input": "s morgens is het rustiger",
+      "expected": "'s Morgens is het rustiger",
+      "tags": [
+        "apostrophe",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-apo-02",
+      "input": "de foto s staan in de map",
+      "expected": "De foto's staan in de map",
+      "tags": [
+        "apostrophe",
+        "casing",
+        "spacing"
+      ]
+    },
+    {
+      "id": "nl-apo-03",
+      "input": "dat is jans idee",
+      "expected": "Dat is Jans idee",
+      "tags": [
+        "casing",
+        "proper-nouns"
+      ]
+    },
+    {
+      "id": "nl-apo-04",
+      "input": "de auto s zijn geleverd",
+      "expected": "De auto's zijn geleverd",
+      "tags": [
+        "apostrophe",
+        "casing",
+        "spacing"
+      ]
+    },
+    {
+      "id": "nl-comma-01",
+      "input": "als je kunt laat het weten",
+      "expected": "Als je kunt, laat het weten",
+      "tags": [
+        "comma",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-comma-02",
+      "input": "goed gedaan iedereen",
+      "expected": "Goed gedaan, iedereen",
+      "tags": [
+        "comma",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-comma-03",
+      "input": "nee dat bedoel ik niet",
+      "expected": "Nee, dat bedoel ik niet",
+      "tags": [
+        "comma",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-comma-04",
+      "input": "prima ik kijk er nu naar",
+      "expected": "Prima, ik kijk er nu naar",
+      "tags": [
+        "comma",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-space-01",
+      "input": "hallo  allemaal",
+      "expected": "Hallo allemaal",
+      "tags": [
+        "spacing",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-space-02",
+      "input": "ik kijk er nu naar ,daarna laat ik het weten",
+      "expected": "Ik kijk er nu naar, daarna laat ik het weten",
+      "tags": [
+        "spacing",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-space-03",
+      "input": "het bestand staat daar .",
+      "expected": "Het bestand staat daar.",
+      "tags": [
+        "spacing",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-space-04",
+      "input": "we zijn klaar.we kunnen uitrollen",
+      "expected": "We zijn klaar. We kunnen uitrollen",
+      "tags": [
+        "spacing",
+        "casing",
+        "run-on"
+      ]
+    },
+    {
+      "id": "nl-typo-01",
+      "input": "ik stuur je de lnik",
+      "expected": "Ik stuur je de link",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-typo-02",
+      "input": "we moeten het documnet aanpassen",
+      "expected": "We moeten het document aanpassen",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-typo-03",
+      "input": "dat is heel goed gedaen",
+      "expected": "Dat is heel goed gedaan",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-typo-04",
+      "input": "we beginnen volgende wekk",
+      "expected": "We beginnen volgende week",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-typo-05",
+      "input": "stuur je me de lnik?",
+      "expected": "Stuur je me de link?",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-typo-06",
+      "input": "ik controleer de cijfres morgen",
+      "expected": "Ik controleer de cijfers morgen",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-typo-07",
+      "input": "de vergaderng begint zo",
+      "expected": "De vergadering begint zo",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-typo-08",
+      "input": "bedankt voor je snelle hulpp",
+      "expected": "Bedankt voor je snelle hulp",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-gram-01",
+      "input": "zij loop elke dag",
+      "expected": "Zij lopen elke dag",
+      "tags": [
+        "grammar",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-gram-02",
+      "input": "jij heb gelijk",
+      "expected": "Jij hebt gelijk",
+      "tags": [
+        "grammar",
+        "casing",
+        "grammar-group"
+      ]
+    },
+    {
+      "id": "nl-gram-03",
+      "input": "de bestand zijn klaar",
+      "expected": "De bestanden zijn klaar",
+      "tags": [
+        "grammar",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-gram-04",
+      "input": "wij is er bijna",
+      "expected": "Wij zijn er bijna",
+      "tags": [
+        "grammar",
+        "casing",
+        "grammar-group"
+      ]
+    },
+    {
+      "id": "nl-gram-05",
+      "input": "het nieuwe versie staat online",
+      "expected": "De nieuwe versie staat online",
+      "tags": [
+        "grammar",
+        "casing",
+        "grammar-group"
+      ]
+    },
+    {
+      "id": "nl-gram-06",
+      "input": "hij heb het al gestuurd",
+      "expected": "Hij heeft het al gestuurd",
+      "tags": [
+        "grammar",
+        "casing",
+        "grammar-group"
+      ]
+    },
+    {
+      "id": "nl-prot-01",
+      "input": "de lnik is https://voorbeeld.nl/DOCS",
+      "expected": "De link is https://voorbeeld.nl/DOCS",
+      "tags": [
+        "spelling",
+        "url",
+        "protected",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-prot-02",
+      "input": "ik heb het gisteren aan @sarah gevraagd",
+      "expected": "Ik heb het gisteren aan @sarah gevraagd",
+      "tags": [
+        "negative",
+        "mention",
+        "protected"
+      ]
+    },
+    {
+      "id": "nl-prot-03",
+      "input": "mail even naar marie@voorbeeld.nl",
+      "expected": "Mail even naar marie@voorbeeld.nl",
+      "tags": [
+        "email",
+        "protected",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-prot-04",
+      "input": "wij gebruiken pnpm hier",
+      "expected": "Wij gebruiken pnpm hier",
+      "tags": [
+        "product-names",
+        "protected",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-prot-05",
+      "input": "kijk naar het bestand `Config.YAML`",
+      "expected": "Kijk naar het bestand `Config.YAML`",
+      "tags": [
+        "code",
+        "protected",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-prot-06",
+      "input": "het is klaar 🎉 ik rol het uit",
+      "expected": "Het is klaar 🎉 ik rol het uit",
+      "tags": [
+        "negative",
+        "emoji",
+        "protected"
+      ]
+    },
+    {
+      "id": "nl-punc-01",
+      "input": "echt?!",
+      "expected": "Echt?",
+      "tags": [
+        "punctuation",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-punc-02",
+      "input": "wat een goed idee !",
+      "expected": "Wat een goed idee!",
+      "tags": [
+        "spacing",
+        "casing"
+      ]
+    },
+    {
+      "id": "nl-multi-01",
+      "input": "hallo marie\n\nbedankt voor je reactie. ik pas de twee punten aan en stuur het document morgenochtend terug.\n\nfijne dag",
+      "expected": "Hallo Marie\n\nBedankt voor je reactie. Ik pas de twee punten aan en stuur het document morgenochtend terug.\n\nFijne dag",
+      "tags": [
+        "multiline",
+        "casing",
+        "long"
+      ]
+    },
+    {
+      "id": "nl-multi-02",
+      "input": "de uitrol is goed gegaan\nalleen de logs moeten nog nagekeken worden",
+      "expected": "De uitrol is goed gegaan\nAlleen de logs moeten nog nagekeken worden",
+      "tags": [
+        "multiline",
+        "casing"
+      ]
+    }
+  ]
+}

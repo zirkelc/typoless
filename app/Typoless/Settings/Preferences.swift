@@ -237,6 +237,26 @@ final class Preferences {
         didSet { write(localModel.rawValue, DefaultsKey.localModel) }
     }
 
+    /**
+     The model a language gets when it names none of its own.
+
+     Here rather than only on the model that owns the corrector, because the
+     settings window has to answer the same question: a language row showing
+     "Default model" still has to say which model that is before it can say
+     whether it is the right one.
+     */
+    var defaultModel: ModelChoice {
+        switch backend {
+        case .appleOnDevice: return .appleOnDevice
+        case .local: return .local(localModel)
+        }
+    }
+
+    /** What corrects this language today, with the per-language choice applied. */
+    func model(for language: CorrectionLanguage) -> ModelChoice {
+        languageSettings[language]?.model ?? defaultModel
+    }
+
     // MARK: Apps
 
     /** Apps Typoless will not touch, by bundle identifier. Always applies. */

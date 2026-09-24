@@ -75,7 +75,9 @@ struct EvalMain {
                         masks: masks,
                         appliesDeadline: options.appliesDeadline,
                         disabledRules: options.disabledRules,
-                        tellsModel: tells
+                        tellsModel: tells,
+                        /** Every language in the run counts as added, and nothing else does. */
+                        detector: LanguageDetector(enabled: options.languages)
                     )
 
                     let maskLabel = masks ? "masked" : "unmasked"

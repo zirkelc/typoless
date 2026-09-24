@@ -32,6 +32,7 @@ struct LanguageSettingsView: View {
                         language: language,
                         isSelected: selection == language,
                         model: modelBinding(for: language),
+                        inUse: preferences.model(for: language),
                         onSelect: { selection = language }
                     )
                 }
@@ -111,11 +112,15 @@ private struct LanguageRow: View {
     let language: CorrectionLanguage
     let isSelected: Bool
     @Binding var model: ModelChoice?
+    /** The model this language actually uses, with "Default model" resolved. */
+    let inUse: ModelChoice
     let onSelect: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
             Text(language.displayName)
+
+            advice
 
             Spacer()
 
@@ -141,6 +146,35 @@ private struct LanguageRow: View {
         .background(isSelected ? Color.accentColor.opacity(0.15) : .clear)
         .contentShape(Rectangle())
         .onTapGesture(perform: onSelect)
+    }
+
+    /**
+     Whether this language is being corrected by the model that measured best
+     for it.
+
+     A mark rather than a sentence, because it is true of most rows most of the
+     time and a row of advice nobody needs is a row that gets skimmed. The
+     sentence is in the tooltip, where it is read by the person who wondered
+     what the mark meant.
+
+     Which model is best is a measured fact per language, not a global one:
+     Apple's model wins English, German, French and Dutch, and Gemma wins
+     Spanish, Italian and Portuguese by between 13 and 25 points.
+     */
+    @ViewBuilder private var advice: some View {
+        let best = language.bestModel
+
+        if inUse == best.choice {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+                .help("\(best.choice.displayName) measured best for \(language.displayName), and is what this language uses.")
+                .accessibilityLabel("Best model for \(language.displayName)")
+        } else {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.yellow)
+                .help("\(best.choice.displayName) measured \(best.margin) points better for \(language.displayName) than what this language uses.")
+                .accessibilityLabel("A better model is available for \(language.displayName)")
+        }
     }
 }
 

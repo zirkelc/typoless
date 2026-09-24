@@ -360,7 +360,24 @@ enum EditGuardrail {
          like a typo or like a word put into another form of itself.
          */
         if foldedOriginal.lowercased() != foldedReplacement.lowercased() {
-            guard let letterKinds = letterChanges(from: original, to: replacement, language: language) else {
+            var letters = letterChanges(from: original, to: replacement, language: language)
+
+            /**
+             A mark that joins two words leaves a different number of them on
+             each side, and the word-by-word comparison refuses that by design:
+             the matching count is what stops a model adding a word or dropping
+             one. Where the count differs *because* a mark changed, the two are
+             compared with the marks and the spacing taken out, so `l idee` and
+             `L'idée` are one word each and the only question left is the
+             accent. French cannot write an apostrophe without joining words,
+             so without this the app could not fix one at all in a word that
+             also wanted an accent.
+             */
+            if letters == nil, onlyPunctuation(original) != onlyPunctuation(replacement) {
+                letters = letterChanges(from: strippedOriginal, to: strippedReplacement, language: language)
+            }
+
+            guard let letterKinds = letters else {
                 return nil
             }
 
@@ -651,6 +668,23 @@ enum EditGuardrail {
          model's call from context, and the same risk the guardrail already
          takes with "now" to "not". Only the swap, with nothing else changed.
          */
+        /**
+         An accent put back on a word that is already a word.
+
+         Every other test here treats a real word turning into another real word
+         as a word swap, which is what protects "is" from becoming "has". In the
+         languages that use accents, the commonest mistake of all has exactly
+         that shape: "a" and "à", "ou" and "où", "la" and "là", "e" and "é" are
+         each two real words that differ by one mark. Strip the marks and they
+         are the same letters in the same order, which no word swap ever is.
+
+         The result still has to be a word, so nothing invents an accent that
+         the language does not use on that word.
+         */
+        if let language, isAccentChange(from: before, to: after), WordList.contains(String(withoutPunctuation(after)), in: language) {
+            return true
+        }
+
         guard let firstBefore = before.first?.lowercased(), let firstAfter = after.first?.lowercased() else {
             return false
         }
@@ -691,6 +725,25 @@ enum EditGuardrail {
         let distance = editDistance(lowercasedBefore, after.lowercased())
 
         return distance <= maximumSpellingDistance && distance < lowercasedBefore.count
+    }
+
+    /**
+     Whether the two words are the same letters and differ only in their marks.
+
+     Compared without case as well, since the word at the start of a sentence
+     arrives capitalised and the accent is the thing being asked about.
+     */
+    private static func isAccentChange(from before: String, to after: String) -> Bool {
+        let word = String(withoutPunctuation(before))
+        let fix = String(withoutPunctuation(after))
+
+        guard !word.isEmpty, word.lowercased() != fix.lowercased() else { return false }
+
+        let folded = { (text: String) in
+            text.folding(options: [.diacriticInsensitive], locale: Locale(identifier: "en_US")).lowercased()
+        }
+
+        return folded(word) == folded(fix)
     }
 
     /** Whether the only change is the first two letters trading places. */

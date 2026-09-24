@@ -30,7 +30,17 @@ struct EvalPipeline: Sendable {
     /** Whether the prompt names the rules that are off, which is the thing under test. */
     var tellsModel = false
 
-    let detector = LanguageDetector()
+    /**
+     The languages this run treats as added, which is what the detector answers
+     with.
+
+     Not the default, which is English and German. A French dataset run against
+     the default was skipped chunk by chunk as "a language the user has not
+     added", and the table said 0% recall in 0.00 seconds for every case: a
+     table of zeros that reads like a terrible model rather than a run that
+     never happened.
+     */
+    let detector: LanguageDetector
 
     struct Outcome: Sendable {
         var text: String

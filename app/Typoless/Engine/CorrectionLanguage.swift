@@ -43,11 +43,52 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
         }
     }
 
-    /** Whether the wording below has been scored against a dataset. */
+    /**
+     Whether the wording below has been *swept*, which is more than scored.
+
+     Every language has a dataset now and every one has been measured against
+     all three models. Only English and German have had their wording itself put
+     through candidate after candidate, which is what moved them most, so only
+     those two claim it.
+     */
     var isTuned: Bool {
         switch self {
         case .english, .german: return true
         case .french, .spanish, .italian, .dutch, .portuguese: return false
+        }
+    }
+
+    /**
+     The model that measured best for this language, and by how much.
+
+     Measured over this language's dataset with the guardrail on, which is how
+     the app runs, comparing Apple's on-device model against both downloadable
+     ones. `margin` is the points of exact match over the next best model, so 0
+     means nothing else came close enough to matter.
+
+     Exact match rather than fixes found, and never against a model that alters
+     more text that was already right. Gemma finds more in every language it was
+     asked about, and in four of the seven it pays for that with text nobody
+     asked it to touch: in English it produced 93 unrequested changes against
+     Apple's 27 and left 19 of 29 correct messages alone where Apple left 28.
+     More fixes with more damage is not better.
+     */
+    var bestModel: (choice: ModelChoice, margin: Int) {
+        switch self {
+        /** Apple 80% exact, Gemma 43%, Qwen 41%. */
+        case .english: return (.appleOnDevice, 37)
+        /** Apple 72%, Gemma 68%, Qwen 37%. */
+        case .german: return (.appleOnDevice, 4)
+        /** Apple 71%, Gemma 66%, Qwen 31%. Gemma finds more and breaks more. */
+        case .french: return (.appleOnDevice, 5)
+        /** Gemma 73%, Apple 53%, Qwen 39%, and Gemma left every correct text alone. */
+        case .spanish: return (.local(.gemma4_e4b), 20)
+        /** Gemma 81%, Apple 56%, Qwen 32%. The widest gap of the seven. */
+        case .italian: return (.local(.gemma4_e4b), 25)
+        /** Apple 77%, Gemma 62%, Qwen 25%. */
+        case .dutch: return (.appleOnDevice, 15)
+        /** Gemma 66%, Apple 53%, Qwen 28%. */
+        case .portuguese: return (.local(.gemma4_e4b), 13)
         }
     }
 
@@ -100,6 +141,7 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
             return [
                 RuleExample(rule: .typos, before: "le rendez-vus", after: "le rendez-vous"),
                 RuleExample(rule: .grammar, before: "ils mange", after: "ils mangent"),
+                RuleExample(rule: .nounCapitalisation, before: "je travaille chez google", after: "je travaille chez Google"),
                 RuleExample(rule: .capitalisation, before: "bonjour à tous", after: "Bonjour à tous"),
                 RuleExample(rule: .apostrophes, before: "j ai compris", after: "j'ai compris"),
                 RuleExample(rule: .commas, before: "si tu peux dis-moi", after: "si tu peux, dis-moi"),
@@ -111,6 +153,7 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
             return [
                 RuleExample(rule: .typos, before: "la reunon", after: "la reunión"),
                 RuleExample(rule: .grammar, before: "ellos come", after: "ellos comen"),
+                RuleExample(rule: .nounCapitalisation, before: "trabajo en google", after: "trabajo en Google"),
                 RuleExample(rule: .capitalisation, before: "hola a todos", after: "Hola a todos"),
                 RuleExample(rule: .commas, before: "si puedes avísame", after: "si puedes, avísame"),
                 RuleExample(rule: .sentenceEndings, before: "hasta mañana", after: "hasta mañana."),
@@ -121,6 +164,7 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
             return [
                 RuleExample(rule: .typos, before: "la riunone", after: "la riunione"),
                 RuleExample(rule: .grammar, before: "loro mangia", after: "loro mangiano"),
+                RuleExample(rule: .nounCapitalisation, before: "lavoro in google", after: "lavoro in Google"),
                 RuleExample(rule: .capitalisation, before: "ciao a tutti", after: "Ciao a tutti"),
                 RuleExample(rule: .apostrophes, before: "l idea", after: "l'idea"),
                 RuleExample(rule: .commas, before: "se puoi fammi sapere", after: "se puoi, fammi sapere"),
@@ -132,6 +176,7 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
             return [
                 RuleExample(rule: .typos, before: "de vergaderng", after: "de vergadering"),
                 RuleExample(rule: .grammar, before: "zij loop", after: "zij lopen"),
+                RuleExample(rule: .nounCapitalisation, before: "ik werk bij google", after: "ik werk bij Google"),
                 RuleExample(rule: .capitalisation, before: "hallo allemaal", after: "Hallo allemaal"),
                 RuleExample(rule: .apostrophes, before: "s morgens", after: "'s morgens"),
                 RuleExample(rule: .commas, before: "als je kunt laat het weten", after: "als je kunt, laat het weten"),
@@ -143,6 +188,7 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
             return [
                 RuleExample(rule: .typos, before: "a reunio", after: "a reunião"),
                 RuleExample(rule: .grammar, before: "eles come", after: "eles comem"),
+                RuleExample(rule: .nounCapitalisation, before: "trabalho na google", after: "trabalho na Google"),
                 RuleExample(rule: .capitalisation, before: "olá a todos", after: "Olá a todos"),
                 RuleExample(rule: .commas, before: "se puderes avisa-me", after: "se puderes, avisa-me"),
                 RuleExample(rule: .sentenceEndings, before: "até amanhã", after: "até amanhã."),
@@ -214,8 +260,90 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
                 ["dieser", "diese", "dieses", "diesen", "diesem"],
                 ["welcher", "welche", "welches", "welchen", "welchem"],
             ]
-        case .french, .spanish, .italian, .dutch, .portuguese:
-            return []
+        /**
+         The same shape as the two above, and built from the same test: a word
+         the ending rule cannot reach, because the stem changes too, yet which
+         is the same word agreeing with the sentence around it. Grouped by
+         tense, never by verb.
+
+         Written from the grammar rather than from measurement, since these
+         languages have datasets but no sweep behind them yet. Each group is
+         what a form of "to be", "to have" or an article does, and nothing else
+         has been added on a hunch.
+         */
+        case .french:
+            return [
+                ["suis", "es", "est", "sommes", "êtes", "sont"],
+                ["étais", "était", "étions", "étiez", "étaient"],
+                ["ai", "as", "a", "avons", "avez", "ont"],
+                ["avais", "avait", "avions", "aviez", "avaient"],
+                ["le", "la", "les", "l'"],
+                ["un", "une", "des"],
+                ["ce", "cet", "cette", "ces"],
+                ["mon", "ma", "mes"],
+                ["ton", "ta", "tes"],
+                ["son", "sa", "ses"],
+                ["notre", "nos"],
+                ["votre", "vos"],
+                ["leur", "leurs"],
+            ]
+        case .spanish:
+            return [
+                ["soy", "eres", "es", "somos", "sois", "son"],
+                ["era", "eras", "éramos", "erais", "eran"],
+                ["estoy", "estás", "está", "estamos", "estáis", "están"],
+                ["he", "has", "ha", "hemos", "habéis", "han"],
+                ["el", "la", "los", "las"],
+                ["un", "una", "unos", "unas"],
+                ["este", "esta", "estos", "estas"],
+                ["ese", "esa", "esos", "esas"],
+                ["mi", "mis"],
+                ["tu", "tus"],
+                ["su", "sus"],
+                ["nuestro", "nuestra", "nuestros", "nuestras"],
+            ]
+        case .italian:
+            return [
+                ["sono", "sei", "è", "siamo", "siete"],
+                ["ero", "eri", "era", "eravamo", "eravate", "erano"],
+                ["ho", "hai", "ha", "abbiamo", "avete", "hanno"],
+                ["il", "lo", "la", "i", "gli", "le", "l'"],
+                ["un", "uno", "una", "un'"],
+                ["questo", "questa", "questi", "queste"],
+                ["quello", "quella", "quelli", "quelle"],
+                ["mio", "mia", "miei", "mie"],
+                ["tuo", "tua", "tuoi", "tue"],
+                ["suo", "sua", "suoi", "sue"],
+                ["del", "della", "dei", "delle", "dello", "degli"],
+            ]
+        case .dutch:
+            return [
+                ["ben", "bent", "is", "zijn"],
+                ["was", "waren"],
+                ["heb", "hebt", "heeft", "hebben"],
+                ["had", "hadden"],
+                ["de", "het"],
+                ["een", "één"],
+                ["deze", "dit", "die", "dat"],
+                ["mijn", "mijne"],
+                ["jouw", "je"],
+                ["ons", "onze"],
+            ]
+        case .portuguese:
+            return [
+                ["sou", "és", "é", "somos", "sois", "são"],
+                ["era", "eras", "éramos", "éreis", "eram"],
+                ["estou", "estás", "está", "estamos", "estais", "estão"],
+                ["tenho", "tens", "tem", "temos", "tendes", "têm"],
+                ["o", "a", "os", "as"],
+                ["um", "uma", "uns", "umas"],
+                ["este", "esta", "estes", "estas"],
+                ["esse", "essa", "esses", "essas"],
+                ["meu", "minha", "meus", "minhas"],
+                ["teu", "tua", "teus", "tuas"],
+                ["seu", "sua", "seus", "suas"],
+                ["do", "da", "dos", "das"],
+            ]
         }
     }
 

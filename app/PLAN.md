@@ -218,6 +218,68 @@ beta as well as any stable release that follows it. The app decides in
 `UpdateController`, the feed in `release.sh`, and both read the same string, so
 1.0 leaves the beta channel behind without anyone editing either.
 
+### Seven languages
+
+Five datasets were added at once, about 60 cases each: French, Spanish, Italian,
+Dutch and European Portuguese. 534 expected answers are reachable across all
+seven, and `verify-dataset.sh` now reads every file in the folder rather than a
+hardcoded English and German, so a new language is checked the moment its file
+lands.
+
+**Three guardrail gaps, each found by a case the verifier refused.**
+
+- *Names and places were unreachable in five languages.* Only English and German
+  carried the mid-sentence capital rule, so `je travaille chez google` could
+  never become `Google`. Every language has it now.
+- *An accent on a word that is already a word was refused.* `a` to `à`, `ou` to
+  `où`, `la` to `là`: two real words one mark apart, which every test read as a
+  word swap, the thing that keeps `is` from becoming `has`. Strip the marks and
+  they are the same letters in the same order, which no word swap ever is. The
+  result still has to be in the dictionary.
+- *An apostrophe that joins two words* leaves a different number of words on
+  each side, and that count is what stops a model adding or dropping one. Where
+  the count differs because a mark changed, the two are compared with marks and
+  spacing removed, so `l idee` and `L'idée` are one word each. Without it French
+  could not fix an apostrophe in a word that also wanted an accent.
+
+English and German did not move: 80%/90% and 72%/69%, the same run as before.
+
+**Grammar groups** for the five are written from the grammar rather than from a
+sweep: the forms of "to be", "to have" and the articles, grouped by tense.
+
+**Which model is best is a per-language fact.** Guardrail on, exact match:
+
+| language | Apple | Gemma 4 E4B | Qwen3.5 2B | best |
+|---|---|---|---|---|
+| English | 80% | 43% | 41% | Apple |
+| German | 72% | 68% | 37% | Apple |
+| French | 71% | 66% | 31% | Apple |
+| Spanish | 53% | 73% | 39% | Gemma |
+| Italian | 56% | 81% | 32% | Gemma |
+| Dutch | 77% | 62% | 25% | Apple |
+| Portuguese | 53% | 66% | 28% | Gemma |
+
+Gemma finds more fixes in every language, English 92% against Apple's 90%,
+Italian 98% against 61%, and in four of the seven it pays for them: in English it
+made 93 unrequested changes against Apple's 27 and left 19 of 29 correct messages
+alone where Apple left 28. More fixes with more damage is not better, which is
+why the recommendation is exact match and never a model that alters more text
+that was already right. The older note that Gemma leads "by roughly 15 points"
+was about fix recall and does not survive contact with exact match.
+
+Qwen wins nothing, in any language, on any measure.
+
+The Languages page carries the result as a mark next to each language: a green
+check when that language already uses the model that measured best for it, a
+yellow warning when something else did. The sentence is in the tooltip.
+
+**A run that never happened reads exactly like a terrible model.** The first
+sweep of the five reported 0% recall in 0.00 seconds per case. The eval's
+detector was the default one, which enables English and German only, so every
+French line was skipped as a language the user had not added. The pipeline now
+takes the run's languages, and the table has a `skip` column so a silent skip
+cannot be read as a score again.
+
 ### M5 notes
 
 **The guardrail is no longer a setting.** It was "Strict mode" on the
