@@ -29,13 +29,29 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 0) {
             progressBar
 
-            VStack(alignment: .leading, spacing: 20) {
-                header
-                content
-                Spacer(minLength: 0)
+            /**
+             Scrolls only when a page does not fit, which today none of them
+             does.
+
+             The window is one size for every step on purpose, so it cannot move
+             under the pointer between one Continue and the next. The risk that
+             carries is silent: a page that grew past the window, by a longer
+             translation or an eighth language, would simply have its lower part
+             cut off with nothing to say so. Scrolling is what turns that from
+             lost content into content one gesture away, and it costs nothing
+             while everything fits, since the bar only appears when it is needed
+             and the buttons below are outside it.
+             */
+            ScrollView(.vertical) {
+                VStack(alignment: .leading, spacing: 20) {
+                    header
+                    content
+                }
+                .padding(24)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
             }
-            .padding(24)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(maxHeight: .infinity)
 
             Divider()
 
