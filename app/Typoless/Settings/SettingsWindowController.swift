@@ -129,6 +129,19 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
                     }
                 }
             )
+            /**
+             Held against the top of the window, which is what makes adding a
+             row look like adding a row.
+
+             A page grows before the window does: the height is measured during
+             the layout pass and the frame is set at the end of it, so for one
+             pass the page is taller than the window holding it. Without an
+             alignment the overflow is shared between the two ends, so the top
+             of the page rose under the toolbar and the whole thing jumped back
+             down a moment later. Pinned here, the extra row is simply not
+             visible yet, and the window opening below reveals it.
+             */
+            .frame(maxHeight: .infinity, alignment: .top)
 
         let hosting = NSHostingView(rootView: root)
         hosting.layoutSubtreeIfNeeded()
@@ -155,7 +168,14 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
         guard abs(frame.height - window.frame.height) > 0.5 else { return }
 
         frame.origin = NSPoint(x: window.frame.origin.x, y: window.frame.maxY - frame.height)
-        window.setFrame(frame, display: true)
+
+        /**
+         `display: false` leaves the redraw to the cycle that is already
+         running. Asking for it here drew the window twice, once at the new size
+         with the page still laid out for the old one, which is the flash that
+         followed the jump.
+         */
+        window.setFrame(frame, display: false)
     }
 
     /**
