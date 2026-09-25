@@ -1,4 +1,14 @@
-# Typoless
+<div align="center">
+  <img src="design/logo/typoless-icon.png" width="112" alt="" />
+  <h1>Typoless</h1>
+  <p><strong>Fixes your typos. Never rewrites your words.</strong></p>
+  <p>
+    <a href="https://typoless.app">Download</a> ·
+    <a href="https://typoless.app/privacy">Privacy</a> ·
+    <a href="app/PLAN.md">Design notes</a> ·
+    <a href="https://github.com/zirkelc/typoless/issues">Issues</a>
+  </p>
+</div>
 
 A Mac menu bar app that fixes the typos in whatever you are writing, wherever you
 are writing it, and changes nothing else. Double-tap ⌘ in any text field and the
