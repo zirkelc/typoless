@@ -58,44 +58,71 @@ background.setFill()
 NSRect(x: 0, y: 0, width: width, height: height).fill()
 
 /**
- The typeface is asked for by design rather than by name.
+ The site's own serif, loaded from the file rather than from the system.
 
- Fraunces is the site's serif and is not installed on every Mac that might run
- this, so the card uses whatever serif the system has. Naming a font that is
- missing would silently fall back to Helvetica and look like a mistake.
+ Fraunces is what the page and the icon's T are drawn in, and it is not
+ installed on any Mac by default, so the card would otherwise be lettered in
+ something else and look like a different product. It is a variable font: the
+ weight axis and the optical size axis both have to be set, because its default
+ optical size is 9, drawn for captions, and using that at 104 points looks like
+ a mistake nobody can name.
  */
-func serif(_ size: CGFloat, weight: NSFont.Weight = .bold) -> NSFont {
-    let base = NSFont.systemFont(ofSize: size, weight: weight)
-    let descriptor = base.fontDescriptor.withDesign(.serif) ?? base.fontDescriptor
+let fontFile = repository.appending(path: "design/fonts/Fraunces-Variable.ttf")
+let hasFraunces = CTFontManagerRegisterFontsForURL(fontFile as CFURL, .process, nil)
 
-    return NSFont(descriptor: descriptor, size: size) ?? base
+if !hasFraunces {
+    print("warning: could not load \(fontFile.lastPathComponent), falling back to the system serif")
 }
 
-/**
- Two columns: the icon on the left, the words to the right of it, the pair
- centred as one block. Stacked from the middle rather than placed at fixed
- heights, so changing a line of text cannot leave the card lopsided or, as the
- first attempt did, run the title's ascenders through the icon.
- */
+func serif(_ size: CGFloat, weight: CGFloat = 700, opticalSize: CGFloat = 144) -> NSFont {
+    let system = NSFont.systemFont(ofSize: size, weight: weight >= 600 ? .bold : .regular)
+    let fallback = NSFont(
+        descriptor: system.fontDescriptor.withDesign(.serif) ?? system.fontDescriptor,
+        size: size
+    ) ?? system
+
+    guard hasFraunces else { return fallback }
+
+    /** Four-character axis tags, which is how CoreText names a variation. */
+    let weightAxis = 0x7767_6874
+    let opticalAxis = 0x6F70_737A
+
+    let descriptor = NSFontDescriptor(fontAttributes: [
+        .name: "Fraunces",
+        NSFontDescriptor.AttributeName(kCTFontVariationAttribute as String): [
+            weightAxis: weight,
+            opticalAxis: opticalSize,
+        ],
+    ])
+
+    return NSFont(descriptor: descriptor, size: size) ?? fallback
+}
+
 let iconSide: CGFloat = 240
 let left: CGFloat = 96
 let gap: CGFloat = 56
 
+let ink = NSColor(srgbRed: 0.953, green: 0.949, blue: 0.937, alpha: 1)
+let muted = NSColor(srgbRed: 0.639, green: 0.635, blue: 0.659, alpha: 1)
+
 let title = NSAttributedString(
     string: "Typoless",
-    attributes: [
-        .font: serif(104),
-        .foregroundColor: NSColor(srgbRed: 0.953, green: 0.949, blue: 0.937, alpha: 1),
-        .kern: -2,
-    ]
+    attributes: [.font: serif(104), .foregroundColor: ink, .kern: -2]
 )
 
-let tagline = NSAttributedString(
-    string: "Your words. Just spelled right.",
-    attributes: [
-        .font: NSFont.systemFont(ofSize: 36, weight: .regular),
-        .foregroundColor: NSColor(srgbRed: 0.639, green: 0.635, blue: 0.659, alpha: 1),
-    ]
+/**
+ The slogan reads as the page does: the promise in the quiet colour, the part
+ that is the whole point in the amber the app is built around.
+ */
+let tagline = NSMutableAttributedString(
+    string: "Your words. ",
+    attributes: [.font: serif(40, weight: 500, opticalSize: 72), .foregroundColor: muted]
+)
+tagline.append(
+    NSAttributedString(
+        string: "Just spelled right.",
+        attributes: [.font: serif(40, weight: 500, opticalSize: 72), .foregroundColor: amber]
+    )
 )
 
 let footnote = NSAttributedString(

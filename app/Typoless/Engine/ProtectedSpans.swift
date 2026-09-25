@@ -92,10 +92,27 @@ private extension Character {
      presentation only when followed by a variation selector, so the presented
      form is what is asked for.
      */
+    /**
+     Whether this character is an emoji, including the ones that do not look
+     like one.
+
+     Three kinds qualify. A scalar drawn as an emoji by default, `🎉`. A
+     sequence, which covers `❤️` with its variation selector, `👍🏽` with a skin
+     tone, a flag, a family joined by zero-width joiners, and `1️⃣`. And a single
+     scalar that *can* be an emoji but is drawn as text unless asked, which is
+     where this used to let text through: `❤`, `✔`, `☺`, `⚠`, `™`, `©` and `®`
+     are one scalar each, so requiring a sequence left every one of them
+     unprotected while their colourful twins were safe. They are the same
+     characters to whoever typed them.
+
+     ASCII is excluded, and that is the whole reason the sequence test existed:
+     the digits, `#` and `*` are emoji-capable, since they are the bases of
+     keycaps, and protecting every digit in a message would freeze the numbers.
+     */
     var isEmoji: Bool {
         guard let first = unicodeScalars.first else { return false }
 
         return first.properties.isEmojiPresentation
-            || (first.properties.isEmoji && unicodeScalars.count > 1)
+            || (first.properties.isEmoji && (unicodeScalars.count > 1 || !first.isASCII))
     }
 }

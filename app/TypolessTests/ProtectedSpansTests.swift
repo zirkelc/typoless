@@ -72,3 +72,38 @@ struct ProtectedTextStopsInsertionsTests {
         #expect(result == expected)
     }
 }
+
+/**
+ Which characters count as an emoji, asked of the span finder directly.
+
+ The guardrail refuses a dropped symbol for its own reasons, so going through
+ it cannot tell whether a character was hidden from the model, and hiding it is
+ what keeps the model from rewriting the sentence around it.
+ */
+struct EmojiSpansTests {
+    @Test(arguments: ["🎉", "❤️", "❤", "✔", "☺", "⚠", "™", "©", "®", "👍🏽", "🇩🇪", "👨‍👩‍👧", "1️⃣"])
+    func `an emoji is protected, however it was typed`(_ emoji: String) {
+        // Arrange
+        let text = "ship it \(emoji) today"
+
+        // Act
+        let spans = ProtectedSpans.find(in: text)
+
+        // Assert
+        #expect(spans.count == 1)
+        #expect(spans.first.map { String(text[$0]) } == emoji)
+    }
+
+    /** The keycap bases are emoji by property, and freezing every digit would freeze the numbers. */
+    @Test(arguments: ["5", "#", "*", "→", "★", "•", "é"])
+    func `an everyday character is not an emoji`(_ character: String) {
+        // Arrange
+        let text = "ship \(character) today"
+
+        // Act
+        let spans = ProtectedSpans.find(in: text)
+
+        // Assert
+        #expect(spans.isEmpty)
+    }
+}
