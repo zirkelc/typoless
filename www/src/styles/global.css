@@ -172,3 +172,57 @@
   transform: scale(0.88);
   background-color: rgb(255 255 255 / 0.28);
 }
+
+/**
+ * The legal pages are prose rather than layout, so their elements are styled
+ * once here instead of class by class in the markup. Scoped to `.legal`, which
+ * nothing else uses.
+ */
+.legal h2 {
+  margin-top: 2.5rem;
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+}
+
+.legal h2:first-child {
+  margin-top: 0;
+}
+
+.legal h3 {
+  margin-top: 1.75rem;
+  font-weight: 600;
+}
+
+.legal p,
+.legal ul {
+  margin-top: 1rem;
+  color: var(--muted);
+}
+
+.legal ul {
+  padding-left: 1.1rem;
+  list-style: disc;
+}
+
+.legal li {
+  margin-top: 0.5rem;
+}
+
+.legal strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.legal a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.legal address {
+  margin-top: 1rem;
+  color: var(--muted);
+  font-style: normal;
+  line-height: 1.7;
+}
