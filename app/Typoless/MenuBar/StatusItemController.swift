@@ -195,7 +195,17 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         add(to: menu, title: "Settings…", keyEquivalent: ",", action: #selector(showSettings))
-        add(to: menu, title: "Set Up Typoless…", keyEquivalent: "", action: #selector(showOnboarding))
+
+        /**
+         Only while something is still missing, and worded as the fix rather
+         than as a tour. Once both permissions are granted the window has
+         nothing left to do: every choice it makes is also in Settings, so an
+         item that reopens it is a line the user reads past for the life of the
+         app.
+         */
+        if !model.permissions.isReady {
+            add(to: menu, title: "Finish Setup…", keyEquivalent: "", action: #selector(showOnboarding))
+        }
 
         #if DEBUG
         /** In a submenu of its own, so a debug build's menu still reads like the real one. */

@@ -203,6 +203,77 @@ struct TryItPage: View {
     }
 }
 
+/**
+ What happens after a correction lands: it is kept, and it can be taken back.
+
+ Last, and its own step, because it answers the question the page before it
+ raises. Someone who has just watched an app change their text wants to know
+ what it would take to undo that, and the honest answer is a list with their own
+ correction in it rather than a sentence promising one.
+
+ The retention setting is here rather than only in Settings for the same reason:
+ this is the moment the user learns that something is kept at all, so it is the
+ moment to say for how long and to let them change it.
+ */
+struct HistoryPage: View {
+    @Bindable var preferences: Preferences
+    let history: CorrectionHistory
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Keep corrections for")
+
+                Spacer()
+
+                Picker("", selection: $preferences.historyRetention) {
+                    ForEach(HistoryRetention.allCases) { option in
+                        Text(option.displayName).tag(option)
+                    }
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
+
+            Text(preferences.historyRetention.keepsHistory
+                ? "In memory only, never written to disk, and cleared when Typoless quits. Undo covers the last correction; History covers the rest."
+                : "Nothing is kept. Undo still covers the correction you just made, and nothing before it.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Divider()
+
+            if history.entries.isEmpty {
+                Text("No corrections yet. Go back a step and fix one of the samples to see it here.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(history.entries.prefix(2)) { entry in
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(entry.before)
+                                .strikethrough()
+                                .foregroundStyle(.secondary)
+                            Text(entry.after)
+                        }
+                        .font(.callout)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(8)
+                        .background(.quinary, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    }
+                }
+
+                Text("Open History from the menu bar to put any of these back.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
 /** One sample field: what to do, the field itself, and what happened. */
 private struct SampleField: View {
     let model: AppModel

@@ -104,6 +104,7 @@ struct OnboardingView: View {
         case .languages: LanguagesPage(preferences: model.preferences)
         case .triggers: TriggersPage(preferences: model.preferences)
         case .tryIt: TryItPage(model: model)
+        case .history: HistoryPage(preferences: model.preferences, history: model.history)
         }
     }
 
@@ -151,7 +152,7 @@ struct OnboardingView: View {
             guard model.preferences.triggerDescription == nil else { return nil }
             return "Keep at least one way to start a correction."
 
-        case .welcome, .tryIt:
+        case .welcome, .tryIt, .history:
             return nil
         }
     }

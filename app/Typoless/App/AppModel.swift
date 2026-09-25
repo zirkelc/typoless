@@ -470,8 +470,29 @@ final class AppModel {
      button once ran a correction while the menu said "paused".
      */
     func trigger() {
-        guard permissions.isReady, !isPaused else {
-            Log.app.info("Ignored a trigger while paused or not ready")
+        /**
+         A trigger that does nothing has to say so.
+
+         This used to return after a line in the log, so revoking Accessibility
+         turned the app into one that ignores its own shortcut: no overlay, no
+         message, nothing to act on, and nothing naming the permission that had
+         gone. The message goes under the menu bar icon, where the app already
+         says "Nothing to fix.", because the user is looking at the field right
+         now rather than at a notification centre.
+         */
+        guard !isPaused else {
+            engine.report("Typoless is paused.", log: "Ignored a trigger while paused")
+            return
+        }
+
+        guard permissions.isReady else {
+            engine.report(
+                permissions.isAccessibilityTrusted
+                    ? "Typoless cannot correct until its model is ready."
+                    : "Typoless cannot read text until Accessibility is allowed.",
+                log: "Ignored a trigger while a permission was missing"
+            )
+            showOnboarding()
             return
         }
 

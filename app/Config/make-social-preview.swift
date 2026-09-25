@@ -91,7 +91,7 @@ let title = NSAttributedString(
 )
 
 let tagline = NSAttributedString(
-    string: "Fixes your typos. Never rewrites your words.",
+    string: "Your words. Just spelled right.",
     attributes: [
         .font: NSFont.systemFont(ofSize: 36, weight: .regular),
         .foregroundColor: NSColor(srgbRed: 0.639, green: 0.635, blue: 0.659, alpha: 1),
@@ -99,7 +99,7 @@ let tagline = NSAttributedString(
 )
 
 let footnote = NSAttributedString(
-    string: "On-device · macOS · seven languages · open source",
+    string: "On-device · macOS · works offline · open source",
     attributes: [
         .font: NSFont.monospacedSystemFont(ofSize: 24, weight: .regular),
         .foregroundColor: NSColor(srgbRed: 0.435, green: 0.431, blue: 0.459, alpha: 1),

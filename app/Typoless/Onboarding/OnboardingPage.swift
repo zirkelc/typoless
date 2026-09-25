@@ -20,6 +20,7 @@ enum OnboardingPage: Int, CaseIterable, Identifiable {
     case languages
     case triggers
     case tryIt
+    case history
 
     var id: Int { rawValue }
 
@@ -30,6 +31,7 @@ enum OnboardingPage: Int, CaseIterable, Identifiable {
         case .languages: return "Which languages do you write in?"
         case .triggers: return "How to fix your text"
         case .tryIt: return "Try it out"
+        case .history: return "If it gets something wrong"
         }
     }
 
@@ -45,6 +47,8 @@ enum OnboardingPage: Int, CaseIterable, Identifiable {
             return "Keep either one, or both. You can change them later under Settings."
         case .tryIt:
             return "Both fields take the same path Typoless takes in any other app."
+        case .history:
+            return "Every correction can be undone, and the ones you just made are below."
         }
     }
 
