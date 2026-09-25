@@ -113,6 +113,22 @@ enum TextWriter {
             element.setRange(kAXSelectedTextRangeAttribute, to: range)
         }
 
+        /**
+         Both fallbacks below hand the field a plain string, which can only
+         carry what the value told us. Where the field shows more than that, an
+         emoji Slack draws as an image, an attachment, a button, writing the
+         string deletes whatever was not in it, and nothing in the text says so:
+         the value and `kAXNumberOfCharacters` agree with each other and both
+         leave it out.
+
+         Refusing here costs a correction. Not refusing cost a user their emoji
+         and three blank lines in a message they had already written.
+         */
+        if HiddenContent.isLossy(roles: element.descendantRoles()) {
+            Log.app.info("Declined to rewrite a field that shows more than its text")
+            throw TextWriteError.wouldLoseContent
+        }
+
         if element.isSettable(kAXValueAttribute), WriteScope.coversWholeField(range, of: before) {
             guard let spliced = splice(corrected, into: before, at: range) else {
                 throw TextWriteError.ineffective
@@ -329,6 +345,12 @@ enum TextWriteError: Error {
      */
     case wouldFlattenField
 
+    /**
+     The field shows more than its text says, so a plain string would delete the
+     part that was never in it.
+     */
+    case wouldLoseContent
+
     /** The field is no longer focused, and the last tier types rather than addresses. */
     case focusMoved
 
@@ -342,6 +364,12 @@ enum TextWriteError: Error {
             return """
             Typoless left that text alone. This field only accepts being rewritten \
             whole, which would have stripped its formatting to land a small fix.
+            """
+        case .wouldLoseContent:
+            return """
+            Typoless left that text alone. This field holds something its text \
+            does not carry, such as an emoji drawn as an image, and correcting \
+            it here would have deleted that.
             """
         case .focusMoved:
             return "Typoless stopped because that text field is no longer focused."
