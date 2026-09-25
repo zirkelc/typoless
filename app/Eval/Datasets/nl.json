@@ -515,6 +515,16 @@
         "multiline",
         "casing"
       ]
+    },
+    {
+      "id": "nl-emoji-02",
+      "input": "het staat klaar ✔",
+      "expected": "het staat klaar ✔",
+      "tags": [
+        "negative",
+        "emoji",
+        "protected"
+      ]
     }
   ]
 }

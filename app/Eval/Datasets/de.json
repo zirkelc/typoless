@@ -1080,6 +1080,47 @@
         "negative",
         "grammar-group"
       ]
+    },
+    {
+      "id": "de-emoji-03",
+      "input": "danke ❤ fuer die schnelle hilfe",
+      "expected": "Danke ❤ für die schnelle Hilfe",
+      "tags": [
+        "umlaut",
+        "casing",
+        "emoji",
+        "protected"
+      ]
+    },
+    {
+      "id": "de-emoji-04",
+      "input": "Achtung ⚠ das ist wichtig",
+      "expected": "Achtung ⚠ das ist wichtig",
+      "tags": [
+        "negative",
+        "emoji",
+        "protected"
+      ]
+    },
+    {
+      "id": "de-code-01",
+      "input": "sieht gut aus :smile: ich schicke es gleich",
+      "expected": "Sieht gut aus :smile: ich schicke es gleich",
+      "tags": [
+        "casing",
+        "shortcode",
+        "protected"
+      ]
+    },
+    {
+      "id": "de-code-02",
+      "input": "passt so :thumbsup:",
+      "expected": "passt so :thumbsup:",
+      "tags": [
+        "negative",
+        "shortcode",
+        "protected"
+      ]
     }
   ]
 }
