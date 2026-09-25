@@ -3,6 +3,19 @@
     <channel>
         <title>Typoless</title>
         <item>
+            <title>0.1.1-beta</title>
+            <pubDate>Fri, 25 Sep 2026 17:49:53 +0200</pubDate>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:version>77</sparkle:version>
+            <sparkle:shortVersionString>0.1.1-beta</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://typoless.app/releases/Typoless-0.1.1-beta.zip" length="8156423" type="application/octet-stream" sparkle:edSignature="RS+Sh2YURT16CYXTeF2SZhH18PN1Yr0lCkOKTJVfzWRCC2CvZuz/cqoo6cIWNHnGucq5iLze3bwdWmVxUP8tDg=="/>
+            <sparkle:deltas>
+                <enclosure url="https://typoless.app/releases/Typoless77-68.delta" sparkle:deltaFrom="68" length="627130" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="dTj2TNj/ZwkjSYzkmg0cjCAzrSbwi1LBoFTnaVSDJ5e8kkTbHrgr7brLb0eAHqikxaaTL9TeoTDriMJDRW/QCg=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>0.1.0-beta</title>
             <pubDate>Fri, 25 Sep 2026 11:55:49 +0200</pubDate>
             <sparkle:channel>beta</sparkle:channel>

@@ -71,7 +71,13 @@ if ! [[ "$BUILD_NUMBER" =~ ^[0-9]+$ ]]; then
 fi
 
 if [ -f "$RELEASES/appcast.xml" ]; then
-    LATEST=$(grep -o 'sparkle:version="[0-9]*"' "$RELEASES/appcast.xml" | grep -o '[0-9]*' | sort -n | tail -1)
+    # Both spellings: Sparkle's own tool writes the build number as an element,
+    # and an attribute is what older feeds and hand-written ones carry. The
+    # attribute-only version of this line matched nothing in a feed generate_appcast
+    # had written, and since a grep that finds nothing fails a pipeline under
+    # `set -o pipefail`, the whole release stopped here without saying a word.
+    LATEST=$(grep -oE 'sparkle:version="[0-9]+"|<sparkle:version>[0-9]+<' "$RELEASES/appcast.xml" |
+        grep -oE '[0-9]+' | sort -n | tail -1 || true)
     if [ -n "$LATEST" ] && [ "$BUILD_NUMBER" -le "$LATEST" ]; then
         echo "Build $BUILD_NUMBER is not newer than build $LATEST in the appcast, so no one would be offered it."
         echo "Commit first, or set BUILD_NUMBER higher than $LATEST."
