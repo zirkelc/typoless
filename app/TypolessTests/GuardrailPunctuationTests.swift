@@ -24,6 +24,44 @@ struct SymbolsAreContentTests {
             "Das kostet 5 € netto",
             expect: "Das kostet 5 € netto"
         ),
+        /**
+         An emoji written without the mark that asks for its colourful form.
+
+         `❤` and `❤️` are the same heart to whoever typed one, and were two
+         different things here: the second carries a variation selector, so it
+         had two scalars and counted as an emoji, while the first had one and
+         did not. The same went for `✔`, `⚠`, `☺`, `™`, `©` and `®`.
+
+         A model that drops one is refused either way, since a symbol that
+         disappears is not a correction. What the character being an emoji
+         decides is whether it is hidden from the model in the first place, and
+         an unhidden one is what makes a model rewrite the sentence around it
+         and lose the whole chunk, as the first two rows show.
+         */
+        GuardrailCase(
+            "a plain heart is never dropped, even at the cost of the fix beside it",
+            "thanks ❤ that helped",
+            "Thanks that helped",
+            expect: "thanks ❤ that helped"
+        ),
+        GuardrailCase(
+            "a plain warning sign is never dropped",
+            "⚠ dont deploy yet",
+            "Don't deploy yet",
+            expect: "⚠ dont deploy yet"
+        ),
+        GuardrailCase(
+            "corrections beside a plain heart still land",
+            "thanks ❤ that helpd",
+            "Thanks ❤ that helped",
+            expect: "Thanks ❤ that helped"
+        ),
+        GuardrailCase(
+            "corrections beside a trademark sign still land",
+            "we use Typoless™ evry day",
+            "We use Typoless™ every day",
+            expect: "We use Typoless™ every day"
+        ),
     ]
 
     @Test(arguments: cases)
