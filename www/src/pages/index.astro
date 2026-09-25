@@ -138,7 +138,21 @@ const faq = [
           </svg>
         </a>
         <ThemeToggle />
-        <a href="#download" class="rounded-lg bg-ink px-4 py-2 text-sm font-medium text-page">Get Typoless</a>
+        {
+          /**
+           * The button downloads rather than scrolling to the place where the
+           * download is. A visitor who clicks "Get" has already decided, and
+           * sending them to another button to click is a step that asks them to
+           * decide again. It falls back to the section while no release exists.
+           */
+          release.url ? (
+            <a href={release.url} download class="rounded-lg bg-ink px-4 py-2 text-sm font-medium text-page">
+              Download
+            </a>
+          ) : (
+            <a href="#download" class="rounded-lg bg-ink px-4 py-2 text-sm font-medium text-page">Get Typoless</a>
+          )
+        }
       </div>
     </nav>
   </header>
@@ -165,6 +179,7 @@ const faq = [
             release.url ? (
               <a
                 href={release.url}
+                download
                 class="inline-flex items-center gap-2 rounded-xl bg-ink px-5 py-3 font-medium text-page hover:opacity-90"
               >
                 <svg viewBox="0 0 24 24" class="size-4 fill-current" aria-hidden="true">
@@ -430,7 +445,7 @@ const faq = [
         </p>
         {
           release.url ? (
-            <a href={release.url} class="mt-8 inline-flex rounded-xl bg-ink px-5 py-3 font-medium text-page hover:opacity-90">
+            <a href={release.url} download class="mt-8 inline-flex rounded-xl bg-ink px-5 py-3 font-medium text-page hover:opacity-90">
               Download the beta
             </a>
           ) : (
