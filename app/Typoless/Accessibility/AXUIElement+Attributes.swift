@@ -89,6 +89,38 @@ extension AXUIElement {
         return result
     }
 
+    /**
+     The roles of everything under this element, to a small depth.
+
+     Bounded on purpose. This runs between reading a field and writing to it,
+     while the user waits, and a composer in a chat app can hold a thousand
+     elements once the conversation above it is counted. Two levels and a few
+     dozen elements are enough to find an image sitting beside the text, which
+     is what this exists to notice.
+     */
+    func descendantRoles(depth: Int = 2, limit: Int = 64) -> [String] {
+        guard depth >= 0, limit > 0 else { return [] }
+
+        var raw: CFTypeRef?
+        guard
+            AXUIElementCopyAttributeValue(self, kAXChildrenAttribute as CFString, &raw) == .success,
+            let children = raw as? [AXUIElement]
+        else {
+            return []
+        }
+
+        var roles: [String] = []
+
+        for child in children.prefix(limit) {
+            roles.append(child.string(kAXRoleAttribute) ?? "AXUnknown")
+            roles += child.descendantRoles(depth: depth - 1, limit: limit - roles.count)
+
+            if roles.count >= limit { break }
+        }
+
+        return roles
+    }
+
     func isSettable(_ attribute: String) -> Bool {
         var settable = DarwinBoolean(false)
         guard AXUIElementIsAttributeSettable(self, attribute as CFString, &settable) == .success else {
