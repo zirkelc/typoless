@@ -174,6 +174,13 @@ echo "==> Packaging"
 mkdir -p "$RELEASES"
 ditto -c -k --keepParent "$APP" "$RELEASES/Typoless-$VERSION.zip"
 
+# The disk image is what the website offers, so that the app is dragged into
+# Applications rather than left in Downloads. It is built from the same stapled
+# app, notarized on its own, and kept out of the folder the appcast is written
+# from: Sparkle would otherwise offer the image as an update of its own.
+echo "==> Building the disk image"
+Config/make-dmg.sh "$VERSION" "$APP"
+
 # generate_appcast signs every archive in the folder with the key from the
 # keychain and writes the feed, so the signature and the entry cannot disagree.
 echo "==> Writing the appcast"
@@ -194,6 +201,7 @@ upload() {
 }
 
 upload "$PWD/$RELEASES/Typoless-$VERSION.zip" application/zip
+upload "$PWD/build/dmg/Typoless-$VERSION.dmg" application/x-apple-diskimage
 
 # Deltas are small and named for the two builds they join, so sending all of
 # them again costs little and keeps the bucket complete if an earlier
@@ -206,7 +214,7 @@ done
 cp "$RELEASES/appcast.xml" "$WEBSITE/public/appcast.xml"
 
 echo
-echo "Done. $VERSION is in the bucket, and the feed is in www/public/appcast.xml."
+echo "Done. $VERSION is in the bucket as a zip and a dmg, and the feed is in www/public/appcast.xml."
 echo "Nothing is offered to anyone until the site is deployed with that feed:"
 echo "  cd www && pnpm run deploy"
 echo "Keep $RELEASES: Sparkle builds the next release's deltas from the archives in it."
