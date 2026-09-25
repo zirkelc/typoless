@@ -21,7 +21,6 @@ import appcast from '../../public/appcast.xml?raw';
 const release = {
   version: appcast.match(/<sparkle:shortVersionString>([^<]+)</)?.[1],
   url: appcast.match(/<enclosure url="([^"]+)"/)?.[1],
-  megabytes: Math.round(Number(appcast.match(/length="(\d+)"/)?.[1] ?? 0) / 1_000_000),
 };
 
 const highlights = [
@@ -208,7 +207,7 @@ const faq = [
           </a>
         </div>
         <p class="mt-5 font-mono text-xs text-faint">
-          {release.version ? `${release.version} · ${release.megabytes} MB · ` : 'Public beta · '}macOS 26+ · Apple silicon · Works offline
+          {release.version ? `${release.version} · ` : 'Public beta · '}macOS 26+ · Apple silicon · Works offline
         </p>
       </div>
 
