@@ -202,5 +202,5 @@ cp "$RELEASES/appcast.xml" "$WEBSITE/public/appcast.xml"
 echo
 echo "Done. $VERSION is in the bucket, and the feed is in www/public/appcast.xml."
 echo "Nothing is offered to anyone until the site is deployed with that feed:"
-echo "  cd www && pnpm deploy"
+echo "  cd www && pnpm run deploy"
 echo "Keep $RELEASES: Sparkle builds the next release's deltas from the archives in it."

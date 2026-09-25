@@ -196,7 +196,7 @@ The why of each step is in the script or file that does it; this is the list.
    ID, notarizes, staples, zips and writes the signed appcast. It stops if the
    build number is not higher than the newest one in the appcast, because
    Sparkle compares build numbers, not versions.
-3. **Deploy the site** (`cd www && pnpm deploy`). The script has already put
+3. **Deploy the site** (`cd www && pnpm run deploy`). The script has already put
    the zip and any deltas in the R2 bucket `typoless-releases`, which the
    site's Worker serves under `typoless.app/releases/`, and copied the feed to
    `www/public/appcast.xml`. Nothing is offered until the feed is live, so the

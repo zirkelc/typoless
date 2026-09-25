@@ -33,7 +33,8 @@ pnpm install
 pnpm dev        # local server with reload
 pnpm build      # static files in dist/
 pnpm preview    # the built site, served the way Cloudflare serves it
-pnpm deploy     # build and upload; the first time needs `pnpm exec wrangler login`
+pnpm run deploy # build and upload; the first time needs `pnpm exec wrangler login`.
+                # "pnpm deploy" is pnpm's own command and never runs this script.
 pnpm types      # after changing wrangler.jsonc: the Worker's binding types
 ```
 
