@@ -18,9 +18,15 @@
     "binding": "ASSETS",
     "not_found_handling": "404-page",
     "html_handling": "drop-trailing-slash",
-    "run_worker_first": ["/releases/*"],
+    /**
+     * The feed runs through the Worker as well, so an update check can be
+     * counted. It is still served from the static assets; the Worker only
+     * records that it was asked for.
+     */
+    "run_worker_first": ["/releases/*", "/appcast.xml"],
   },
   "r2_buckets": [{ "binding": "RELEASES", "bucket_name": "typoless-releases" }],
+  "analytics_engine_datasets": [{ "binding": "STATS", "dataset": "typoless_downloads" }],
   "routes": [{ "pattern": "typoless.app", "custom_domain": true }],
   "workers_dev": false,
   "env": {
@@ -29,6 +35,7 @@
       "workers_dev": true,
       "routes": [],
       "r2_buckets": [{ "binding": "RELEASES", "bucket_name": "typoless-releases" }],
+      "analytics_engine_datasets": [{ "binding": "STATS", "dataset": "typoless_downloads_preview" }],
     },
   },
 }

@@ -10,6 +10,7 @@
     "deploy:preview": "astro build && wrangler deploy --env preview",
     "check": "astro check && tsc -p worker",
     "types": "wrangler types worker/worker-configuration.d.ts",
+    "stats": "node scripts/stats.ts",
     "astro": "astro",
     "lint": "oxlint",
     "format": "oxfmt",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@types/node": "^26.6.2",
     "oxfmt": "^0.68.0",
     "oxlint": "^1.83.0",
     "typescript": "^6.0.3",
