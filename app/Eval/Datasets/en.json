@@ -1187,6 +1187,62 @@
         "negative",
         "grammar-group"
       ]
+    },
+    {
+      "id": "en-emoji-04",
+      "input": "thanks ❤ that really helpd",
+      "expected": "Thanks ❤ that really helped",
+      "tags": [
+        "spelling",
+        "casing",
+        "emoji",
+        "protected"
+      ]
+    },
+    {
+      "id": "en-emoji-05",
+      "input": "Shipped it ✔",
+      "expected": "Shipped it ✔",
+      "tags": [
+        "negative",
+        "emoji",
+        "protected"
+      ]
+    },
+    {
+      "id": "en-emoji-06",
+      "input": "⚠ dont deploy on friday",
+      "expected": "⚠ Don't deploy on Friday",
+      "tags": [
+        "apostrophe",
+        "casing",
+        "emoji",
+        "protected"
+      ]
+    },
+    {
+      "id": "en-code-01",
+      "input": "we shipped it :tada: nice wrok",
+      "expected": "We shipped it :tada: nice work",
+      "tags": [
+        "spelling",
+        "casing",
+        "shortcode",
+        "protected"
+      ]
+    },
+    {
+      "id": "en-code-02",
+      "input": "lgtm :thumbsup:",
+      "expected": "lgtm :thumbsup:",
+      "tags": [
+        "negative",
+        "shortcode",
+        "protected"
+      ],
+      "alternatives": [
+        "LGTM :thumbsup:"
+      ]
     }
   ]
 }

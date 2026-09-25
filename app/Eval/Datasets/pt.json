@@ -545,6 +545,16 @@
         "casing",
         "accents"
       ]
+    },
+    {
+      "id": "pt-emoji-02",
+      "input": "está pronto ✔",
+      "expected": "está pronto ✔",
+      "tags": [
+        "negative",
+        "emoji",
+        "protected"
+      ]
     }
   ]
 }

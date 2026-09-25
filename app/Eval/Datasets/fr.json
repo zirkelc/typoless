@@ -578,6 +578,16 @@
         "casing",
         "accents"
       ]
+    },
+    {
+      "id": "fr-emoji-02",
+      "input": "c'est prêt ✔",
+      "expected": "c'est prêt ✔",
+      "tags": [
+        "negative",
+        "emoji",
+        "protected"
+      ]
     }
   ]
 }
