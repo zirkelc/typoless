@@ -61,7 +61,13 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             : NSImage(systemSymbolName: status.symbolName, accessibilityDescription: status.label)
         image?.accessibilityDescription = status.label
         image?.isTemplate = true
+
+        #if DEBUG
+        /** Two copies in the menu bar look identical until one of them is marked. */
+        button.image = image.map(Self.marked)
+        #else
         button.image = image
+        #endif
         button.imagePosition = status.badge == nil ? .imageOnly : .imageLeading
         button.title = status.badge.map { " \($0)" } ?? ""
         button.toolTip = status.label
@@ -272,16 +278,22 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     #endif
 
     /**
-     "Beta" while the version says so, and nothing once it does not.
+     What kind of build this is, or nothing when it is the ordinary one.
 
-     Read from the version rather than written here, so the tag appears in every
-     beta build and disappears at 1.0 without anyone remembering to remove it.
-     The About panel carries the full version; the menu only needs the word.
+     A debug build says so and stops there: it is already a beta by version, and
+     a header reading "dev · Beta" spends two words on one fact. Otherwise the
+     tag is read from the version rather than written here, so it appears in
+     every beta build and disappears at 1.0 without anyone remembering to remove
+     it. The About panel carries the full version; the menu only needs the word.
      */
     private static var betaTag: String? {
+        #if DEBUG
+        return "dev"
+        #else
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
 
         return version.localizedCaseInsensitiveContains("beta") ? "Beta" : nil
+        #endif
     }
 
     /** Nil when both triggers are off, since then there is nothing to press. */
@@ -434,6 +446,48 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     #if DEBUG
+    /**
+     The same icon with a dot on it, for a build that is not the real one.
+
+     Drawn rather than shipped as a second asset, so it follows whatever the
+     icon becomes and cannot fall out of step with it. Still a template image:
+     the menu bar decides the colour, and a dev build has no business being the
+     one thing up there that ignores dark mode.
+     */
+    private static func marked(_ image: NSImage) -> NSImage {
+        let size = image.size
+        let badge = size.height / 3.2
+
+        let marked = NSImage(size: size, flipped: false) { rect in
+            image.draw(in: rect)
+
+            let dot = NSRect(
+                x: rect.maxX - badge,
+                y: rect.maxY - badge,
+                width: badge,
+                height: badge
+            )
+
+            /**
+             A gap is punched first, so the dot reads as a dot rather than
+             merging into whatever part of the letter sits under it.
+             */
+            NSGraphicsContext.current?.compositingOperation = .clear
+            NSBezierPath(ovalIn: dot.insetBy(dx: -1, dy: -1)).fill()
+
+            NSGraphicsContext.current?.compositingOperation = .sourceOver
+            NSColor.black.setFill()
+            NSBezierPath(ovalIn: dot).fill()
+
+            return true
+        }
+
+        marked.isTemplate = true
+        marked.accessibilityDescription = image.accessibilityDescription
+
+        return marked
+    }
+
     @objc private func toggleGuardrail() {
         model.preferences.isGuardrailEnabled.toggle()
     }

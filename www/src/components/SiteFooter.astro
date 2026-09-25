@@ -1,0 +1,29 @@
+---
+import { Image } from 'astro:assets';
+import icon from '../assets/logo.svg';
+
+/**
+ * The same footer on every page, so the legal pages are one click away from
+ * anywhere and the start page is one click back.
+ */
+const links = [
+  { href: 'https://github.com/zirkelc/typoless', label: 'GitHub' },
+  { href: '/privacy', label: 'Privacy' },
+  { href: '/legal', label: 'Legal notice' },
+];
+---
+
+<footer class="border-t border-line">
+  <div
+    class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 text-sm text-muted sm:flex-row"
+  >
+    <a href="/" class="flex items-center gap-2 hover:text-ink">
+      <Image src={icon} alt="" width={20} height={20} class="size-5 rounded-[22.5%] dark:ring-1 dark:ring-white/15" />
+      © 2026 Typoless
+    </a>
+
+    <nav class="flex items-center gap-5">
+      {links.map((link) => <a href={link.href} class="hover:text-ink">{link.label}</a>)}
+    </nav>
+  </div>
+</footer>

@@ -1,0 +1,106 @@
+---
+import Legal from '../layouts/Legal.astro';
+---
+
+<Legal
+  title="Privacy · Typoless"
+  description="What Typoless does with your text, which is nothing: the app corrects on your Mac, has no account and no server, and this page says exactly what reaches a network and when."
+  heading="Privacy"
+  updated="25 September 2026"
+>
+  <h2>In short</h2>
+  <p>
+    Typoless corrects the text you are writing on your Mac. It has no account, no server and no analytics, and your
+    text never leaves the machine. Three things do reach a network, and you start all three: an update check, a
+    download, and a bug report you submit yourself. Each one is described below.
+  </p>
+
+  <h2>The app</h2>
+
+  <h3>What it reads</h3>
+  <p>
+    The field you are typing in, at the moment you press the trigger, through the macOS Accessibility permission.
+    Nothing is read while you type, and no other field is read. Password fields are never read. Terminals and
+    password managers are excluded from the start, and you can exclude any other app.
+  </p>
+
+  <h3>Where the text goes</h3>
+  <p>
+    Into a language model running on your Mac: Apple's on-device model, or a model you chose to download. There is no
+    upload, no API call and no server to receive one. Typoless works with the network switched off.
+  </p>
+
+  <h3>What is kept</h3>
+  <ul>
+    <li>
+      <strong>History.</strong> Recent corrections are kept so you can undo them. In memory only, never written to
+      disk, and gone when you quit.
+    </li>
+    <li>
+      <strong>Settings.</strong> Your preferences are stored on your Mac in the usual place for a Mac app, and
+      nowhere else.
+    </li>
+    <li>
+      <strong>Logs.</strong> The local log is off unless you turn it on. It stays on your Mac, in the system log, and
+      is never sent anywhere.
+    </li>
+  </ul>
+
+  <h3>Downloading a model</h3>
+  <p>
+    If you choose a downloadable model, the weights are fetched from Hugging Face. That request goes to their servers
+    and carries what any download carries, including your IP address. It happens only when you pick such a model, and
+    never on your text.
+  </p>
+
+  <h2>Updates</h2>
+  <p>
+    Typoless can check <a href="https://typoless.app">typoless.app</a> for a new version, about once a day. Sparkle,
+    the updater, asks on the second launch whether you want that, and the answer can be changed in Settings. Until
+    you say yes, it checks only when you use the menu item.
+  </p>
+  <p>
+    A check is one request for a file listing the versions. It carries the app's name and version and, like any web
+    request, your IP address. Nothing about your Mac's hardware or software is collected or sent, and downloads come
+    from the same site.
+  </p>
+
+  <h2>This website</h2>
+  <p>
+    The site is static and served by Cloudflare. It sets no cookies, runs no analytics script and loads nothing from
+    a third party: even the fonts are served from this domain, because a font request would hand your address to
+    someone else on every visit.
+  </p>
+  <p>
+    Cloudflare processes the ordinary request data it needs to deliver and protect the site, including your IP
+    address, the address of the page and your browser's user agent. I see aggregate traffic counts produced from
+    those logs, and nothing that identifies a visitor. The legal basis is Art. 6 (1) (f) GDPR, the interest being to
+    deliver a working and protected website. Cloudflare acts as a processor under Art. 28 GDPR.
+  </p>
+
+  <h2>Bug reports</h2>
+  <p>
+    From the History window, and from the menu, Typoless can open a prefilled issue on
+    <a href="https://github.com/zirkelc/typoless/issues">GitHub</a>. Nothing is sent when it opens: the form appears
+    in your browser, filled in, and you decide what to submit. A report about a correction includes the text before
+    and after, so read it and delete anything you would rather not publish, because the tracker is public. What you
+    submit is then covered by GitHub's privacy policy.
+  </p>
+
+  <h2>Your rights</h2>
+  <p>
+    You can ask what is stored about you, and ask for it to be corrected or erased, under Art. 15 to 21 GDPR. In
+    practice the only thing that ever exists is the server log described above, and the app holds nothing. Write to
+    the address in the <a href="/legal">legal notice</a>.
+  </p>
+  <p>
+    You may also complain to a supervisory authority. The one responsible here is the Landesbeauftragte für den
+    Datenschutz und die Informationsfreiheit Baden-Württemberg.
+  </p>
+
+  <h2>Changes</h2>
+  <p>
+    This page changes when the app does. Typoless is open source, so what it does with your text can be read rather
+    than taken on trust, at <a href="https://github.com/zirkelc/typoless">github.com/zirkelc/typoless</a>.
+  </p>
+</Legal>

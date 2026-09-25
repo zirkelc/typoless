@@ -297,8 +297,9 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				INFOPLIST_KEY_CFBundleDisplayName = "Typoless (dev)";
 				MARKETING_VERSION = "0.1.0-beta";
-				PRODUCT_BUNDLE_IDENTIFIER = dev.zirkelc.typoless;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.zirkelc.typoless.dev;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TYPOLESS_FEED_URL = "";
