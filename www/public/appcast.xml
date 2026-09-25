@@ -1,0 +1,16 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Typoless</title>
+        <item>
+            <title>0.1.0-beta</title>
+            <pubDate>Fri, 25 Sep 2026 11:55:49 +0200</pubDate>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:version>68</sparkle:version>
+            <sparkle:shortVersionString>0.1.0-beta</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://typoless.app/releases/Typoless-0.1.0-beta.zip" length="8149757" type="application/octet-stream" sparkle:edSignature="GS89HKV7t+ESrsm+H+oxXedBpNq2xG1C/ztpxr+QvZl1KDcQsjKW1nBESEk8OMRekGrFYXoGXNgAJOer8UIWBg=="/>
+        </item>
+    </channel>
+</rss>
