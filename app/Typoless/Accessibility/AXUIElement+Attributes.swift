@@ -90,6 +90,60 @@ extension AXUIElement {
     }
 
     /**
+     What this element holds, in the order it is drawn.
+
+     Text elements give their text, images give the emoji they stand for, and
+     anything else is reported as itself so the caller can decline to rewrite a
+     field it cannot reproduce. A group is a container rather than content, so
+     it contributes its children and nothing of its own.
+
+     Bounded like the roles below, and for the same reason: it runs between
+     reading a field and writing to it, while the user waits.
+     */
+    func parts(depth: Int = 3, limit: Int = 64) -> [FieldPart] {
+        guard depth >= 0, limit > 0 else { return [] }
+
+        var raw: CFTypeRef?
+        guard
+            AXUIElementCopyAttributeValue(self, kAXChildrenAttribute as CFString, &raw) == .success,
+            let children = raw as? [AXUIElement],
+            !children.isEmpty
+        else {
+            return []
+        }
+
+        var parts: [FieldPart] = []
+
+        for child in children.prefix(limit) {
+            let role = child.string(kAXRoleAttribute) ?? "AXUnknown"
+
+            switch role {
+            case "AXStaticText":
+                parts.append(.text(child.string(kAXValueAttribute) ?? ""))
+
+            case "AXImage":
+                if let name = FieldText.emojiName(fromDescription: child.string(kAXDescriptionAttribute)) {
+                    parts.append(.emoji(name))
+                } else {
+                    parts.append(.unrepresentable(role: role))
+                }
+
+            case "AXGroup", "AXList", "AXRow", "AXCell", "AXUnknown":
+                let inner = child.parts(depth: depth - 1, limit: limit - parts.count)
+                /** A container that reports nothing is content this cannot see. */
+                parts += inner.isEmpty ? [.unrepresentable(role: role)] : inner
+
+            default:
+                parts.append(.unrepresentable(role: role))
+            }
+
+            if parts.count >= limit { break }
+        }
+
+        return parts
+    }
+
+    /**
      The roles of everything under this element, to a small depth.
 
      Bounded on purpose. This runs between reading a field and writing to it,

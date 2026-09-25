@@ -218,6 +218,43 @@ beta as well as any stable release that follows it. The app decides in
 `UpdateController`, the feed in `release.sh`, and both read the same string, so
 1.0 leaves the beta channel behind without anyone editing either.
 
+### A field that shows more than its text says
+
+Slack deleted a user's emoji and left three blank lines where it had been, from
+a correction that only wanted to lowercase one word. Four measurements found it,
+and each one ruled something out.
+
+- **The log.** `Field ignored an in-place edit, falling back` then `Corrected 101
+  characters with 1 edits via wholeValue`. Slack claims `selectedTextSettable`
+  and ignores the write, so every correction there goes through the fallback.
+- **The counts.** The message with `:smile:` is 107 characters; the app read 101,
+  which is the sentence without the emoji plus a trailing space and newline. And
+  `kAXNumberOfCharacters` agreed with the short version, so nothing in the text
+  said anything was missing.
+- **The value.** `hello 😄 world` is reported as `hello \n\n world`: the emoji is
+  exposed as two newlines, which is exactly where the blank lines came from once
+  that string was written back.
+- **The offsets.** Asked to select the three characters where a word sits in the
+  value, Slack accepted, reported the same range back, and selected three
+  characters two places further on. Its coordinates and its value's disagree, so
+  replacing a range rather than the whole field is not possible there either.
+
+The subtree tells the truth, in draw order: `AXStaticText "hello "`, `AXImage
+"smile emoji"`, `AXStaticText " world"`. So the field is rebuilt from its parts,
+with an image becoming the shortcode it was typed as, and that string is what
+gets corrected and written back. Slack renders `:smile:` as the emoji again even
+when the value is set through accessibility, so nothing is lost and nothing
+looks different afterwards.
+
+A rebuilt field gives up two things. Its user selection is ignored, since the
+selection is in the value's coordinates and the correction is in the rebuilt
+string's. And the in-place path is skipped for the same reason, which costs
+nothing where it was already being ignored.
+
+Where a part cannot be written as text at all, a file chip or a button, the
+field is left alone with a message saying so. The guardrail could never have
+caught any of this: it judges text, and none of this was in the text.
+
 ### Seven languages
 
 Five datasets were added at once, about 60 cases each: French, Spanish, Italian,
