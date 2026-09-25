@@ -13,14 +13,24 @@ import appcast from '../../public/appcast.xml?raw';
  * What to offer for download, read from the appcast at build time.
  *
  * The feed is written by the release script and is what the app's updater
- * asks for, so taking the version, the address and the size from it means the
- * page and the updater can never disagree, and a release that was never
- * published leaves the button in its waiting state rather than pointing at a
- * file that is not there.
+ * asks for, so taking the version and the address from it means the page and
+ * the updater can never disagree, and a release that was never published
+ * leaves the button in its waiting state rather than pointing at a file that
+ * is not there.
  */
+const enclosure = appcast.match(/<enclosure url="([^"]+)"/)?.[1];
+
 const release = {
   version: appcast.match(/<sparkle:shortVersionString>([^<]+)</)?.[1],
-  url: appcast.match(/<enclosure url="([^"]+)"/)?.[1],
+  /**
+   * The disk image, which the release script publishes beside the zip the
+   * feed names. A person gets the image, where the app is dragged into
+   * Applications instead of being left in Downloads; the updater keeps the
+   * zip, because an update should not ask anyone to mount anything. The two
+   * differ only in the extension, so the release script is the one place a
+   * version is written down.
+   */
+  url: enclosure?.replace(/\.zip$/, '.dmg'),
 };
 
 const highlights = [
