@@ -67,6 +67,13 @@ enum TextWriter {
         _ edits: [FieldEdit],
         in element: AXUIElement,
         expecting before: String,
+        /**
+         Whether the text corrected was rebuilt from the field's parts rather
+         than read from its value. Then `before` is still what the value says,
+         since that is what the field will be compared against, while the edits
+         and the corrected text are in the rebuilt string's own coordinates.
+         */
+        isRebuilt: Bool = false,
         replacing range: CFRange,
         with corrected: String,
         isUserSelection: Bool
@@ -90,7 +97,13 @@ enum TextWriter {
         /** Kept so a refusal can explain itself rather than reading as a plain failure. */
         var declinedWholeValue = false
 
-        if element.isSettable(kAXSelectedTextAttribute) {
+        /**
+         Only where the offsets mean the same thing to both sides. A rebuilt
+         field counts its characters differently from the field itself, so
+         replacing a range would land in the wrong place, which is worse than
+         not correcting at all.
+         */
+        if !isRebuilt, element.isSettable(kAXSelectedTextAttribute) {
             attemptedEdits = true
 
             if let applied = try await applyIndividually(edits, in: element, from: before) {
@@ -124,13 +137,19 @@ enum TextWriter {
          Refusing here costs a correction. Not refusing cost a user their emoji
          and three blank lines in a message they had already written.
          */
-        if HiddenContent.isLossy(roles: element.descendantRoles()) {
-            Log.app.info("Declined to rewrite a field that shows more than its text")
+        if FieldText.assemble(element.parts()) == nil {
+            Log.app.info("Declined to rewrite a field holding something a string cannot carry")
             throw TextWriteError.wouldLoseContent
         }
 
-        if element.isSettable(kAXValueAttribute), WriteScope.coversWholeField(range, of: before) {
-            guard let spliced = splice(corrected, into: before, at: range) else {
+        if element.isSettable(kAXValueAttribute), isRebuilt || WriteScope.coversWholeField(range, of: before) {
+            /**
+             A rebuilt field is always corrected whole, and its corrected text
+             is already the whole field, so there is nothing to splice it into:
+             the value it would be spliced into is the string that was missing
+             the emoji in the first place.
+             */
+            guard let spliced = isRebuilt ? corrected : splice(corrected, into: before, at: range) else {
                 throw TextWriteError.ineffective
             }
 

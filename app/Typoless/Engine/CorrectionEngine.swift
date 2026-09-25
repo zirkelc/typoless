@@ -164,7 +164,9 @@ final class CorrectionEngine {
             strategy = try await TextWriter.apply(
                 fieldEdits,
                 in: target.element,
-                expecting: target.text,
+                /** What the field will still say, which a rebuilt target reports separately. */
+                expecting: target.rawValue,
+                isRebuilt: target.isRebuilt,
                 replacing: target.range,
                 with: corrected,
                 isUserSelection: target.isUserSelection

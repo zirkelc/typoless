@@ -18,8 +18,23 @@ struct TextTarget {
     /** Which app the text belongs to, so its own settings can be looked up. */
     let bundleID: String?
 
-    /** Full contents of the field. */
+    /** Full contents of the field, as the user sees them. */
     let text: String
+
+    /**
+     The same field as its value attribute reports it, which is not always the
+     same string.
+
+     A rich composer can leave out what it draws rather than spells: Slack
+     reports an emoji in the message as two newlines. `text` is rebuilt from the
+     field's own parts and is what gets corrected; this is what the field will
+     still say when the write begins, and comparing it is the only way to notice
+     that the user has typed something in the meantime.
+     */
+    let rawValue: String
+
+    /** Whether the two differ, which decides how a correction may be written. */
+    var isRebuilt: Bool { text != rawValue }
 
     /**
      The part to correct, as UTF-16 offsets into `text`.
@@ -172,8 +187,23 @@ enum TextTargetResolver {
             throw TextTargetError.secureField
         }
 
-        guard let text = focused.string(kAXValueAttribute) else {
+        guard let rawValue = focused.string(kAXValueAttribute) else {
             throw TextTargetError.unreadable
+        }
+
+        /**
+         Rebuilt from the field's parts where they say more than its value does.
+
+         Only when the two disagree, which is rare and which no ordinary field
+         does: rebuilding otherwise would replace a string the rest of this file
+         trusts with one assembled from a different source, for no gain.
+         */
+        let parts = focused.parts()
+        let rebuilt = parts.isEmpty ? nil : FieldText.assemble(parts)
+        let text = (rebuilt.map { $0 != rawValue } ?? false) ? rebuilt! : rawValue
+
+        if text != rawValue {
+            Log.app.info("Rebuilt the field from its parts, which its value does not carry whole")
         }
 
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -214,7 +244,20 @@ enum TextTargetResolver {
             return candidate
         }
 
-        let hasUserSelection = (selection?.length ?? 0) > 0
+        /**
+         A rebuilt field's offsets are its own, and the selection the field
+         reports is in the coordinates of its value, which is a different
+         string. Slack proves they disagree: asked to select the three
+         characters where a word sits in its value, it selects three characters
+         two places further on. So a selection cannot be honoured here, and the
+         whole field is corrected instead of part of it.
+         */
+        let isRebuilt = text != rawValue
+        if isRebuilt, (selection?.length ?? 0) > 0 {
+            Log.app.info("Ignored a selection in a rebuilt field, whose offsets are not comparable")
+        }
+
+        let hasUserSelection = !isRebuilt && (selection?.length ?? 0) > 0
         let range = hasUserSelection ? selection! : whole
 
         /**
@@ -237,6 +280,7 @@ enum TextTargetResolver {
             owner: frontmost.processIdentifier,
             bundleID: frontmost.bundleIdentifier,
             text: text,
+            rawValue: rawValue,
             range: range,
             isUserSelection: hasUserSelection,
             caret: hasUserSelection ? nil : selection?.location,
