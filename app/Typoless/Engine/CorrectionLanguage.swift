@@ -1,3 +1,4 @@
+import Foundation
 import NaturalLanguage
 
 /**
@@ -77,9 +78,34 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
         }
     }
 
+    /**
+     Which languages a fresh install starts with, read from the Mac.
+
+     The languages somebody writes in are already in System Settings, so asking
+     them to tick the same list again is asking a question the machine can
+     answer. Every preferred language the app knows is on; the order the Mac
+     lists them in does not matter here, since all of them are detected per line
+     anyway. English is the fallback when the Mac names none of the seven,
+     because a default with nothing in it would correct nothing.
+
+     Read once, since a language added in System Settings takes effect for the
+     next install rather than for a user who has already made their choice.
+     */
+    static let systemDefaults: Set<CorrectionLanguage> = {
+        let preferred = Locale.preferredLanguages.compactMap {
+            Locale(identifier: $0).language.languageCode?.identifier
+        }
+
+        let known = preferred.compactMap { code in
+            allCases.first { $0.nlLanguage.rawValue == code }
+        }
+
+        return known.isEmpty ? [.english] : Set(known)
+    }()
+
     /** On unless the user says otherwise, so the app works out of the box. */
     var isEnabledByDefault: Bool {
-        self == .english || self == .german
+        Self.systemDefaults.contains(self)
     }
 
     /**

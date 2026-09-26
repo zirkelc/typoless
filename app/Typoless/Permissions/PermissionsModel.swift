@@ -37,7 +37,7 @@ final class PermissionsModel {
     }
 
     init() {
-        isAccessibilityTrusted = Self.checkTrustOfferingToRegister()
+        isAccessibilityTrusted = AXIsProcessTrusted()
         modelAvailability = SystemLanguageModel.default.availability
 
         Log.permissions.info(
@@ -65,20 +65,32 @@ final class PermissionsModel {
     }
 
     /**
-     Checks accessibility trust with the prompt option set, which asks the
-     system to offer the app to the user if it has never been seen before.
+     Asks for accessibility, which is the only thing here the user pressed a
+     button for.
 
-     Whether anything is shown is entirely the system's call. It stays silent
-     when the app is already trusted, and it also stays silent for a sandboxed
-     app, where the request is dropped without a trace and the app never even
-     reaches the list in System Settings. That is why this app is unsandboxed.
-     Run it first, before any plain trust check, since the offer is tied to a
-     process's first request.
+     The trust check has a prompt option, which registers the app with the
+     system and offers it to the user. It used to run at launch, where it put a
+     system dialog in front of somebody who had opened the app for the first
+     time and had not yet been told what it was for. Setup asks first now, and
+     this runs when they answer.
+
+     Both the dialog and the Settings pane are the same request, and the pane is
+     opened whatever the dialog decides to do: whether anything is shown at all
+     is the system's call, it stays silent for an app it has already offered,
+     and it stays silent for a sandboxed app, where the request is dropped
+     without a trace and the app never reaches the list at all. That is why this
+     app is unsandboxed.
      */
-    private static func checkTrustOfferingToRegister() -> Bool {
+    func requestAccessibility() {
         let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue()
         let options = [key: kCFBooleanTrue as Any] as CFDictionary
-        return AXIsProcessTrustedWithOptions(options)
+
+        if AXIsProcessTrustedWithOptions(options) {
+            refresh()
+            return
+        }
+
+        openAccessibilitySettings()
     }
 
     func refresh() {

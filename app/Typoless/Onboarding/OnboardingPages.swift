@@ -42,7 +42,7 @@ struct PermissionsPage: View {
                 rationale: "Lets Typoless read the text in the field you are typing in, and write the corrections back.",
                 isSatisfied: permissions.isAccessibilityTrusted,
                 actionTitle: "Allow…",
-                action: { permissions.openAccessibilitySettings() }
+                action: { permissions.requestAccessibility() }
             )
 
             Divider()
