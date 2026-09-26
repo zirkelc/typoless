@@ -143,6 +143,18 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         stopDownloadItem = stop
 
         /**
+         Directly under the header that asks for it, because the header is a
+         complaint and this is the answer to it. Only while something is still
+         missing, and worded as the fix rather than as a tour: once both
+         permissions are granted the window has nothing left to do, since every
+         choice it makes is also in Settings, so an item that reopens it is a
+         line the user reads past for the life of the app.
+         */
+        if !model.permissions.isReady {
+            add(to: menu, title: "Finish Setup…", keyEquivalent: "", action: #selector(showOnboarding))
+        }
+
+        /**
          How to fix text, in place of a menu item that would do it. The trigger
          works from the app being typed in, which is where a correction is
          wanted, so the menu only has to say what it is.
@@ -195,17 +207,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         add(to: menu, title: "Settings…", keyEquivalent: ",", action: #selector(showSettings))
-
-        /**
-         Only while something is still missing, and worded as the fix rather
-         than as a tour. Once both permissions are granted the window has
-         nothing left to do: every choice it makes is also in Settings, so an
-         item that reopens it is a line the user reads past for the life of the
-         app.
-         */
-        if !model.permissions.isReady {
-            add(to: menu, title: "Finish Setup…", keyEquivalent: "", action: #selector(showOnboarding))
-        }
 
         #if DEBUG
         /** In a submenu of its own, so a debug build's menu still reads like the real one. */
