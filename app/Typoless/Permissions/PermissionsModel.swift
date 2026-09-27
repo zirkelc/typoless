@@ -26,6 +26,17 @@ final class PermissionsModel {
     private var pollTask: Task<Void, Never>?
 
     /**
+     Other copies of this app on this Mac, which is the usual reason a switch
+     that is visibly on does not apply to the app that is asking.
+
+     Two copies of one app appear in System Settings as two rows with the same
+     name, since that list names an app by its file rather than by what is
+     inside it, and only the copy that was allowed can read text. What the user
+     sees is an app that ignores a permission they can see is granted.
+     */
+    private(set) var otherCopies: [URL] = []
+
+    /**
      Written once during init and read once during deinit, which runs outside
      the main actor. Never mutated after init, so the unchecked access is safe.
      */
@@ -93,6 +104,68 @@ final class PermissionsModel {
         openAccessibilitySettings()
     }
 
+    /**
+     What to say under the accessibility row, or nothing when there is nothing
+     useful to say.
+
+     Only while the permission is refused and only while a second copy exists,
+     because a path is worth reading exactly then: with one copy the row in
+     System Settings is already unambiguous, and a line every user reads past is
+     worse than no line.
+     */
+    var accessibilityNote: String? {
+        guard !isAccessibilityTrusted, let other = otherCopies.first else { return nil }
+
+        /** The name the user sees in the list, which a debug build tags as its own. */
+        let info = Bundle.main.infoDictionary
+        let name = info?["CFBundleDisplayName"] as? String ?? info?["CFBundleName"] as? String ?? "Typoless"
+        let elsewhere = otherCopies.count > 1
+            ? "\(Self.shortPath(other)), and \(otherCopies.count - 1) more"
+            : Self.shortPath(other)
+
+        return """
+        Another copy of \(name) is at \(elsewhere). Each copy has its own switch, \
+        so allow this one, at \(Self.shortPath(Bundle.main.bundleURL)).
+        """
+    }
+
+    /** Written the way the user sees it in the Finder, with the home folder as a tilde. */
+    private static func shortPath(_ url: URL) -> String {
+        (url.path as NSString).abbreviatingWithTildeInPath
+    }
+
+    /**
+     Asked of LaunchServices when a permissions UI appears, rather than on every
+     poll: it answers from a database, and copies of an app do not come and go
+     by the second.
+     */
+    private func findOtherCopies() {
+        guard let identifier = Bundle.main.bundleIdentifier else { return }
+
+        let here = Bundle.main.bundleURL.standardizedFileURL.resolvingSymlinksInPath()
+        let copies = NSWorkspace.shared.urlsForApplications(withBundleIdentifier: identifier)
+            .map { $0.standardizedFileURL.resolvingSymlinksInPath() }
+            .filter { $0 != here }
+            /**
+             Only copies that are still there. LaunchServices remembers every
+             place it has ever seen this app, which on a machine that has
+             installed it once includes the disk image it was dragged out of and
+             whatever was thrown away afterwards. Warning about those would be
+             warning about nothing.
+             */
+            .filter { FileManager.default.fileExists(atPath: $0.path) }
+
+        if copies != otherCopies {
+            otherCopies = copies
+
+            if let first = copies.first {
+                Log.permissions.info(
+                    "Another copy of this app is installed at \(first.path, privacy: .public), of \(copies.count, privacy: .public) in all"
+                )
+            }
+        }
+    }
+
     func refresh() {
         var didChange = false
 
@@ -123,6 +196,9 @@ final class PermissionsModel {
      */
     func startMonitoring() {
         guard pollTask == nil else { return }
+
+        findOtherCopies()
+
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 self?.refresh()
