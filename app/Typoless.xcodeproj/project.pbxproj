@@ -228,6 +228,7 @@
 		1A000000000000000000000C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				TYPOLESS_APP_NAME = "Typoless (dev)";
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -258,6 +259,7 @@
 		1A000000000000000000000D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				TYPOLESS_APP_NAME = Typoless;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -300,7 +302,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Typoless (dev)";
 				MARKETING_VERSION = "0.1.1-beta";
 				PRODUCT_BUNDLE_IDENTIFIER = dev.zirkelc.typoless.dev;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "$(TYPOLESS_APP_NAME)";
+				PRODUCT_MODULE_NAME = Typoless;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TYPOLESS_FEED_URL = "";
 			};
@@ -327,7 +330,8 @@
 				);
 				MARKETING_VERSION = "0.1.1-beta";
 				PRODUCT_BUNDLE_IDENTIFIER = dev.zirkelc.typoless;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "$(TYPOLESS_APP_NAME)";
+				PRODUCT_MODULE_NAME = Typoless;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TYPOLESS_FEED_URL = "https://typoless.app/appcast.xml";
 			};
@@ -345,7 +349,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = dev.zirkelc.typoless.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Typoless.app/Contents/MacOS/Typoless";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/$(TYPOLESS_APP_NAME).app/Contents/MacOS/$(TYPOLESS_APP_NAME)";
 			};
 			name = Debug;
 		};
@@ -361,7 +365,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = dev.zirkelc.typoless.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Typoless.app/Contents/MacOS/Typoless";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/$(TYPOLESS_APP_NAME).app/Contents/MacOS/$(TYPOLESS_APP_NAME)";
 			};
 			name = Release;
 		};

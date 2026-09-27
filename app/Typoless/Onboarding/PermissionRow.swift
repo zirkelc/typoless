@@ -8,6 +8,9 @@ struct PermissionRow: View {
     let actionTitle: String?
     let action: (() -> Void)?
 
+    /** Said only when there is something to say, under the reason it belongs to. */
+    var note: String?
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: isSatisfied ? "checkmark.circle.fill" : "circle.dashed")
@@ -23,6 +26,14 @@ struct PermissionRow: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                if let note {
+                    Label(note, systemImage: "exclamationmark.triangle.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 4)
+                }
             }
 
             Spacer(minLength: 8)
@@ -34,6 +45,8 @@ struct PermissionRow: View {
         }
         .padding(.vertical, 6)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title). \(isSatisfied ? "Granted" : "Not granted"). \(rationale)")
+        .accessibilityLabel(
+            "\(title). \(isSatisfied ? "Granted" : "Not granted"). \(rationale)\(note.map { " \($0)" } ?? "")"
+        )
     }
 }
