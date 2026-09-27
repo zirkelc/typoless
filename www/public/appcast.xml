@@ -3,6 +3,20 @@
     <channel>
         <title>Typoless</title>
         <item>
+            <title>0.1.2-beta</title>
+            <pubDate>Sun, 27 Sep 2026 14:32:56 +0200</pubDate>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:version>85</sparkle:version>
+            <sparkle:shortVersionString>0.1.2-beta</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://typoless.app/releases/Typoless-0.1.2-beta.zip" length="8161807" type="application/octet-stream" sparkle:edSignature="eAm+JQDcKNX89eKcwUm4tK4e6Rxmdhjx6TyMVGckfO+mIuortsPDJDUxk19brClpCstUiyU9oSIKfoKgCwbvAQ=="/>
+            <sparkle:deltas>
+                <enclosure url="https://typoless.app/releases/Typoless85-77.delta" sparkle:deltaFrom="77" length="624730" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="Xly/Oz3N4hooynUeP3pIfZHJDU+qVX9Ft60YakIQZkeOV2ZHUdY6DguTQ4y9TIEzxRFjj3t5+/ultJVKJyU7CA=="/>
+                <enclosure url="https://typoless.app/releases/Typoless85-68.delta" sparkle:deltaFrom="68" length="681026" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="alYArT6dSPemyUMISRNk7Qnk4C9u1rjGi2D4G7PHM5Hq5fx8j3y1PxK3241cyObuHyDXp+dOVRoNNn/yihWpDQ=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>0.1.1-beta</title>
             <pubDate>Fri, 25 Sep 2026 17:49:53 +0200</pubDate>
             <sparkle:channel>beta</sparkle:channel>
