@@ -524,6 +524,19 @@ struct LanguageDetector: Sendable {
     }
 
     /**
+     How sure the recogniser has to be before its answer may drop the text.
+
+     Seven languages are offered to it, so a guess is worth about 0.14 and
+     anything under a half is the recogniser saying it does not know. Measured
+     over the datasets cut to their first three words, which is what a short
+     message looks like: this rescues four texts that were dropped and wrongly
+     keeps one. A higher floor trades worse, 0.60 rescues six and wrongly keeps
+     seven, and on whole sentences every floor scores the same, because there
+     the recogniser is certain either way.
+     */
+    private static let certainty = 0.5
+
+    /**
      Which language this text is in, or nil if it is not one being corrected.
 
      Detection deliberately ranges over every language the app knows rather than
@@ -533,6 +546,13 @@ struct LanguageDetector: Sendable {
      rules by an app the user believed was not set up for German. Worse, with a
      single language enabled the recogniser was skipped entirely and everything
      was declared to be that language without being read at all.
+
+     Only a confident answer is allowed to drop the text, though. "chekc this
+     todo" reads as Portuguese at 0.36, with Spanish at 0.32 and English at
+     0.30, and was silently ignored by an app whose whole purpose is the typo
+     that confused it: the misspelling costs the recogniser the very letters it
+     judges a language by, and the shorter the text, the less is left. Under the
+     floor, the likeliest language the user does correct is used instead.
      */
     func detect(_ text: String) -> CorrectionLanguage? {
         let recognizer = NLLanguageRecognizer()
@@ -547,6 +567,14 @@ struct LanguageDetector: Sendable {
             return enabled.first
         }
 
-        return enabled.contains(match) ? match : nil
+        if enabled.contains(match) { return match }
+
+        let hypotheses = recognizer.languageHypotheses(withMaximum: CorrectionLanguage.allCases.count)
+
+        /** A language the user does not correct, and the recogniser means it. */
+        if hypotheses[dominant, default: 0] >= Self.certainty { return nil }
+
+        return enabled.max { hypotheses[$0.nlLanguage, default: 0] < hypotheses[$1.nlLanguage, default: 0] }
+            ?? enabled.first
     }
 }
