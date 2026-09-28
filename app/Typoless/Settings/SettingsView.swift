@@ -30,8 +30,8 @@ struct GeneralSettingsView: View {
                     }
 
                     SettingsLine(
-                        "Check for updates automatically",
-                        note: "Once a day, from typoless.app. The request carries only the app's name and version."
+                        "Automatically check for updates",
+                        note: "Once a day, from typoless.app. The request carries only the app's name and version, and an update waits in the menu bar until you install it."
                     ) {
                         SettingsSwitch(
                             isOn: Binding(
@@ -39,21 +39,6 @@ struct GeneralSettingsView: View {
                                 set: { updates.setChecksAutomatically($0) }
                             )
                         )
-                    }
-
-                    SettingsLine(
-                        "Install updates automatically",
-                        note: updates.checksAutomatically
-                            ? "Without asking. Off, an update waits in the menu bar until you install it."
-                            : "Needs automatic checking, which is off."
-                    ) {
-                        SettingsSwitch(
-                            isOn: Binding(
-                                get: { updates.installsAutomatically },
-                                set: { updates.setInstallsAutomatically($0) }
-                            )
-                        )
-                        .disabled(!updates.checksAutomatically)
                     }
                 }
             }

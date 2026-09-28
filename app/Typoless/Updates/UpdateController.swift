@@ -26,10 +26,10 @@ import Sparkle
  first launch, because a check is one request a day carrying the app's name and
  version, and the promise this app makes is about the text you type, not about
  a version number. It never sends the profile of the Mac that Sparkle can
- attach, because the app never offers it. What happens when an update is found
- is the answer that matters, and it defaults to asking: the app says so in the
- menu and installs nothing until the button is pressed. Both can be changed in
- General settings.
+ attach, because the app never offers it. Finding an update installs nothing:
+ the app says so in the menu and waits for the button to be pressed, and
+ `automaticallyDownloadsUpdates` is deliberately never turned on. Checking can
+ be turned off in General settings.
 
  **An update announces itself quietly.** Sparkle would otherwise put its window
  in front of whatever the user is writing, which for an app that lives in the
@@ -124,28 +124,11 @@ final class UpdateController {
         refresh()
     }
 
-    /**
-     Whether a found update installs itself.
-
-     Off by default, so an update is something the user agrees to. Sparkle
-     ignores this while checking is off, since there is nothing to download when
-     nothing is looked for, and the switch is shown as unavailable there rather
-     than as a promise the app cannot keep.
-     */
-    private(set) var installsAutomatically = false
-
-    func setInstallsAutomatically(_ isOn: Bool) {
-        updater.updater.automaticallyDownloadsUpdates = isOn
-        refresh()
-    }
 
     /** Picks up a change Sparkle made behind our back, which its own UI can. */
     func refresh() {
         let checks = updater.updater.automaticallyChecksForUpdates
         if checksAutomatically != checks { checksAutomatically = checks }
-
-        let installs = updater.updater.automaticallyDownloadsUpdates
-        if installsAutomatically != installs { installsAutomatically = installs }
     }
 
     /**
