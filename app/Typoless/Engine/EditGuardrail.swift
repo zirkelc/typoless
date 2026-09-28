@@ -21,12 +21,24 @@ enum EditGuardrail {
      */
     private static let maximumSpellingDistance = 2
 
+    /** An edit that did not make it, and what stopped it. */
+    struct Refusal {
+        let edit: TextEdit
+        let reason: CorrectionRefusal
+    }
+
     /** What survived, and whether the changes as a whole looked like corrections. */
     struct Verdict {
         let accepted: [TextEdit]
         let rejectedCount: Int
         /** Edits refused for sitting inside protected text, which is not straying. */
         var protectedCount = 0
+        /**
+         Every edit that was refused, with its reason, for the history window
+         and for a bug report. The counts above decide what happens; this says
+         what happened, which is a different job and a longer-lived one.
+         */
+        var refusals: [Refusal] = []
 
         /**
          Whether the changes are worth applying at all.
@@ -56,6 +68,7 @@ enum EditGuardrail {
         var accepted: [TextEdit] = []
         var rejected = 0
         var protectedCount = 0
+        var refusals: [Refusal] = []
 
         var edits = edits
         if let cut = cuttingContinuation(from: edits, in: text) {
@@ -68,6 +81,7 @@ enum EditGuardrail {
             guard let kinds = classify(edit, in: text, language: language) else {
                 Log.app.info("Rejected an edit that was not a correction")
                 rejected += 1
+                refusals.append(Refusal(edit: edit, reason: .notACorrection))
                 continue
             }
 
@@ -93,6 +107,7 @@ enum EditGuardrail {
                  out. A change that cannot be cut arrives back whole and is
                  skipped as before.
                  */
+                var kept: [TextEdit] = []
                 for part in TextDiff.splitting(edit, in: text) where part != edit {
                     guard
                         let partKinds = classify(part, in: text, language: language),
@@ -100,7 +115,18 @@ enum EditGuardrail {
                         !isProtected(part, by: protected)
                     else { continue }
 
-                    accepted.append(part)
+                    kept.append(part)
+                }
+
+                accepted += kept
+
+                /**
+                 Reported as one refusal even where part of it was kept, since
+                 what the user asked for is why their word was not fixed, and
+                 the answer is the same rule either way.
+                 */
+                if kept.isEmpty {
+                    refusals.append(Refusal(edit: edit, reason: .ruleTurnedOff))
                 }
 
                 continue
@@ -116,13 +142,19 @@ enum EditGuardrail {
             guard !isProtected(edit, by: protected) else {
                 Log.app.info("Rejected an edit inside protected text")
                 protectedCount += 1
+                refusals.append(Refusal(edit: edit, reason: .protectedText))
                 continue
             }
 
             accepted.append(edit)
         }
 
-        return Verdict(accepted: accepted, rejectedCount: rejected, protectedCount: protectedCount)
+        return Verdict(
+            accepted: accepted,
+            rejectedCount: rejected,
+            protectedCount: protectedCount,
+            refusals: refusals
+        )
     }
 
     /**

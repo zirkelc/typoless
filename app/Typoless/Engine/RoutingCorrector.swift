@@ -61,11 +61,16 @@ actor RoutingCorrector: Corrector {
         self.makeLocal = makeLocal
     }
 
+    /** What the last pass decided, for the history window and for a report. */
+    private var lastOutcome = CorrectionOutcome()
+
+    func outcomeOfLastPass() -> CorrectionOutcome { lastOutcome }
+
     func corrections(for text: String, settings: AppSettings) async throws -> [TextEdit] {
         let deadline = deadline(for: settings)
         answered = []
 
-        return try await ChunkedCorrection.run(
+        let pass = try await ChunkedCorrection.run(
             over: text,
             settings: settings,
             detector: detector,
@@ -93,6 +98,10 @@ actor RoutingCorrector: Corrector {
                 )
             }
         }
+
+        lastOutcome = pass.outcome
+
+        return pass.edits
     }
 
     /**

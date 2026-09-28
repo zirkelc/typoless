@@ -41,13 +41,18 @@ actor FoundationModelsCorrector: Corrector {
         model = SystemLanguageModel(guardrails: .permissiveContentTransformations)
     }
 
+    /** What the last pass decided, for the history window and for a report. */
+    private var lastOutcome = CorrectionOutcome()
+
+    func outcomeOfLastPass() -> CorrectionOutcome { lastOutcome }
+
     func corrections(for text: String, settings: AppSettings) async throws -> [TextEdit] {
         guard model.isAvailable else { throw CorrectorError.modelUnavailable }
 
         /** One budget for the whole pass, shared by every chunk and every retry. */
         let deadline = CorrectionDeadline()
 
-        return try await ChunkedCorrection.run(
+        let pass = try await ChunkedCorrection.run(
             over: text,
             settings: settings,
             detector: detector,
@@ -63,6 +68,10 @@ actor FoundationModelsCorrector: Corrector {
                 deadline: deadline
             )
         }
+
+        lastOutcome = pass.outcome
+
+        return pass.edits
     }
 
     /**
