@@ -2,6 +2,24 @@ import AppKit
 import SwiftUI
 
 /**
+ The widths every row and the header above them share.
+
+ One place, because a header that does not line up with its rows is worse than
+ no header: it claims an order the eye then has to check.
+ */
+enum HistoryColumn {
+    static let app: CGFloat = 165
+    static let time: CGFloat = 52
+    static let changes: CGFloat = 122
+    static let language: CGFloat = 115
+    static let model: CGFloat = 130
+    static let spacing: CGFloat = 12
+
+    /** The card's own padding, so the header starts where a row's first word does. */
+    static let inset: CGFloat = 32
+}
+
+/**
  The last few hours of corrections, newest first.
 
  Shows the text around each change rather than the whole field, because the
@@ -98,7 +116,7 @@ struct HistoryView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
         }
-        .frame(width: 720, height: 540)
+        .frame(width: 900, height: 580)
         .onAppear { history.prune() }
     }
 
@@ -129,48 +147,89 @@ struct HistoryView: View {
     }
 
     /**
-     The row above the list: what is in it, and how to see less of it.
+     The head of the table, which is also where the filtering is.
 
-     Filtering is here because the list is a record kept for reporting, and the
-     entry worth reporting is the one that did something unexpected. Finding it
-     among the ordinary ones by scrolling is the work this saves.
+     A filter bar of its own sat above columns it did not line up with, and read
+     as a second header disagreeing with the first. Here each menu is the column
+     it filters, so the thing being narrowed is named once. Time and Model have
+     no menu, because neither answers a question anybody asks of this list.
      */
     private var header: some View {
-        HStack(spacing: 10) {
-            Picker("App", selection: $app) {
-                Text("All apps").tag(String?.none)
+        HStack(spacing: HistoryColumn.spacing) {
+            Menu {
+                Button("All apps") { app = nil }
+                Divider()
                 ForEach(apps, id: \.self) { bundleID in
-                    Text(name(of: bundleID)).tag(String?.some(bundleID))
+                    Button(name(of: bundleID)) { app = bundleID }
                 }
+            } label: {
+                title("App", value: app.map(name(of:)))
             }
-            .frame(maxWidth: 180)
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .frame(width: HistoryColumn.app, alignment: .leading)
 
-            Picker("Language", selection: $language) {
-                Text("All languages").tag(CorrectionLanguage?.none)
-                ForEach(languages) { candidate in
-                    Text(candidate.displayName).tag(CorrectionLanguage?.some(candidate))
+            Text("Time")
+                .frame(width: HistoryColumn.time, alignment: .leading)
+
+            Menu {
+                ForEach(ShowFilter.allCases) { option in
+                    Button(option.rawValue) { show = option }
                 }
+            } label: {
+                title("Changes", value: show == .all ? nil : show.rawValue)
             }
-            .frame(maxWidth: 170)
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .frame(width: HistoryColumn.changes, alignment: .leading)
+
+            Menu {
+                Button("All languages") { language = nil }
+                Divider()
+                ForEach(languages) { candidate in
+                    Button(candidate.displayName) { language = candidate }
+                }
+            } label: {
+                title("Language", value: language?.displayName)
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .frame(width: HistoryColumn.language, alignment: .leading)
             .disabled(languages.isEmpty)
 
-            Picker("Show", selection: $show) {
-                ForEach(ShowFilter.allCases) { option in
-                    Text(option.rawValue).tag(option)
-                }
-            }
-            .frame(maxWidth: 190)
+            Text("Model")
+                .frame(width: HistoryColumn.model, alignment: .leading)
 
-            Spacer()
+            Spacer(minLength: 0)
 
             Text(summary)
-                .font(.callout)
-                .foregroundStyle(.secondary)
         }
-        .labelsHidden()
-        .controlSize(.small)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, HistoryColumn.inset)
+        .padding(.vertical, 8)
+    }
+
+    /**
+     A column's name, or what it has been narrowed to.
+
+     The name is the resting state and the value replaces it, so a filter that
+     is on is visible from the shape of the header rather than from a badge
+     somewhere else.
+     */
+    private func title(_ name: String, value: String?) -> some View {
+        HStack(spacing: 3) {
+            Text(value ?? name)
+                .foregroundStyle(value == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.accentColor))
+                .lineLimit(1)
+
+            Image(systemName: "chevron.up.chevron.down")
+                .imageScale(.small)
+                .foregroundStyle(.tertiary)
+        }
     }
 
     private var summary: String {
@@ -260,42 +319,53 @@ private struct HistoryRow: View {
     var body: some View {
         let changes = self.changes
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                if let app {
-                    Image(nsImage: app.icon)
-                        .resizable()
-                        .frame(width: 14, height: 14)
+            /**
+             The same columns as the header, in the same order and at the same
+             widths, so the two read as one table. The text below spans the
+             whole row instead, because a paragraph in a column is a column of
+             one word.
+             */
+            HStack(spacing: HistoryColumn.spacing) {
+                HStack(spacing: 5) {
+                    if let app {
+                        Image(nsImage: app.icon)
+                            .resizable()
+                            .frame(width: 14, height: 14)
 
-                    Text(app.name)
-                        .fontWeight(.medium)
+                        Text(app.name)
+                            .fontWeight(.medium)
+                            .lineLimit(1)
+                    } else {
+                        Text("Unknown app")
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                .frame(width: HistoryColumn.app, alignment: .leading)
 
                 Text(entry.date, style: .time)
                     .foregroundStyle(.secondary)
+                    .frame(width: HistoryColumn.time, alignment: .leading)
 
                 Text(changeCount)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .frame(width: HistoryColumn.changes, alignment: .leading)
 
-                if !entry.outcome.languages.isEmpty {
-                    /**
-                     The language is in the header rather than beside each
-                     change, because it is decided per pass as far as the user
-                     is concerned, and it is the first thing to check when a
-                     correction did not happen.
-                     */
-                    Text(entry.outcome.languages.map(\.displayName).joined(separator: ", "))
-                        .foregroundStyle(.secondary)
-                }
+                Text(languages)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .frame(width: HistoryColumn.language, alignment: .leading)
 
-                if !entry.models.isEmpty {
-                    Text(entry.models.joined(separator: ", "))
-                        .foregroundStyle(.secondary)
-                }
+                Text(models)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .frame(width: HistoryColumn.model, alignment: .leading)
 
-                Spacer()
+                Spacer(minLength: 0)
 
-                Button("Copy Original") { copyOriginal() }
+                Button("Copy") { copyOriginal() }
                     .controlSize(.small)
+                    .help("Copies the text as you wrote it, before the correction.")
 
                 Button("Report…") { isConfirmingReport = true }
                     .controlSize(.small)
@@ -349,6 +419,17 @@ private struct HistoryRow: View {
             you press Submit there.
             """)
         }
+    }
+
+    /** Empty reads as a dash rather than as a gap, which looks like a bug. */
+    private var languages: String {
+        entry.outcome.languages.isEmpty
+            ? "—"
+            : entry.outcome.languages.map(\.displayName).joined(separator: ", ")
+    }
+
+    private var models: String {
+        entry.models.isEmpty ? "—" : entry.models.joined(separator: ", ")
     }
 
     private var changeCount: String {
@@ -477,38 +558,7 @@ private struct HistoryRow: View {
 
 #Preview {
     let history = CorrectionHistory()
-    history.record(
-        before: "i think we shoud meet on tuesday, does that work for you",
-        after: "I think we should meet on Tuesday, does that work for you",
-        bundleID: "com.apple.Mail",
-        editCount: 3,
-        models: ["Apple on-device"],
-        outcome: CorrectionOutcome(
-            languages: [.english],
-            notes: [
-                CorrectionNote(before: "i", after: "I"),
-                CorrectionNote(before: "shoud", after: "should"),
-                CorrectionNote(before: "tuesday", after: "Tuesday"),
-                CorrectionNote(before: "you", after: "you.", refusal: .ruleTurnedOff),
-            ]
-        )
-    )
-
-    /** The pass that changed nothing, which is the one people report. */
-    history.record(
-        before: "chekc this todo",
-        after: "chekc this todo",
-        bundleID: "com.google.Chrome",
-        editCount: 0,
-        models: ["Apple on-device"],
-        outcome: CorrectionOutcome(
-            notes: [CorrectionNote(
-                before: "chekc this todo",
-                after: nil,
-                refusal: .languageNotCorrected(.portuguese)
-            )]
-        )
-    )
+    history.addSamples()
 
     return HistoryView(history: history, onOpenSettings: {}, describeModel: { "Apple on-device" })
 }
