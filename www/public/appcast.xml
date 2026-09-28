@@ -3,6 +3,33 @@
     <channel>
         <title>Typoless</title>
         <item>
+            <title>0.1.4-beta</title>
+            <pubDate>Mon, 28 Sep 2026 12:43:33 +0200</pubDate>
+            <link>https://typoless.app</link>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:version>92</sparkle:version>
+            <sparkle:shortVersionString>0.1.4-beta</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description><![CDATA[<h3>Setup</h3>
+<ul>
+    <li>Setup opens whenever Typoless cannot read text, not only the first time it runs. Installing the app again used to skip the one screen that explains what is missing.</li>
+    <li>Allowing Accessibility opens one window, not two. The system asks the first time, and after that the button goes straight to the right pane of System Settings.</li>
+</ul>
+<h3>Settings</h3>
+<ul>
+    <li>The update rows say less: a title and a switch, with no note under them.</li>
+</ul>
+]]></description>
+            <enclosure url="https://typoless.app/releases/Typoless-0.1.4-beta.zip" length="8167863" type="application/octet-stream" sparkle:edSignature="Crr+MhPhq7N4mAoORKZFo6mFS0tyWLMyBPNdNstLMVkOVH4GTJ6kc8Rs3+QJqFWtqMmNQJT/A9FedhxYPgUQBg=="/>
+            <sparkle:deltas>
+                <enclosure url="https://typoless.app/releases/Typoless92-89.delta" sparkle:deltaFrom="89" length="448722" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="+fcLm4DT0CCV3VYxZ4sNL5FmEaHuKrZ1z2BRAJmpvzIT8ZJXcmpVIo4p5NsGCJjQyK37/6HC7UajmXeZO37DDA=="/>
+                <enclosure url="https://typoless.app/releases/Typoless92-85.delta" sparkle:deltaFrom="85" length="618486" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="XkaybhXSNPHhivvZ4MUtp8+6MgFHEFN5HSL3iNMw899NHRFAZnfcee7n5u4Xm3Z8+Iubz4cHKavQ+3RRcki1DQ=="/>
+                <enclosure url="https://typoless.app/releases/Typoless92-77.delta" sparkle:deltaFrom="77" length="668274" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="JM9JAErkn3bm+xms0EGzKhZ2nYvW0DA2Mxmd7lAmoGsR/sQUvbtT1t7PjhASPSqMM8X5+vDLyVdb4fFtXQpOBA=="/>
+                <enclosure url="https://typoless.app/releases/Typoless92-68.delta" sparkle:deltaFrom="68" length="703930" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="d4V8up5bM0TGUA2BQmJoSvW3meEAWuiXgYZjyLk50jyZtLME56yrjbBogqcLuOU2lZclr3r5rrjNNGhKCDxZDQ=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>0.1.3-beta</title>
             <pubDate>Mon, 28 Sep 2026 11:43:08 +0200</pubDate>
             <link>https://typoless.app</link>
@@ -48,19 +75,6 @@
     <li>A debug build is its own app, so two copies can no longer look the same in System Settings.</li>
 </ul>
 ]]></description>
-        </item>
-        <item>
-            <title>0.1.1-beta</title>
-            <pubDate>Fri, 25 Sep 2026 17:49:53 +0200</pubDate>
-            <sparkle:channel>beta</sparkle:channel>
-            <sparkle:version>77</sparkle:version>
-            <sparkle:shortVersionString>0.1.1-beta</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://typoless.app/releases/Typoless-0.1.1-beta.zip" length="8156423" type="application/octet-stream" sparkle:edSignature="RS+Sh2YURT16CYXTeF2SZhH18PN1Yr0lCkOKTJVfzWRCC2CvZuz/cqoo6cIWNHnGucq5iLze3bwdWmVxUP8tDg=="/>
-            <sparkle:deltas>
-                <enclosure url="https://typoless.app/releases/Typoless77-68.delta" sparkle:deltaFrom="68" length="627130" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="dTj2TNj/ZwkjSYzkmg0cjCAzrSbwi1LBoFTnaVSDJ5e8kkTbHrgr7brLb0eAHqikxaaTL9TeoTDriMJDRW/QCg=="/>
-            </sparkle:deltas>
         </item>
     </channel>
 </rss>
