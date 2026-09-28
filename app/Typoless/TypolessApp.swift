@@ -85,6 +85,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { await model.compareBackends() }
         }
 
+        /**
+         Opens the history window filled with sample rows, which is the only way
+         to look at it without correcting text in another app first.
+         */
+        if ProcessInfo.processInfo.arguments.contains("--show-history") {
+            model.history.addSamples()
+            model.showHistory()
+        }
+
         /** Starts the typing spike without a menu click, so a run can be scripted. */
         if ProcessInfo.processInfo.arguments.contains("--observe-typing") {
             model.typingObserver.start()

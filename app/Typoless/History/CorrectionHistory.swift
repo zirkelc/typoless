@@ -178,3 +178,79 @@ final class CorrectionHistory {
         entries.removeAll()
     }
 }
+
+#if DEBUG
+extension CorrectionHistory {
+    /**
+     Rows to look at the window with.
+
+     The window cannot otherwise be seen without performing corrections in
+     another app, which makes checking a layout change a matter of typing
+     something wrong in Mail and hoping it lands. Used by the preview and by
+     `--show-history`, so both show the same thing.
+     */
+    func addSamples() {
+        record(
+            before: "i think we shoud meet on tuesday, does that work for you",
+            after: "I think we should meet on Tuesday, does that work for you",
+            bundleID: "com.apple.Mail",
+            editCount: 3,
+            models: ["Apple on-device"],
+            outcome: CorrectionOutcome(
+                languages: [.english],
+                notes: [
+                    CorrectionNote(before: "i", after: "I"),
+                    CorrectionNote(before: "shoud", after: "should"),
+                    CorrectionNote(before: "tuesday", after: "Tuesday"),
+                    CorrectionNote(before: "you", after: "you.", refusal: .ruleTurnedOff),
+                ]
+            )
+        )
+
+        record(
+            before: """
+            Hallo Frau Gottschalk
+
+            anbei die Vollstaendigkeitserklaerung.
+
+            Vielen Dank und beste Gruesse
+            Christian Cook
+            """,
+            after: """
+            Hallo Frau Gottschalk
+
+            anbei die Vollständigkeitserklärung.
+
+            Vielen Dank und beste Grüße
+            Christian Cook
+            """,
+            bundleID: "com.google.Chrome",
+            editCount: 2,
+            models: ["Apple on-device"],
+            outcome: CorrectionOutcome(
+                languages: [.german],
+                notes: [
+                    CorrectionNote(before: "Vollstaendigkeitserklaerung", after: "Vollständigkeitserklärung"),
+                    CorrectionNote(before: "Gruesse", after: "Grüße"),
+                ]
+            )
+        )
+
+        /** The pass that changed nothing, which is the one people report. */
+        record(
+            before: "chekc this todo",
+            after: "chekc this todo",
+            bundleID: "com.apple.Safari",
+            editCount: 0,
+            models: ["Apple on-device"],
+            outcome: CorrectionOutcome(
+                notes: [CorrectionNote(
+                    before: "chekc this todo",
+                    after: nil,
+                    refusal: .languageNotCorrected(.portuguese)
+                )]
+            )
+        )
+    }
+}
+#endif
