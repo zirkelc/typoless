@@ -124,8 +124,19 @@ private struct HistoryRow: View {
                 Text(entry.date, style: .time)
                     .foregroundStyle(.secondary)
 
-                Text(entry.editCount == 1 ? "1 change" : "\(entry.editCount) changes")
+                Text(changeCount)
                     .foregroundStyle(.secondary)
+
+                if !entry.outcome.languages.isEmpty {
+                    /**
+                     The language is in the header rather than beside each
+                     change, because it is decided per pass as far as the user
+                     is concerned, and it is the first thing to check when a
+                     correction did not happen.
+                     */
+                    Text(entry.outcome.languages.map(\.displayName).joined(separator: ", "))
+                        .foregroundStyle(.secondary)
+                }
 
                 if !entry.models.isEmpty {
                     Text(entry.models.joined(separator: ", "))
@@ -144,7 +155,14 @@ private struct HistoryRow: View {
             .font(.callout)
 
             excerpt("Before", of: entry.before, highlighting: span?.range, tint: .red)
-            excerpt("After", of: entry.after, highlighting: afterRange(of: span), tint: .green)
+
+            if entry.didChange {
+                excerpt("After", of: entry.after, highlighting: afterRange(of: span), tint: .green)
+            }
+
+            if !entry.outcome.notes.isEmpty {
+                decisions
+            }
         }
         .padding(12)
         .background(Color(nsColor: .textBackgroundColor))
@@ -182,6 +200,47 @@ private struct HistoryRow: View {
             you press Submit there.
             """)
         }
+    }
+
+    private var changeCount: String {
+        switch entry.editCount {
+        case 0: return "Nothing changed"
+        case 1: return "1 change"
+        default: return "\(entry.editCount) changes"
+        }
+    }
+
+    /**
+     Every change the pass offered, and what happened to it.
+
+     The refused ones are the reason this list exists. A user looking at text
+     that was not corrected has no way to tell a model that saw nothing from a
+     rule that forbade the fix, and until now neither had anybody they asked.
+     */
+    private var decisions: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(entry.outcome.notes) { note in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Image(systemName: note.isApplied ? "checkmark.circle.fill" : "minus.circle")
+                        .foregroundStyle(note.isApplied ? Color.green : Color.secondary)
+                        .frame(width: 44, alignment: .trailing)
+
+                    Text(note.description)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+
+                    if let refusal = note.refusal {
+                        Text(refusal.summary)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+        .font(.callout)
+        .padding(.top, 2)
     }
 
     /**
@@ -258,7 +317,8 @@ private struct HistoryRow: View {
             bundleID: entry.bundleID,
             editCount: entry.editCount,
             backend: entry.models.isEmpty ? describeModel() : entry.models.joined(separator: ", "),
-            environment: .current
+            environment: .current,
+            outcome: entry.outcome
         )
 
         if let url = report.url {
@@ -286,7 +346,32 @@ private struct HistoryRow: View {
         after: "I think we should meet on Tuesday, does that work for you",
         bundleID: "com.apple.Mail",
         editCount: 3,
-        models: ["Apple on-device"]
+        models: ["Apple on-device"],
+        outcome: CorrectionOutcome(
+            languages: [.english],
+            notes: [
+                CorrectionNote(before: "i", after: "I"),
+                CorrectionNote(before: "shoud", after: "should"),
+                CorrectionNote(before: "tuesday", after: "Tuesday"),
+                CorrectionNote(before: "you", after: "you.", refusal: .ruleTurnedOff),
+            ]
+        )
+    )
+
+    /** The pass that changed nothing, which is the one people report. */
+    history.record(
+        before: "chekc this todo",
+        after: "chekc this todo",
+        bundleID: "com.google.Chrome",
+        editCount: 0,
+        models: ["Apple on-device"],
+        outcome: CorrectionOutcome(
+            notes: [CorrectionNote(
+                before: "chekc this todo",
+                after: nil,
+                refusal: .languageNotCorrected(.portuguese)
+            )]
+        )
     )
 
     return HistoryView(history: history, onOpenSettings: {}, describeModel: { "Apple on-device" })

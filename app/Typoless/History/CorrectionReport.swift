@@ -28,11 +28,18 @@ struct CorrectionReport {
     let editCount: Int
     let backend: String
     let environment: ReportEnvironment
+    /**
+     What the pass decided, which is most of the report when the complaint is
+     that nothing happened. Without it the first reply to every such issue would
+     be a question that only the log could answer, and the log is gone.
+     */
+    var outcome = CorrectionOutcome()
 
     var title: String {
         let excerpt = Self.firstLine(of: before, limit: 60)
+        let kind = before == after ? "No correction" : "Wrong correction"
 
-        return excerpt.isEmpty ? "Wrong correction" : "Wrong correction: \(excerpt)"
+        return excerpt.isEmpty ? kind : "\(kind): \(excerpt)"
     }
 
     var body: String {
@@ -48,12 +55,42 @@ struct CorrectionReport {
 
         ### After
         \(IssueTracker.fenced(Self.clipped(after)))
-
+        \(decisions)
         ### Details
         App: \(appDescription)
+        Language: \(languages)
         Changes applied: \(editCount)
         Model: \(backend)
         \(environment.lines.joined(separator: "\n"))
+        """
+    }
+
+    /** What the pass read the text as, or that it read nothing it corrects. */
+    private var languages: String {
+        outcome.languages.isEmpty
+            ? "none corrected"
+            : outcome.languages.map(\.displayName).joined(separator: ", ")
+    }
+
+    /**
+     Each change and what happened to it, or nothing at all when the pass kept
+     no record, which every entry from an older build is.
+     */
+    private var decisions: String {
+        guard !outcome.notes.isEmpty else { return "" }
+
+        let lines = outcome.notes.map { note in
+            let mark = note.isApplied ? "applied" : "not applied"
+            let reason = note.refusal.map { " — \($0.summary)" } ?? ""
+
+            return "- \(Self.firstLine(of: note.description, limit: 120)) (\(mark))\(reason)"
+        }
+
+        return """
+
+        ### What it decided
+        \(lines.joined(separator: "\n"))
+
         """
     }
 

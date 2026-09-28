@@ -132,6 +132,14 @@ final class CorrectionEngine {
         let corrected = TextDiff.apply(edits, to: original)
 
         guard !edits.isEmpty, corrected != original else {
+            /**
+             Kept even though the field did not move. A correction that did not
+             happen is the thing people report, and everything needed to answer
+             them is in the outcome: which language it read the text as, what it
+             offered, and what it refused.
+             */
+            await record(target: target, after: target.text, editCount: 0)
+
             report("Nothing to fix.", log: "No changes for \(original.utf16.count) characters")
             return
         }
@@ -308,23 +316,34 @@ final class CorrectionEngine {
         else {
             lastFix = nil
             canRevert = false
+
+            /** A write that landed nowhere is still worth being able to report. */
+            await record(target: target, after: target.text, editCount: 0)
             return
         }
 
         lastFix = Fix(element: target.element, before: target.text, after: after)
         canRevert = true
 
-        /**
-         Kept beyond the single undo above, since a correction is often noticed
-         to be wrong several messages later, by which time the one-step revert
-         has been spent on something else.
-         */
+        await record(target: target, after: after, editCount: editCount)
+    }
+
+    /**
+     Adds the pass to the history.
+
+     Kept beyond the single undo, since a correction is often noticed to be
+     wrong several messages later, by which time the one-step revert has been
+     spent on something else. Kept as well when nothing changed, because that is
+     the case a user cannot investigate for themselves.
+     */
+    private func record(target: TextTarget, after: String, editCount: Int) async {
         history.record(
             before: target.text,
             after: after,
             bundleID: target.bundleID,
             editCount: editCount,
-            models: await corrector.modelsInLastPass()
+            models: await corrector.modelsInLastPass(),
+            outcome: await corrector.outcomeOfLastPass()
         )
     }
 

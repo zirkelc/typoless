@@ -84,6 +84,20 @@ final class CorrectionHistory {
          rather than asked for later, since the setting may have changed since.
          */
         let models: [String]
+        /**
+         What the pass decided: which languages it read, what it changed, and
+         what it refused to change and why.
+
+         A pass that changed nothing is kept too, which is the point of holding
+         this. "It did nothing" is the most common thing anyone reports, and
+         without the reasons it is also the least answerable: the text is gone
+         from the field by the time they think to ask, and the reason was only
+         ever a log line.
+         */
+        var outcome = CorrectionOutcome()
+
+        /** Whether the field actually moved, as against a pass that only decided. */
+        var didChange: Bool { before != after }
     }
 
     /**
@@ -110,8 +124,22 @@ final class CorrectionHistory {
 
     private(set) var entries: [Entry] = []
 
-    func record(before: String, after: String, bundleID: String?, editCount: Int, models: [String] = []) {
-        guard retention.keepsHistory, before != after else { return }
+    func record(
+        before: String,
+        after: String,
+        bundleID: String?,
+        editCount: Int,
+        models: [String] = [],
+        outcome: CorrectionOutcome = CorrectionOutcome()
+    ) {
+        /**
+         A pass that changed nothing is worth keeping, so long as it had
+         something to say. What it decided is the whole record of a correction
+         that did not happen, and reporting one is the reason this window has a
+         button on every row.
+         */
+        guard retention.keepsHistory else { return }
+        guard before != after || !outcome.notes.isEmpty || !outcome.languages.isEmpty else { return }
 
         entries.insert(
             Entry(
@@ -120,7 +148,8 @@ final class CorrectionHistory {
                 before: before,
                 after: after,
                 editCount: editCount,
-                models: models
+                models: models,
+                outcome: outcome
             ),
             at: 0
         )

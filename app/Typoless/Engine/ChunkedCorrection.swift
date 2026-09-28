@@ -14,6 +14,12 @@ import Foundation
  that makes those bugs unrepresentable is a single loop with the model handed in.
  */
 enum ChunkedCorrection {
+    /** The edits to make, and everything the pass decided on the way there. */
+    struct Pass: Sendable {
+        var edits: [TextEdit] = []
+        var outcome = CorrectionOutcome()
+    }
+
     /**
      - Parameter answer: Asks the model about one chunk. Nil leaves that chunk
        exactly as the user wrote it, which is what every failure does.
@@ -38,9 +44,9 @@ enum ChunkedCorrection {
          */
         isolation: isolated (any Actor)? = #isolation,
         answer: (String, CorrectionLanguage, Bool) async throws -> String?
-    ) async throws -> [TextEdit] {
+    ) async throws -> Pass {
         let protected = ProtectedSpans.find(in: text)
-        var edits: [TextEdit] = []
+        var pass = Pass()
 
         for chunk in TextChunker.chunks(of: text) {
             /** The user can give up mid-pass, and a long field is several chunks. */
@@ -54,6 +60,11 @@ enum ChunkedCorrection {
              */
             guard deadline?.hasExpired() != true else {
                 Log.app.info("Out of time, leaving the rest of the field alone")
+                pass.outcome.add(CorrectionNote(
+                    before: String(text[chunk]),
+                    after: nil,
+                    refusal: .outOfTime
+                ))
                 break
             }
 
@@ -76,10 +87,23 @@ enum ChunkedCorrection {
             guard masked.text.contains(where: \.isLetter) else { continue }
 
             /** Not a language the user asked for, so it is left exactly as written. */
-            guard let language = detector.detect(source) else {
-                Log.app.info("Skipped a chunk in a language that is not enabled")
+            let language: CorrectionLanguage
+            switch detector.choose(source) {
+            case .correct(let chosen):
+                language = chosen
+            case .leave(let detected):
+                Log.app.info(
+                    "Skipped a chunk read as \(detected?.rawValue ?? "nothing known", privacy: .public), which is not enabled"
+                )
+                pass.outcome.add(CorrectionNote(
+                    before: source,
+                    after: nil,
+                    refusal: .languageNotCorrected(detected)
+                ))
                 continue
             }
+
+            pass.outcome.add(language: language)
 
             /**
              The masked text first, and the text as written only if the markers
@@ -110,11 +134,13 @@ enum ChunkedCorrection {
              */
             if appliesGuardrail, detector.detect(corrected) != language {
                 Log.app.info("Dropped a chunk whose language changed")
+                pass.outcome.add(CorrectionNote(before: source, after: corrected, refusal: .languageChanged))
                 continue
             }
 
             if appliesGuardrail, EditGuardrail.isShouting(corrected, over: source) {
                 Log.app.info("Dropped a chunk the model returned in capitals")
+                pass.outcome.add(CorrectionNote(before: source, after: corrected, refusal: .shouting))
                 continue
             }
 
@@ -122,7 +148,8 @@ enum ChunkedCorrection {
                 .map { rebase($0, from: source, into: text, at: chunk) }
 
             guard appliesGuardrail else {
-                edits += chunkEdits
+                pass.edits += chunkEdits
+                pass.outcome.notes += chunkEdits.map { note(for: $0, in: text) }
                 continue
             }
 
@@ -136,15 +163,29 @@ enum ChunkedCorrection {
 
             guard verdict.isTrustworthy else {
                 Log.app.info("Dropped a chunk the model rewrote rather than corrected")
+                pass.outcome.add(CorrectionNote(before: source, after: corrected, refusal: .rewrite))
                 continue
             }
 
-            edits += verdict.accepted
+            pass.edits += verdict.accepted
+            pass.outcome.notes += verdict.accepted.map { note(for: $0, in: text) }
+            pass.outcome.notes += verdict.refusals.map {
+                note(for: $0.edit, in: text, refusal: $0.reason)
+            }
         }
 
-        Log.app.info("Found \(edits.count, privacy: .public) edits")
+        Log.app.info("Found \(pass.edits.count, privacy: .public) edits")
 
-        return edits
+        return pass
+    }
+
+    /** One change, in the words it is shown and reported in. */
+    private static func note(
+        for edit: TextEdit,
+        in text: String,
+        refusal: CorrectionRefusal? = nil
+    ) -> CorrectionNote {
+        CorrectionNote(before: String(text[edit.range]), after: edit.replacement, refusal: refusal)
     }
 
     /**

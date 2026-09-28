@@ -554,7 +554,27 @@ struct LanguageDetector: Sendable {
      judges a language by, and the shorter the text, the less is left. Under the
      floor, the likeliest language the user does correct is used instead.
      */
+    /**
+     What to do with a piece of text, and what was read in it either way.
+
+     The language is worth keeping even when the answer is to leave the text
+     alone: "not one of your languages" is an answer a user can act on, and
+     "read as Portuguese" tells them which switch to look at.
+     */
+    enum Choice: Sendable, Equatable {
+        case correct(CorrectionLanguage)
+        case leave(detected: CorrectionLanguage?)
+    }
+
+    /** The answer without its reasons, for callers that only need the language. */
     func detect(_ text: String) -> CorrectionLanguage? {
+        switch choose(text) {
+        case .correct(let language): return language
+        case .leave: return nil
+        }
+    }
+
+    func choose(_ text: String) -> Choice {
         let recognizer = NLLanguageRecognizer()
         recognizer.languageConstraints = CorrectionLanguage.allCases.map(\.nlLanguage)
         recognizer.processString(text)
@@ -564,17 +584,20 @@ struct LanguageDetector: Sendable {
             let match = CorrectionLanguage.allCases.first(where: { $0.nlLanguage == dominant })
         else {
             /** Nothing recognisable, so treat it as the first language asked for. */
-            return enabled.first
+            return enabled.first.map(Choice.correct) ?? .leave(detected: nil)
         }
 
-        if enabled.contains(match) { return match }
+        if enabled.contains(match) { return .correct(match) }
 
         let hypotheses = recognizer.languageHypotheses(withMaximum: CorrectionLanguage.allCases.count)
 
         /** A language the user does not correct, and the recogniser means it. */
-        if hypotheses[dominant, default: 0] >= Self.certainty { return nil }
+        if hypotheses[dominant, default: 0] >= Self.certainty { return .leave(detected: match) }
 
-        return enabled.max { hypotheses[$0.nlLanguage, default: 0] < hypotheses[$1.nlLanguage, default: 0] }
-            ?? enabled.first
+        let likeliest = enabled.max {
+            hypotheses[$0.nlLanguage, default: 0] < hypotheses[$1.nlLanguage, default: 0]
+        } ?? enabled.first
+
+        return likeliest.map(Choice.correct) ?? .leave(detected: match)
     }
 }

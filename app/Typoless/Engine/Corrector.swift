@@ -27,10 +27,23 @@ protocol Corrector: Sendable {
      models. Empty where the corrector does not know.
      */
     func modelsInLastPass() async -> [String]
+
+    /**
+     What the most recent pass decided, beside the edits it returned.
+
+     Kept here rather than returned from `corrections`, so that a caller which
+     only wants the changes is not made to carry the rest. The history window
+     and a bug report want the rest: a correction that was refused, and the
+     reason, is exactly what a user cannot see and cannot describe.
+     */
+    func outcomeOfLastPass() async -> CorrectionOutcome
 }
 
 extension Corrector {
     func modelsInLastPass() async -> [String] { [] }
+
+    /** Nothing, for a corrector with no pipeline behind it. */
+    func outcomeOfLastPass() async -> CorrectionOutcome { CorrectionOutcome() }
 
     /** The corrected text, for callers that want the result rather than the changes. */
     func correct(_ text: String, settings: AppSettings = .permissive) async throws -> String {

@@ -61,6 +61,7 @@ cat \
     Typoless/Engine/TextDiff.swift \
     Typoless/Engine/CorrectionRule.swift \
     Typoless/Engine/EditGuardrail.swift \
+    Typoless/Engine/CorrectionOutcome.swift \
     Typoless/Engine/WordList.swift \
     Typoless/Engine/ProtectedSpans.swift \
     Typoless/Engine/AppSettings.swift \

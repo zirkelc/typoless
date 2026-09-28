@@ -57,8 +57,13 @@ actor LocalModelCorrector: Corrector {
         self.onProgress = onProgress
     }
 
+    /** What the last pass decided, for the history window and for a report. */
+    private var lastOutcome = CorrectionOutcome()
+
+    func outcomeOfLastPass() -> CorrectionOutcome { lastOutcome }
+
     func corrections(for text: String, settings: AppSettings) async throws -> [TextEdit] {
-        try await ChunkedCorrection.run(
+        let pass = try await ChunkedCorrection.run(
             over: text,
             settings: settings,
             detector: detector,
@@ -83,6 +88,10 @@ actor LocalModelCorrector: Corrector {
 
             return await self.corrected(source, language: language, startsText: startsText, model: chosen, using: container)
         }
+
+        lastOutcome = pass.outcome
+
+        return pass.edits
     }
 
 
