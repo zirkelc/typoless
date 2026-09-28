@@ -1,54 +1,76 @@
 import Foundation
 
 /**
- A readable window onto one change inside a possibly very long field.
+ A readable window onto the changes inside a possibly very long field.
 
- Split into three plain pieces rather than built as styled text, so the offset
- arithmetic, which is the part that can be wrong, is a function of a string and a
- range and nothing else. The view decides what the pieces look like.
+ Plain text and offsets rather than styled text, so the arithmetic, which is the
+ part that can be wrong, is a function of a string and some ranges and nothing
+ else. The view decides what the pieces look like.
+
+ Every change is marked, not the stretch that contains them. One span from the
+ first difference to the last is far easier to compute and reads as a lie:
+ "chekc this todo" corrected to "Check this to-do" marked the whole line, so an
+ app that changed two words claimed to have rewritten the sentence.
  */
 struct TextExcerpt: Equatable {
-    /** How much unchanged text to keep either side, in characters. */
+    /** How much unchanged text to keep either side of the outermost change. */
     static let contextCharacters = 90
 
-    /** Unchanged text before the change, with a leading ellipsis if it was cut. */
-    let before: String
-    /** The changed text itself, empty when the change was a pure insertion. */
-    let changed: String
-    /** Unchanged text after the change, with a trailing ellipsis if it was cut. */
-    let after: String
+    /** The window itself, with an ellipsis wherever it was cut. */
+    let text: String
+
+    /** What changed, in this string's own coordinates. */
+    let highlights: [Range<String.Index>]
 
     /**
-     Nil range means no change could be located, in which case there is nothing
-     to centre on and the excerpt is just the start of the field.
+     An empty list of ranges means nothing could be located, in which case there
+     is nothing to centre on and the excerpt is just the start of the field.
      */
-    static func build(from text: String, highlighting range: CFRange?) -> TextExcerpt {
+    static func build(from text: String, highlighting ranges: [CFRange]) -> TextExcerpt {
         /**
          An empty result from a non-empty range means the boundary fell inside a
          character and was rounded away, which showed the row with no highlight
          at all rather than admitting it could not place one.
          */
-        guard
-            let range,
-            let changed = Range(NSRange(location: range.location, length: range.length), in: text),
-            !(changed.isEmpty && range.length > 0)
-        else {
-            return TextExcerpt(before: clip(text), changed: "", after: "")
+        let changes = ranges.compactMap { range -> Range<String.Index>? in
+            guard
+                let converted = Range(NSRange(location: range.location, length: range.length), in: text),
+                !(converted.isEmpty && range.length > 0)
+            else { return nil }
+
+            return converted
+        }
+        .sorted { $0.lowerBound < $1.lowerBound }
+
+        guard let first = changes.first, let last = changes.max(by: { $0.upperBound < $1.upperBound }) else {
+            return TextExcerpt(text: clip(text), highlights: [])
         }
 
-        let start = text.index(changed.lowerBound, offsetBy: -contextCharacters, limitedBy: text.startIndex)
+        let start = text.index(first.lowerBound, offsetBy: -contextCharacters, limitedBy: text.startIndex)
             ?? text.startIndex
-        let end = text.index(changed.upperBound, offsetBy: contextCharacters, limitedBy: text.endIndex)
+        let end = text.index(last.upperBound, offsetBy: contextCharacters, limitedBy: text.endIndex)
             ?? text.endIndex
 
-        let leading = (start > text.startIndex ? "…" : "") + String(text[start..<changed.lowerBound])
-        let trailing = String(text[changed.upperBound..<end]) + (end < text.endIndex ? "…" : "")
+        let leading = start > text.startIndex ? "…" : ""
+        let trailing = end < text.endIndex ? "…" : ""
+        let window = leading + String(text[start..<end]) + trailing
 
-        return TextExcerpt(
-            before: leading,
-            changed: String(text[changed]),
-            after: trailing
-        )
+        /**
+         Moved into the window's coordinates by counting characters, since both
+         ends of this are Swift strings and the leading ellipsis is one
+         character of its own.
+         */
+        let highlights = changes.map { change -> Range<String.Index> in
+            let offset = leading.count + text.distance(from: start, to: change.lowerBound)
+            let length = text.distance(from: change.lowerBound, to: change.upperBound)
+
+            let lower = window.index(window.startIndex, offsetBy: offset)
+            let upper = window.index(lower, offsetBy: length)
+
+            return lower..<upper
+        }
+
+        return TextExcerpt(text: window, highlights: highlights)
     }
 
     /** Something has to bound a field with no detectable change in it. */

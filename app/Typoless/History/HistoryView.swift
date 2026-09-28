@@ -13,6 +13,35 @@ struct HistoryView: View {
     let history: CorrectionHistory
 
     /**
+     What the list is narrowed to.
+
+     Held here rather than in the history itself, because a filter is a way of
+     looking at the record and not part of it: closing the window and opening it
+     again should show everything, which is what somebody expects of a list they
+     did not change.
+     */
+    @State private var app: String?
+    @State private var language: CorrectionLanguage?
+    @State private var show: ShowFilter = .all
+
+    /** Which passes to list, by what happened rather than by where. */
+    enum ShowFilter: String, CaseIterable, Identifiable {
+        case all = "Everything"
+        case changed = "Changed something"
+        case refused = "Refused something"
+
+        var id: String { rawValue }
+
+        func matches(_ entry: CorrectionHistory.Entry) -> Bool {
+            switch self {
+            case .all: return true
+            case .changed: return entry.didChange
+            case .refused: return entry.outcome.notes.contains { !$0.isApplied }
+            }
+        }
+    }
+
+    /**
      Opens the setting that governs this window.
 
      Named here rather than only described in words, because the retention is
@@ -30,12 +59,19 @@ struct HistoryView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if !history.entries.isEmpty {
+                header
+                Divider()
+            }
+
             if history.entries.isEmpty {
                 empty
+            } else if entries.isEmpty {
+                nothingMatches
             } else {
                 ScrollView {
                     LazyVStack(spacing: 14) {
-                        ForEach(history.entries) { entry in
+                        ForEach(entries) { entry in
                             HistoryRow(entry: entry, describeModel: describeModel)
                         }
                     }
@@ -64,6 +100,103 @@ struct HistoryView: View {
         }
         .frame(width: 720, height: 540)
         .onAppear { history.prune() }
+    }
+
+    /** What is listed once the filters have had their say. */
+    private var entries: [CorrectionHistory.Entry] {
+        history.entries.filter { entry in
+            (app == nil || entry.bundleID == app)
+                && (language == nil || entry.outcome.languages.contains { $0 == language })
+                && show.matches(entry)
+        }
+    }
+
+    /** Only the apps and languages that are actually in the list, so no filter finds nothing. */
+    private var apps: [String] {
+        Array(Set(history.entries.compactMap(\.bundleID))).sorted {
+            name(of: $0).localizedCaseInsensitiveCompare(name(of: $1)) == .orderedAscending
+        }
+    }
+
+    private var languages: [CorrectionLanguage] {
+        CorrectionLanguage.allCases.filter { candidate in
+            history.entries.contains { $0.outcome.languages.contains(candidate) }
+        }
+    }
+
+    private func name(of bundleID: String) -> String {
+        InstalledApp.named(bundleID).name
+    }
+
+    /**
+     The row above the list: what is in it, and how to see less of it.
+
+     Filtering is here because the list is a record kept for reporting, and the
+     entry worth reporting is the one that did something unexpected. Finding it
+     among the ordinary ones by scrolling is the work this saves.
+     */
+    private var header: some View {
+        HStack(spacing: 10) {
+            Picker("App", selection: $app) {
+                Text("All apps").tag(String?.none)
+                ForEach(apps, id: \.self) { bundleID in
+                    Text(name(of: bundleID)).tag(String?.some(bundleID))
+                }
+            }
+            .frame(maxWidth: 180)
+
+            Picker("Language", selection: $language) {
+                Text("All languages").tag(CorrectionLanguage?.none)
+                ForEach(languages) { candidate in
+                    Text(candidate.displayName).tag(CorrectionLanguage?.some(candidate))
+                }
+            }
+            .frame(maxWidth: 170)
+            .disabled(languages.isEmpty)
+
+            Picker("Show", selection: $show) {
+                ForEach(ShowFilter.allCases) { option in
+                    Text(option.rawValue).tag(option)
+                }
+            }
+            .frame(maxWidth: 190)
+
+            Spacer()
+
+            Text(summary)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        .labelsHidden()
+        .controlSize(.small)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+    }
+
+    private var summary: String {
+        let shown = entries.count
+        let total = history.entries.count
+
+        guard shown != total else {
+            return total == 1 ? "1 correction" : "\(total) corrections"
+        }
+
+        return "\(shown) of \(total)"
+    }
+
+    private var nothingMatches: some View {
+        VStack(spacing: 6) {
+            Text("Nothing matches")
+                .font(.headline)
+
+            Button("Show everything") {
+                app = nil
+                language = nil
+                show = .all
+            }
+            .buttonStyle(.link)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var empty: some View {
@@ -98,18 +231,34 @@ private struct HistoryRow: View {
     }
 
     /**
-     Worked out once per row rather than per read.
+     Where each change sits, on both sides.
 
-     As a computed property this ran on every `body` evaluation, and twice each
-     time, since the after-range derives from it. Each call copies both the
-     before and after text in full, which for a long email is not free.
+     Worked out once per row rather than per read: as a computed property this
+     ran on every `body` evaluation, and twice each time, and each call copies
+     both versions of the text in full, which for a long email is not free.
      */
-    private var span: (range: CFRange, replacement: String)? {
-        TextDiff.differingSpan(from: entry.before, to: entry.after)
+    private var changes: (before: [CFRange], after: [CFRange]) {
+        let edits = TextDiff.edits(from: entry.before, to: entry.after).map { edit in
+            FieldEdit(
+                range: CFRange(
+                    location: edit.range.lowerBound.utf16Offset(in: entry.before),
+                    length: edit.range.upperBound.utf16Offset(in: entry.before)
+                        - edit.range.lowerBound.utf16Offset(in: entry.before)
+                ),
+                replacement: edit.replacement
+            )
+        }
+
+        /**
+         Empty ranges are kept on the before side. An insertion has nothing to
+         mark there, but it is still where the change happened, and dropping it
+         would leave a long field with no change to centre the window on.
+         */
+        return (edits.map(\.range), edits.landedRanges)
     }
 
     var body: some View {
-        let span = self.span
+        let changes = self.changes
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 if let app {
@@ -154,10 +303,10 @@ private struct HistoryRow: View {
             }
             .font(.callout)
 
-            excerpt("Before", of: entry.before, highlighting: span?.range, tint: .red)
+            excerpt("Before", of: entry.before, highlighting: changes.before, tint: .red)
 
             if entry.didChange {
-                excerpt("After", of: entry.after, highlighting: afterRange(of: span), tint: .green)
+                excerpt("After", of: entry.after, highlighting: changes.after, tint: .green)
             }
 
             if !entry.outcome.notes.isEmpty {
@@ -243,22 +392,10 @@ private struct HistoryRow: View {
         .padding(.top, 2)
     }
 
-    /**
-     Where the replacement landed.
-
-     It starts where the removed text did, since everything before that point is
-     shared by definition, and runs for as long as what replaced it.
-     */
-    private func afterRange(of span: (range: CFRange, replacement: String)?) -> CFRange? {
-        guard let span else { return nil }
-
-        return CFRange(location: span.range.location, length: span.replacement.utf16.count)
-    }
-
     private func excerpt(
         _ label: String,
         of text: String,
-        highlighting range: CFRange?,
+        highlighting ranges: [CFRange],
         tint: Color
     ) -> some View {
         HStack(alignment: .top, spacing: 8) {
@@ -267,7 +404,7 @@ private struct HistoryRow: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 44, alignment: .trailing)
 
-            Text(styled(TextExcerpt.build(from: text, highlighting: range), tint: tint))
+            Text(styled(TextExcerpt.build(from: text, highlighting: ranges), tint: tint))
                 .font(.callout)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -276,25 +413,24 @@ private struct HistoryRow: View {
     }
 
     /**
-     Dims everything the correction did not touch, so the eye lands on the part
+     Dims everything the correction did not touch, so the eye lands on the words
      that moved rather than on a paragraph of unchanged prose.
      */
     private func styled(_ excerpt: TextExcerpt, tint: Color) -> AttributedString {
-        var context = AttributedString(excerpt.before)
-        context.foregroundColor = .secondary
+        var result = AttributedString(excerpt.text)
+        result.foregroundColor = .secondary
 
-        /**
-         A pure insertion has nothing to show on the removed side, and an empty
-         highlight reads as though nothing happened, so it gets a mark instead.
-         */
-        var changed = AttributedString(excerpt.changed.isEmpty ? "▸" : excerpt.changed)
-        changed.backgroundColor = tint.opacity(0.22)
-        changed.foregroundColor = .primary
+        for change in excerpt.highlights {
+            guard
+                let lower = AttributedString.Index(change.lowerBound, within: result),
+                let upper = AttributedString.Index(change.upperBound, within: result)
+            else { continue }
 
-        var trailing = AttributedString(excerpt.after)
-        trailing.foregroundColor = .secondary
+            result[lower..<upper].backgroundColor = tint.opacity(0.22)
+            result[lower..<upper].foregroundColor = .primary
+        }
 
-        return context + changed + trailing
+        return result
     }
 
     private func copyOriginal() {
