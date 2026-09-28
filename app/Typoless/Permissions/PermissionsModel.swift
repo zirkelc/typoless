@@ -25,6 +25,9 @@ final class PermissionsModel {
 
     private var pollTask: Task<Void, Never>?
 
+    /** Where the one thing this remembers between launches is kept. */
+    @ObservationIgnored private let defaults = UserDefaults.standard
+
     /**
      Other copies of this app on this Mac, which is the usual reason a switch
      that is visibly on does not apply to the app that is asking.
@@ -93,11 +96,29 @@ final class PermissionsModel {
      app is unsandboxed.
      */
     func requestAccessibility() {
-        let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue()
-        let options = [key: kCFBooleanTrue as Any] as CFDictionary
-
-        if AXIsProcessTrustedWithOptions(options) {
+        if AXIsProcessTrusted() {
             refresh()
+            return
+        }
+
+        /**
+         The first press asks the system, which registers the app so that it has
+         a row to switch on, and puts up a dialog whose own button opens the
+         right pane. Opening that pane ourselves as well put two windows on
+         screen for one press, each saying the same thing.
+
+         Every press after that goes straight to the pane, because the system
+         shows its dialog for an app it has already offered at most once, and a
+         button that may or may not do something visible is worse than one that
+         always does the same thing.
+         */
+        let key = DefaultsKey.hasAskedForAccessibility
+        guard defaults.bool(forKey: key) else {
+            defaults.set(true, forKey: key)
+
+            let option = kAXTrustedCheckOptionPrompt.takeUnretainedValue()
+            _ = AXIsProcessTrustedWithOptions([option: kCFBooleanTrue as Any] as CFDictionary)
+
             return
         }
 

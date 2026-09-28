@@ -6,6 +6,7 @@ import SwiftUI
 /** Keys for values persisted in user defaults. */
 enum DefaultsKey {
     static let hasCompletedOnboarding = "hasCompletedOnboarding"
+    static let hasAskedForAccessibility = "hasAskedForAccessibility"
     static let correctorBackend = "correctorBackend"
     static let localModel = "localModel"
     static let guardrailEnabled = "guardrailEnabled"
