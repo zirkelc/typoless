@@ -181,6 +181,18 @@ ditto -c -k --keepParent "$APP" "$RELEASES/Typoless-$VERSION.zip"
 echo "==> Building the disk image"
 Config/make-dmg.sh "$VERSION" "$APP"
 
+# What the update window shows before the install button is pressed. Sparkle
+# reads the file whose name matches the archive, and embeds it in the feed when
+# it is a fragment rather than a whole page, so nothing else has to be uploaded.
+# Without one the window is blank, which is a poor thing to ask somebody to
+# agree to.
+NOTES="Config/release-notes/$VERSION.html"
+if [ -f "$NOTES" ]; then
+    cp "$NOTES" "$RELEASES/Typoless-$VERSION.html"
+else
+    echo "==> No release notes at $NOTES, so the update window will say nothing"
+fi
+
 # generate_appcast signs every archive in the folder with the key from the
 # keychain and writes the feed, so the signature and the entry cannot disagree.
 echo "==> Writing the appcast"
@@ -188,6 +200,7 @@ echo "==> Writing the appcast"
 # an empty array expanded plainly is an unbound variable and stops the script.
 "$SPARKLE_BIN/generate_appcast" \
     --download-url-prefix "$DOWNLOAD_PREFIX" \
+    --link "https://typoless.app" \
     ${CHANNEL_ARGS[@]+"${CHANNEL_ARGS[@]}"} \
     "$RELEASES"
 

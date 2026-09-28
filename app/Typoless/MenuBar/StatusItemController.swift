@@ -62,12 +62,21 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         image?.accessibilityDescription = status.label
         image?.isTemplate = true
 
-        #if DEBUG
-        /** Two copies in the menu bar look identical until one of them is marked. */
-        button.image = image.map(Self.marked)
-        #else
-        button.image = image
-        #endif
+        if model.updates?.availableUpdate != nil {
+            /**
+             An update outranks the build mark. Both are a dot in the same
+             corner, and which build this is matters less than a fix waiting to
+             be installed.
+             */
+            button.image = image.map(Self.badgedForUpdate)
+        } else {
+            #if DEBUG
+            /** Two copies in the menu bar look identical until one of them is marked. */
+            button.image = image.map(Self.marked)
+            #else
+            button.image = image
+            #endif
+        }
         button.imagePosition = status.badge == nil ? .imageOnly : .imageLeading
         button.title = status.badge.map { " \($0)" } ?? ""
         button.toolTip = status.label
@@ -88,6 +97,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private func observeStatus() {
         withObservationTracking {
             _ = model.status
+            /** The mark is part of the icon, so it is watched where the icon is. */
+            _ = model.updates?.availableUpdate
         } onChange: {
             Task { @MainActor [weak self] in
                 self?.updateIcon()
@@ -125,6 +136,23 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         messages.hide()
 
         menu.removeAllItems()
+
+        /**
+         Above the header, because it is the one thing in this menu the user did
+         not already know. It leads to Sparkle's own window, which is where the
+         version, the notes and the install button are.
+         */
+        if model.updates?.availableUpdate != nil {
+            let update = NSMenuItem(
+                title: "A new update is available…",
+                action: #selector(checkForUpdates),
+                keyEquivalent: ""
+            )
+            update.target = self
+            update.image = Self.updateDot
+            menu.addItem(update)
+            menu.addItem(.separator())
+        }
 
         let header = NSMenuItem(title: headerTitle, action: nil, keyEquivalent: "")
         header.isEnabled = false
@@ -455,6 +483,67 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func quit() {
         NSApp.terminate(nil)
     }
+
+    /**
+     The same icon with a coloured dot on it, for an update that is waiting.
+
+     Not a template image, unlike everything else up there: the whole point is a
+     spot of colour in a row of grey shapes, which is what makes it readable
+     without being read. The icon under it is still drawn in the menu bar's own
+     colour, resolved while it draws, so it follows light and dark by itself.
+     */
+    private static func badgedForUpdate(_ image: NSImage) -> NSImage {
+        let size = image.size
+        let badge = size.height / 3.2
+
+        let badged = NSImage(size: size, flipped: false) { rect in
+            image.draw(in: rect)
+
+            /** A template image is a shape in black; this paints the shape. */
+            NSColor.labelColor.setFill()
+            rect.fill(using: .sourceAtop)
+
+            let dot = NSRect(
+                x: rect.maxX - badge,
+                y: rect.maxY - badge,
+                width: badge,
+                height: badge
+            )
+
+            /** Cleared first, so the dot reads as a dot and not as part of the letter. */
+            NSGraphicsContext.current?.compositingOperation = .clear
+            NSBezierPath(ovalIn: dot.insetBy(dx: -1, dy: -1)).fill()
+
+            NSGraphicsContext.current?.compositingOperation = .sourceOver
+            StatusItemController.updateColour.setFill()
+            NSBezierPath(ovalIn: dot).fill()
+
+            return true
+        }
+
+        badged.isTemplate = false
+        badged.accessibilityDescription = image.accessibilityDescription
+
+        return badged
+    }
+
+    /** The same dot again, at the size a menu item's image is drawn. */
+    private static let updateDot: NSImage = {
+        let size = NSSize(width: 10, height: 10)
+        let dot = NSImage(size: size, flipped: false) { rect in
+            StatusItemController.updateColour.setFill()
+            NSBezierPath(ovalIn: rect).fill()
+
+            return true
+        }
+        dot.isTemplate = false
+        dot.accessibilityDescription = "Update available"
+
+        return dot
+    }()
+
+    /** The app's own colour, so the mark belongs to it rather than to the system. */
+    private static let updateColour = NSColor(named: "AccentColor") ?? .systemOrange
 
     #if DEBUG
     /**

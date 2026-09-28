@@ -33,11 +33,17 @@
         replace itself with a release. The release script reads this value back
         from the built app to decide where the downloads go.
 
-        Automatic checking is not set here on purpose. With no value in this
-        file Sparkle asks the user on the second launch whether to check
-        automatically, and the answer can be changed later in General settings.
-        A value here would suppress that question for good.
+        Automatic checking is on from the first launch, which is what this key
+        says. Without it Sparkle asks the question itself on the second launch,
+        and that question was worth less than it cost: a check is one request a
+        day carrying the app's name and version, it installs nothing on its own,
+        and a user who answers no keeps running the version with the bug we have
+        already fixed. The switch to turn it off is in General settings, and
+        what an update does when it is found is a separate answer that defaults
+        to asking.
     -->
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
     <key>SUFeedURL</key>
     <string>$(TYPOLESS_FEED_URL)</string>
 </dict>

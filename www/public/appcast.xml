@@ -15,6 +15,14 @@
                 <enclosure url="https://typoless.app/releases/Typoless85-77.delta" sparkle:deltaFrom="77" length="624730" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="Xly/Oz3N4hooynUeP3pIfZHJDU+qVX9Ft60YakIQZkeOV2ZHUdY6DguTQ4y9TIEzxRFjj3t5+/ultJVKJyU7CA=="/>
                 <enclosure url="https://typoless.app/releases/Typoless85-68.delta" sparkle:deltaFrom="68" length="681026" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="alYArT6dSPemyUMISRNk7Qnk4C9u1rjGi2D4G7PHM5Hq5fx8j3y1PxK3241cyObuHyDXp+dOVRoNNn/yihWpDQ=="/>
             </sparkle:deltas>
+            <description><![CDATA[<h3>Setup</h3>
+<ul>
+    <li>Typoless explains itself before macOS asks for permission. The system dialog now waits for the Allow button.</li>
+    <li>The languages a new install starts with come from your Mac instead of English and German.</li>
+    <li>Finish Setup sits under the line in the menu that asks for it.</li>
+    <li>A debug build is its own app, so two copies can no longer look the same in System Settings.</li>
+</ul>
+]]></description>
         </item>
         <item>
             <title>0.1.1-beta</title>
