@@ -61,7 +61,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.onShowHistory = { [weak historyWindow] in historyWindow?.show() }
         statusItem = StatusItemController(model: model)
 
-        if !UserDefaults.standard.bool(forKey: DefaultsKey.hasCompletedOnboarding) {
+        /**
+         Also when the app cannot read text, not only the first time it runs.
+
+         The completed flag outlives the app: settings are kept by identifier,
+         so a copy that is thrown away and installed again starts with the flag
+         already set, and the setup it needs more than ever is the one thing it
+         would not show. What the user sees then is an app in the menu bar
+         wearing a warning and explaining nothing.
+         */
+        if !UserDefaults.standard.bool(forKey: DefaultsKey.hasCompletedOnboarding)
+            || !model.permissions.isAccessibilityTrusted {
+            Log.app.info("Opening setup at launch")
             onboarding.show()
         }
 

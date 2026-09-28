@@ -34,10 +34,16 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
          */
         model.permissions.startMonitoring()
 
-        /** An accessory app has to ask, or the window opens behind everything. */
+        /**
+         An accessory app has to ask to come forward, and `orderFrontRegardless`
+         as well, because an app that is not the active one is not allowed to
+         raise a window by asking politely: the menu item can be used from
+         another app, and this window is the answer to it.
+         */
         NSApp.activate(ignoringOtherApps: true)
         window?.center()
         window?.makeKeyAndOrderFront(nil)
+        window?.orderFrontRegardless()
     }
 
     func close() {

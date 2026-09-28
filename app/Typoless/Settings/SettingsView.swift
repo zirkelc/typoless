@@ -24,15 +24,12 @@ struct GeneralSettingsView: View {
                 }
 
                 if let updates {
-                    SettingsLine("Updates", note: Self.lastCheck(updates)) {
+                    SettingsLine("Updates") {
                         Button("Check Now") { updates.checkForUpdates() }
                             .disabled(!updates.canCheckForUpdates)
                     }
 
-                    SettingsLine(
-                        "Automatically check for updates",
-                        note: "Once a day, from typoless.app. The request carries only the app's name and version, and an update waits in the menu bar until you install it."
-                    ) {
+                    SettingsLine("Automatically check for updates") {
                         SettingsSwitch(
                             isOn: Binding(
                                 get: { updates.checksAutomatically },
@@ -121,23 +118,4 @@ struct PrivacySettingsView: View {
 
 #Preview("General") {
     GeneralSettingsView(preferences: Preferences())
-}
-
-extension GeneralSettingsView {
-    /**
-     When the feed was last asked, in the words a person would use.
-
-     Worth saying under a button whose whole job is invisible: pressing it and
-     being told nothing is how an update check looks when it finds nothing.
-     */
-    static func lastCheck(_ updates: UpdateController) -> String {
-        guard let date = updates.lastCheck else {
-            return "Not checked yet."
-        }
-
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .full
-
-        return "Last checked \(formatter.localizedString(for: date, relativeTo: .now))."
-    }
 }
