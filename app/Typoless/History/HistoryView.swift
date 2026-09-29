@@ -563,9 +563,18 @@ private struct HistoryRow: View {
     }
 }
 
+/**
+ Inside the same condition as the rows it shows.
+
+ A preview is type-checked in a release build as well, so one that calls a
+ debug-only helper fails an archive and nothing else, with the compiler giving
+ up on the diagnostic. That is a long way from the preview it is about.
+ */
+#if DEBUG
 #Preview {
     let history = CorrectionHistory()
     history.addSamples()
 
     return HistoryView(history: history, onOpenSettings: {}, describeModel: { "Apple on-device" })
 }
+#endif
