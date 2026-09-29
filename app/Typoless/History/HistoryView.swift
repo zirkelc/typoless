@@ -371,7 +371,6 @@ private struct HistoryRow: View {
                     .controlSize(.small)
                     .help("Opens a prefilled issue on GitHub. Nothing is posted until you submit it.")
             }
-            .font(.callout)
 
             excerpt("Before", of: entry.before, highlighting: changes.before, tint: .red)
 
@@ -383,6 +382,12 @@ private struct HistoryRow: View {
                 decisions
             }
         }
+        /**
+         One size for the whole card. It used to be set piece by piece, and the
+         two labels were left a size smaller than the text beside them, which
+         reads as a mistake rather than as a label.
+         */
+        .font(.callout)
         .padding(12)
         .background(Color(nsColor: .textBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -469,7 +474,6 @@ private struct HistoryRow: View {
                 }
             }
         }
-        .font(.callout)
         .padding(.top, 2)
     }
 
@@ -480,13 +484,16 @@ private struct HistoryRow: View {
         tint: Color
     ) -> some View {
         HStack(alignment: .top, spacing: 8) {
+            /**
+             The same size as everything else in the card. A caption here was
+             the only text in the row set smaller than its neighbours, which
+             read as a mistake rather than as a label.
+             */
             Text(label)
-                .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(width: 44, alignment: .trailing)
 
             Text(styled(TextExcerpt.build(from: text, highlighting: ranges), tint: tint))
-                .font(.callout)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
