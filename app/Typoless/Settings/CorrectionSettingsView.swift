@@ -53,7 +53,8 @@ struct CorrectionSettingsView: View {
                     "Keep history",
                     note: preferences.historyRetention.keepsHistory
                         ? "Keeps each correction and the original text, so it can be undone later. In memory only, never written to disk and cleared when the application quits."
-                        : "Nothing is kept. Undo still covers the correction you just made, but anything before that is gone."
+                        : "Nothing is kept. Undo still covers the correction you just made, but anything before that is gone.",
+                    isNoteActive: preferences.historyRetention.keepsHistory
                 ) {
                     Picker("", selection: $preferences.historyRetention) {
                         ForEach(HistoryRetention.allCases) { option in
