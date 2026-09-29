@@ -48,6 +48,14 @@ enum ChunkedCorrection {
         let protected = ProtectedSpans.find(in: text)
         var pass = Pass()
 
+        /**
+         The field's own language, read once and used to settle a chunk that is
+         too short to answer for itself. A greeting, a name or a signature line
+         has almost no language in it, and guessing wrongly there corrects a
+         line under another language's rules in the middle of a message.
+         */
+        let fieldLanguage = detector.detect(text)
+
         for chunk in TextChunker.chunks(of: text) {
             /** The user can give up mid-pass, and a long field is several chunks. */
             try Task.checkCancellation()
@@ -88,7 +96,7 @@ enum ChunkedCorrection {
 
             /** Not a language the user asked for, so it is left exactly as written. */
             let language: CorrectionLanguage
-            switch detector.choose(source) {
+            switch detector.choose(source, preferring: fieldLanguage) {
             case .correct(let chosen):
                 language = chosen
             case .leave(let detected):

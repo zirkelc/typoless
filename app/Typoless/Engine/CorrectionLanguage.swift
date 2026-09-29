@@ -574,7 +574,13 @@ struct LanguageDetector: Sendable {
         }
     }
 
-    func choose(_ text: String) -> Choice {
+    /**
+     - Parameter preferred: The language of the text this one sits in, used when
+       the piece on its own is too short to have a language of its own. A
+       signature, a name or a greeting carries almost no signal, and the field
+       around it usually carries plenty.
+     */
+    func choose(_ text: String, preferring preferred: CorrectionLanguage? = nil) -> Choice {
         let recognizer = NLLanguageRecognizer()
         recognizer.languageConstraints = CorrectionLanguage.allCases.map(\.nlLanguage)
         recognizer.processString(text)
@@ -583,16 +589,31 @@ struct LanguageDetector: Sendable {
             let dominant = recognizer.dominantLanguage,
             let match = CorrectionLanguage.allCases.first(where: { $0.nlLanguage == dominant })
         else {
-            /** Nothing recognisable, so treat it as the first language asked for. */
-            return enabled.first.map(Choice.correct) ?? .leave(detected: nil)
-        }
+            /** Nothing recognisable, so the text around it, or the first language asked for. */
+            let fallback = preferred.flatMap { enabled.contains($0) ? $0 : nil } ?? enabled.first
 
-        if enabled.contains(match) { return .correct(match) }
+            return fallback.map(Choice.correct) ?? .leave(detected: nil)
+        }
 
         let hypotheses = recognizer.languageHypotheses(withMaximum: CorrectionLanguage.allCases.count)
 
-        /** A language the user does not correct, and the recogniser means it. */
-        if hypotheses[dominant, default: 0] >= Self.certainty { return .leave(detected: match) }
+        /** Sure of itself, so its answer stands either way. */
+        if hypotheses[dominant, default: 0] >= Self.certainty {
+            return enabled.contains(match) ? .correct(match) : .leave(detected: match)
+        }
+
+        /**
+         Not sure, so the text this sits in decides.
+
+         An all-German message signed with a name reads as English on that line
+         alone, at a confidence barely above a guess, and the line was then
+         corrected under English rules inside a German message. The field scores
+         German at 1.00, which is the better evidence and the one a person would
+         use.
+         */
+        if let preferred, enabled.contains(preferred) { return .correct(preferred) }
+
+        if enabled.contains(match) { return .correct(match) }
 
         let likeliest = enabled.max {
             hypotheses[$0.nlLanguage, default: 0] < hypotheses[$1.nlLanguage, default: 0]
