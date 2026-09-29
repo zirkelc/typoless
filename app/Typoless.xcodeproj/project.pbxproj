@@ -300,7 +300,7 @@
 					"@executable_path/../Frameworks",
 				);
 				INFOPLIST_KEY_CFBundleDisplayName = "Typoless (dev)";
-				MARKETING_VERSION = "0.1.4-beta";
+				MARKETING_VERSION = "0.1.5-beta";
 				PRODUCT_BUNDLE_IDENTIFIER = dev.zirkelc.typoless.dev;
 				PRODUCT_NAME = "$(TYPOLESS_APP_NAME)";
 				PRODUCT_MODULE_NAME = Typoless;
@@ -328,7 +328,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = "0.1.4-beta";
+				MARKETING_VERSION = "0.1.5-beta";
 				PRODUCT_BUNDLE_IDENTIFIER = dev.zirkelc.typoless;
 				PRODUCT_NAME = "$(TYPOLESS_APP_NAME)";
 				PRODUCT_MODULE_NAME = Typoless;
@@ -345,7 +345,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = D568Q9VY3L;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "0.1.4-beta";
+				MARKETING_VERSION = "0.1.5-beta";
 				PRODUCT_BUNDLE_IDENTIFIER = dev.zirkelc.typoless.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -361,7 +361,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = D568Q9VY3L;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "0.1.4-beta";
+				MARKETING_VERSION = "0.1.5-beta";
 				PRODUCT_BUNDLE_IDENTIFIER = dev.zirkelc.typoless.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
