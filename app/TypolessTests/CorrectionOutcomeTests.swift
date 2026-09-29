@@ -90,6 +90,52 @@ struct CorrectionOutcomeTests {
         #expect(pass.outcome.notes.first?.refusal == .ruleTurnedOff)
     }
 
+    /**
+     The message that started this: German throughout, signed with a name.
+
+     "Christian Cook" reads as English at 0.29, where a guess among seven
+     languages is worth 0.14, and the pass reported German and English. Worse
+     than the label, that line would have been corrected under English rules in
+     the middle of a German message.
+     */
+    @Test
+    func `a line too short to have a language follows the message it is in`() async throws {
+        // Arrange
+        let email = """
+        Hallo Frau Gottschalk
+
+        anbei die Vollstaendigkeitserklaerung.
+
+        Vielen Dank und beste Gruesse
+        Christian Cook
+        """
+
+        // Act
+        let pass = try await Self.pass(over: email, enabled: [.english, .german]) { _ in nil }
+
+        // Assert
+        #expect(pass.outcome.languages == [.german])
+    }
+
+    /** A real change of language is still a change of language, not a short line. */
+    @Test
+    func `a confident sentence keeps its own language inside another`() async throws {
+        // Arrange
+        let mixed = """
+        Hallo Frau Gottschalk
+
+        I have attached the report you asked for, and the numbers are in the last column.
+
+        Vielen Dank und beste Gruesse
+        """
+
+        // Act
+        let pass = try await Self.pass(over: mixed, enabled: [.english, .german]) { _ in nil }
+
+        // Assert
+        #expect(Set(pass.outcome.languages) == [.german, .english])
+    }
+
     @Test
     func `a reply in capitals is refused and says so`() async throws {
         // Arrange
