@@ -166,11 +166,19 @@ extension View {
 struct SettingsLine<Control: View>: View {
     let title: String
     var note: String?
+    /** Passed to the note, for a row whose setting is off. */
+    var isNoteActive = true
     @ViewBuilder var control: Control
 
-    init(_ title: String, note: String? = nil, @ViewBuilder control: () -> Control) {
+    init(
+        _ title: String,
+        note: String? = nil,
+        isNoteActive: Bool = true,
+        @ViewBuilder control: () -> Control
+    ) {
         self.title = title
         self.note = note
+        self.isNoteActive = isNoteActive
         self.control = control()
     }
 
@@ -189,7 +197,7 @@ struct SettingsLine<Control: View>: View {
             .frame(minHeight: SettingsRow.minHeight)
 
             if let note {
-                SettingsNote(note)
+                SettingsNote(note, isActive: isNoteActive)
             }
         }
         .padding(.horizontal, SettingsRow.horizontalPadding)
@@ -238,14 +246,25 @@ struct SettingsText: View {
 struct SettingsNote: View {
     let text: String
 
-    init(_ text: String) {
+    /**
+     False where the note describes a setting that is switched off.
+
+     Dimmed rather than hidden, because the words are what say what "off" means
+     here, and a reader who has just chosen it is the one person certain to
+     read them. A disabled control beside text at full strength reads as though
+     the text still applies.
+     */
+    var isActive = true
+
+    init(_ text: String, isActive: Bool = true) {
         self.text = text
+        self.isActive = isActive
     }
 
     var body: some View {
         Text(text)
             .font(.callout)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(isActive ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary))
             .fixedSize(horizontal: false, vertical: true)
     }
 }

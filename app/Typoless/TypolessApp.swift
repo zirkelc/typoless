@@ -94,6 +94,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.showHistory()
         }
 
+        /** The same for settings, naming the page: `--show-settings corrections`. */
+        let arguments = ProcessInfo.processInfo.arguments
+        if let flag = arguments.firstIndex(of: "--show-settings") {
+            let named = arguments.count > flag + 1 ? arguments[flag + 1] : ""
+            model.showSettings(SettingsTab(rawValue: named))
+        }
+
         /** Starts the typing spike without a menu click, so a run can be scripted. */
         if ProcessInfo.processInfo.arguments.contains("--observe-typing") {
             model.typingObserver.start()
