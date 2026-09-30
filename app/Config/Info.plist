@@ -33,17 +33,14 @@
         replace itself with a release. The release script reads this value back
         from the built app to decide where the downloads go.
 
-        Automatic checking is on from the first launch, which is what this key
-        says. Without it Sparkle asks the question itself on the second launch,
-        and that question was worth less than it cost: a check is one request a
-        day carrying the app's name and version, it installs nothing on its own,
-        and a user who answers no keeps running the version with the bug we have
-        already fixed. The switch to turn it off is in General settings, and
-        what an update does when it is found is a separate answer that defaults
-        to asking.
+        Nothing here says when to check. Sparkle's own scheduler is turned off
+        in UpdateController, which asks the feed once a day itself and never
+        leaves an update session open: a deferred one stops Sparkle checking
+        again, so the app went on offering the version it had found days
+        earlier. Sparkle's question on the second launch is never reached
+        either, since it asks only where the answer is unset and the app sets it
+        on every launch.
     -->
-    <key>SUEnableAutomaticChecks</key>
-    <true/>
     <key>SUFeedURL</key>
     <string>$(TYPOLESS_FEED_URL)</string>
 </dict>

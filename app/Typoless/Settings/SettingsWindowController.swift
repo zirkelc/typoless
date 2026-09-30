@@ -180,12 +180,11 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate, NSWindowDeleg
 
     /**
      Coming back to the window is when a change made somewhere else shows up:
-     launch at login can be changed in System Settings, and Sparkle's own
-     question can change whether updates are checked automatically.
+     launch at login is the one the system owns, and it can be turned off in
+     System Settings without telling us.
      */
     func windowDidBecomeKey(_ notification: Notification) {
         model.preferences.refreshLaunchAtLogin()
-        model.updates?.refresh()
 
         /**
          Coming back from System Settings is also how a permission is granted,
