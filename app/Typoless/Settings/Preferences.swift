@@ -7,6 +7,8 @@ import SwiftUI
 enum DefaultsKey {
     static let hasCompletedOnboarding = "hasCompletedOnboarding"
     static let hasAskedForAccessibility = "hasAskedForAccessibility"
+    static let checksForUpdates = "checksForUpdates"
+    static let lastUpdateCheck = "lastUpdateCheck"
     static let correctorBackend = "correctorBackend"
     static let localModel = "localModel"
     static let guardrailEnabled = "guardrailEnabled"

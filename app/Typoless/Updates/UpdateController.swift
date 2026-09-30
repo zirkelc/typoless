@@ -22,21 +22,23 @@ import Sparkle
  no key in the built app Sparkle refuses everything, which is the safe direction
  to fail in.
 
- **Nothing is installed until the user says so.** Checking is on from the
- first launch, because a check is one request a day carrying the app's name and
- version, and the promise this app makes is about the text you type, not about
- a version number. It never sends the profile of the Mac that Sparkle can
- attach, because the app never offers it. Finding an update installs nothing:
- the app says so in the menu and waits for the button to be pressed, and
- `automaticallyDownloadsUpdates` is deliberately never turned on. Checking can
- be turned off in General settings.
+ **Nothing is installed until the user says so.** Checking is on from the first
+ launch, because a check is one request a day carrying the app's name and
+ version, and the promise this app makes is about the text you type, not about a
+ version number. It never sends the profile of the Mac that Sparkle can attach,
+ because the app never offers it. Finding an update installs nothing: the app
+ says so in the menu and waits for the button to be pressed, and
+ `automaticallyDownloadsUpdates` is deliberately never turned on.
 
- **An update announces itself quietly.** Sparkle would otherwise put its window
- in front of whatever the user is writing, which for an app that lives in the
- menu bar is an interruption with no relation to what they are doing. The
- gentle reminder API hands that decision here instead: the found update is kept,
- the menu bar marks itself, and Sparkle's window opens when the user asks for
- it.
+ **The quiet check probes, and the scheduling is ours.** Sparkle's own schedule
+ came first, with the gentle reminder API to stop its window arriving in the
+ middle of a sentence somebody was writing. That works, but a deferred update is
+ a session Sparkle holds open, and while one is open it makes no further checks:
+ a mark raised on Sunday still offered Sunday's version on Tuesday, and the user
+ had to update twice to catch up. `checkForUpdateInformation` finds an update
+ without offering it and leaves nothing open, so the mark is only ever a note
+ that something was there when we last looked, and pressing it asks the server
+ again.
  */
 @MainActor
 @Observable
@@ -58,6 +60,18 @@ final class UpdateController {
         return feedURL?.isEmpty == false && key?.isEmpty == false
     }
 
+    /** How long between quiet checks. */
+    private static let interval: TimeInterval = 24 * 60 * 60
+
+    /**
+     How long a check that is already due waits after launch.
+
+     Launching is when the app has a model to load and permissions to read, and
+     a feed request in the middle of that buys nothing: nobody is looking at the
+     menu bar in the first seconds either.
+     */
+    private static let settlingDelay: Duration = .seconds(20)
+
     @ObservationIgnored private let updater: SPUStandardUpdaterController
 
     /**
@@ -67,14 +81,15 @@ final class UpdateController {
      has already gone, which is the same as never giving it: a beta build would
      read the feed and find nothing addressed to it.
      */
-    @ObservationIgnored private let channels = ChannelDelegate()
+    @ObservationIgnored private let delegate = UpdaterDelegate()
 
-    /** Held for the same reason as the channel answer: Sparkle keeps neither. */
-    @ObservationIgnored private let reminders = ReminderDelegate()
+    @ObservationIgnored private var pollTask: Task<Void, Never>?
+
+    @ObservationIgnored private let defaults = UserDefaults.standard
 
     /**
-     The version Sparkle has found and not shown, or nil when there is nothing
-     to tell. What the menu bar reads to decide whether to mark itself.
+     The version the last check found, or nil where it found nothing. What the
+     menu bar reads to decide whether to mark itself.
 
      A version string rather than the update itself, because this crosses from
      Sparkle's callback to the main actor and a string is the whole of what the
@@ -83,61 +98,67 @@ final class UpdateController {
     private(set) var availableUpdate: String?
 
     /**
-     Whether Sparkle checks on its own, once a day.
+     Whether the app looks for a new version once a day.
 
-     Stored rather than read through, because a computed property is invisible
-     to observation and the switch bound to it would never redraw. Sparkle's
-     own question on the second launch changes the value behind our back, so
-     it is read again whenever settings are shown.
+     Ours rather than Sparkle's, because Sparkle's scheduler is off: its own
+     setting would be a switch that changed nothing.
      */
-    private(set) var checksAutomatically = false
+    private(set) var checksAutomatically: Bool
+
+    /** When the last quiet check ran, kept so a relaunch does not start the day again. */
+    private(set) var lastCheck: Date?
 
     init() {
+        checksAutomatically = defaults.object(forKey: DefaultsKey.checksForUpdates) as? Bool ?? true
+        lastCheck = defaults.object(forKey: DefaultsKey.lastUpdateCheck) as? Date
+
         /**
-         `startingUpdater: true` only arms Sparkle. It checks on a schedule once
-         the user has said yes, and asks that question itself on the second
-         launch.
+         Started by hand once the settings are applied, so Sparkle's scheduler
+         is off before it could run anything, and so its own question about
+         automatic checks is never reached: it asks only where that answer is
+         unset, and this sets it on every launch.
          */
         updater = SPUStandardUpdaterController(
-            startingUpdater: true,
-            updaterDelegate: channels,
-            userDriverDelegate: reminders
+            startingUpdater: false,
+            updaterDelegate: delegate,
+            userDriverDelegate: nil
         )
-        refresh()
+        updater.updater.automaticallyChecksForUpdates = false
+        updater.updater.automaticallyDownloadsUpdates = false
+        updater.startUpdater()
 
-        reminders.onUpdate = { [weak self] version in
-            self?.availableUpdate = version
-
-            /**
-             The one trace an update leaves before anybody clicks anything.
-             Without it, a mark that never appears and a check that found
-             nothing look exactly alike from the outside.
-             */
-            if let version {
-                Log.app.info("An update is waiting, version \(version, privacy: .public)")
-            }
+        delegate.onResult = { [weak self] version in
+            self?.record(version)
         }
+
+        startPolling()
     }
 
     func setChecksAutomatically(_ isOn: Bool) {
-        updater.updater.automaticallyChecksForUpdates = isOn
-        refresh()
-    }
+        guard isOn != checksAutomatically else { return }
 
+        checksAutomatically = isOn
+        defaults.set(isOn, forKey: DefaultsKey.checksForUpdates)
 
-    /** Picks up a change Sparkle made behind our back, which its own UI can. */
-    func refresh() {
-        let checks = updater.updater.automaticallyChecksForUpdates
-        if checksAutomatically != checks { checksAutomatically = checks }
+        guard isOn else {
+            pollTask?.cancel()
+            pollTask = nil
+
+            /** Nothing is looking any more, so the mark would be about a check that no longer happens. */
+            availableUpdate = nil
+            return
+        }
+
+        startPolling()
     }
 
     /**
      What the menu item does, and the only path that reports "you are up to
      date".
 
-     Also what shows an update that was found quietly: Sparkle keeps the one it
-     told us about, so this opens its window on that update rather than asking
-     the server again.
+     A real check every time, because nothing is being held back for it to
+     resume: the quiet checks probe and offer nothing, so what opens here is
+     always about the version on the server now.
      */
     func checkForUpdates() {
         updater.checkForUpdates(nil)
@@ -154,13 +175,70 @@ final class UpdateController {
         updater.updater.canCheckForUpdates
     }
 
-    var lastCheck: Date? {
-        updater.updater.lastUpdateCheckDate
+    /**
+     Looks without offering.
+
+     The delegate hears what was found either way, which is what raises the mark
+     and what clears it. Skipped while Sparkle has something of its own in
+     progress, since a probing check does nothing then and would only move the
+     clock on.
+     */
+    private func check() {
+        guard !updater.updater.sessionInProgress else { return }
+
+        lastCheck = Date()
+        defaults.set(lastCheck, forKey: DefaultsKey.lastUpdateCheck)
+
+        updater.updater.checkForUpdateInformation()
+    }
+
+    /**
+     The daily rhythm, kept here rather than by Sparkle.
+
+     Sleeps until the next one is due rather than waking every hour to ask,
+     since the answer is a subtraction and the app is running the whole time.
+     */
+    private func startPolling() {
+        pollTask?.cancel()
+
+        guard checksAutomatically, Self.isConfigured else { return }
+
+        pollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let delay = self?.delayUntilNextCheck else { return }
+
+                try? await Task.sleep(for: delay)
+                guard !Task.isCancelled else { return }
+
+                self?.check()
+            }
+        }
+    }
+
+    private var delayUntilNextCheck: Duration {
+        guard let lastCheck else { return Self.settlingDelay }
+
+        let due = lastCheck.addingTimeInterval(Self.interval).timeIntervalSinceNow
+
+        return due <= 0 ? Self.settlingDelay : .seconds(due)
+    }
+
+    private func record(_ version: String?) {
+        availableUpdate = version
+
+        /**
+         The one trace an update leaves before anybody clicks anything. Without
+         it, a mark that never appears and a check that found nothing look
+         exactly alike from the outside.
+         */
+        if let version {
+            Log.app.info("An update is waiting, version \(version, privacy: .public)")
+        }
     }
 }
 
 /**
- Which parts of the feed this build is allowed to see.
+ What this build may be told about, and what it was told.
 
  One feed carries every release. An entry may name a channel, and Sparkle
  ignores any channel the build has not asked for, so a beta can sit beside a
@@ -171,71 +249,27 @@ final class UpdateController {
  anyone remembering to change this. The default channel, which has no name, is
  always allowed and needs no mention.
  */
-private final class ChannelDelegate: NSObject, SPUUpdaterDelegate {
+private final class UpdaterDelegate: NSObject, SPUUpdaterDelegate {
+    /**
+     Told what the last check found, nil for nothing. Set after init, because
+     the controller owns this object and cannot hand itself over while it is
+     being built, and read from Sparkle's callbacks, which arrive on the main
+     thread without saying so in their types.
+     */
+    nonisolated(unsafe) var onResult: (@MainActor @Sendable (String?) -> Void)?
+
     nonisolated func allowedChannels(for updater: SPUUpdater) -> Set<String> {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
 
         return version.localizedCaseInsensitiveContains("beta") ? ["beta"] : []
     }
-}
 
-/**
- Where an update that nobody asked to see is handled.
-
- Sparkle's own behaviour is to show its window as soon as a scheduled check
- finds something. That is right for an app with windows of its own and wrong
- for one that lives in the menu bar: it arrives in the middle of a sentence
- somebody is writing, about something they did not ask for. Returning false
- here makes it Typoless's job to say so, which it does in the place the app
- already lives.
- */
-private final class ReminderDelegate: NSObject, SPUStandardUserDriverDelegate {
-    /**
-     Told what to show, and told to stop. Set after init, because the controller
-     owns this object and cannot hand itself over while it is being built, and
-     read from Sparkle's callbacks, which arrive on the main thread without
-     saying so in their types.
-     */
-    nonisolated(unsafe) var onUpdate: (@MainActor @Sendable (String?) -> Void)?
-
-    nonisolated var supportsGentleScheduledUpdateReminders: Bool { true }
-
-    /**
-     False, always: the update is announced in the menu bar instead.
-
-     Even in immediate focus, which is Sparkle asking whether the user is
-     looking at the app right now. They never are. This app has no window it
-     lives in, so there is no moment where its update window is the thing in
-     front of somebody by their own choice.
-     */
-    nonisolated func standardUserDriverShouldHandleShowingScheduledUpdate(
-        _ update: SUAppcastItem,
-        andInImmediateFocus immediateFocus: Bool
-    ) -> Bool {
-        false
+    /** Called for a check the user asked for as well, which is right: it is still what is there. */
+    nonisolated func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+        report(item.displayVersionString)
     }
 
-    /**
-     Called whichever way the answer went, so it both raises the mark and clears
-     it: Sparkle handling the update itself means the user is already looking at
-     it, and a mark in the menu bar would be telling them what is on their
-     screen.
-     */
-    nonisolated func standardUserDriverWillHandleShowingUpdate(
-        _ handleShowingUpdate: Bool,
-        forUpdate update: SUAppcastItem,
-        state: SPUUserUpdateState
-    ) {
-        report(handleShowingUpdate ? nil : update.displayVersionString)
-    }
-
-    /** The user has seen it, so there is nothing left to point at. */
-    nonisolated func standardUserDriverDidReceiveUserAttention(forUpdate update: SUAppcastItem) {
-        report(nil)
-    }
-
-    /** Installed, skipped or dismissed: all of them end the same way here. */
-    nonisolated func standardUserDriverWillFinishUpdateSession() {
+    nonisolated func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
         report(nil)
     }
 
@@ -245,7 +279,7 @@ private final class ReminderDelegate: NSObject, SPUStandardUserDriverDelegate {
      nothing for a second thread to race over even if that were ever untrue.
      */
     private nonisolated func report(_ version: String?) {
-        let onUpdate = onUpdate
-        MainActor.assumeIsolated { onUpdate?(version) }
+        let onResult = onResult
+        MainActor.assumeIsolated { onResult?(version) }
     }
 }
