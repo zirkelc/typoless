@@ -91,8 +91,15 @@ enum ChunkedCorrection {
              */
             let masked = MaskedText.mask(source, protecting: ProtectedSpans.find(in: source))
 
-            /** A chunk that was nothing but a link has nothing left to correct. */
-            guard masked.text.contains(where: \.isLetter) else { continue }
+            /**
+             A chunk that was nothing but a link has nothing left to correct.
+
+             The text as written is checked as well as the masked text, since
+             a marker carries letters of its own: a code span holding only
+             digits masks to something that reads as words, and the model
+             would be asked to correct a marker.
+             */
+            guard source.contains(where: \.isLetter), masked.text.contains(where: \.isLetter) else { continue }
 
             /** Not a language the user asked for, so it is left exactly as written. */
             let language: CorrectionLanguage
@@ -133,7 +140,19 @@ enum ChunkedCorrection {
                 corrected = try await answer(source, language, startsText)
             }
 
-            guard let corrected else { continue }
+            /**
+             Nothing came back after both wordings were tried, so the chunk
+             stays as it was written. Recorded rather than passed over: a model
+             that would not answer and a model that found nothing to fix look
+             exactly alike in the field, and only one of them is a problem.
+             */
+            guard let corrected else {
+                pass.outcome.add(CorrectionNote(before: source, after: nil, refusal: .modelDeclined))
+                continue
+            }
+
+            /** The model read it and left it alone, so there is no verdict to reach. */
+            guard corrected != source else { continue }
 
             /**
              The language check catches the one failure the difference-based

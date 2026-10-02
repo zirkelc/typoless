@@ -63,7 +63,9 @@ extension PromptVariant {
      Add one here and it is swept automatically. The first entry is what the app
      ships, so a run with no `--variant` still reports the baseline first.
      */
-    static let all: [PromptVariant] = [shipping, previous, terse, noOp, protective, examples, terminal, bounded]
+    static let all: [PromptVariant] = [
+        shipping, bracketed, blankLine, tagged, previous, terse, noOp, protective, examples, terminal, bounded,
+    ]
 
     static func named(_ id: String) -> PromptVariant? {
         all.first { $0.id == id }
@@ -75,6 +77,87 @@ extension PromptVariant {
         summary: "The wording the app ships",
         instructions: { $0.instructions(startsText: $1) },
         userPrompt: { language, text, guided in language.prompt(for: text, quoted: guided) },
+        freeTextSuffix: defaultFreeTextSuffix
+    )
+
+    /**
+     The shipping wording with the quotation marks replaced by brackets.
+
+     Quotation marks of every kind, straight, curly, single and backticks, turn
+     an ordinary sentence into refused content for Apple's model: "Should we
+     remove teh projects from teh search?" is turned down quoted and answered
+     bare, with the instructions removed entirely making no difference. Brackets
+     are not quotes to whatever reads the turn, so this asks whether the
+     boundary the quotes provide can be had without the classification they
+     carry.
+
+     It cannot, and the quotes are doing more than marking a boundary. English
+     falls from 80 to 66 per cent exact and 90 to 77 recall, chunks dropped go
+     from 4 to 39, and unguarded false positives from 42 to 95: the model
+     rewrites where it used to correct. Kept as the record of that, since the
+     refusal it was meant to avoid is cheaper to retry than to design around.
+     */
+    static let bracketed = PromptVariant(
+        id: "bracketed",
+        summary: "The shipping wording, with the text in brackets instead of quotation marks",
+        instructions: { $0.instructions(startsText: $1) },
+        userPrompt: { language, text, guided in
+            guard guided else { return language.prompt(for: text) }
+
+            return language.prompt(for: "[\(text)]")
+        },
+        freeTextSuffix: defaultFreeTextSuffix
+    )
+
+    /**
+     The shipping wording with nothing around the text but a blank line.
+
+     The quotes were added to stop guided generation's own appended
+     instructions being read as more of the text, which a chunk ending
+     mid-sentence ran straight into. A blank line may be boundary enough, and
+     it carries nothing for a content filter to react to.
+
+     Better than brackets and still worse than quoting: English 76 per cent
+     exact against 80, recall 85 against 90, 13 chunks dropped against 4. Same
+     conclusion, reached the same way.
+     */
+    static let blankLine = PromptVariant(
+        id: "blank-line",
+        summary: "The shipping wording, with a blank line after the text instead of quotation marks",
+        instructions: { $0.instructions(startsText: $1) },
+        userPrompt: { language, text, guided in
+            guard guided else { return language.prompt(for: text) }
+
+            return language.prompt(for: text) + "\n\n"
+        },
+        freeTextSuffix: defaultFreeTextSuffix
+    )
+
+    /**
+     The shipping wording with the text between tags.
+
+     The third wrapper that is not a quotation mark, and the one with the most
+     to it: a tag names what it holds and closes explicitly, where a bracket is
+     a single character the model may read as part of the sentence. If quoting
+     is holding the model to the task rather than only marking where the text
+     stops, this is the shape with the best chance of doing both.
+
+     The closest of the three and still not worth taking. English is level, 81
+     per cent exact against 80 and recall 90 either way, which is one case. The
+     German set pays for it: 64 against 72 exact and 66 against 69 recall, with
+     33 edits rejected against 25. The run is deterministic, two sweeps of the
+     shipping wording returned identical numbers, so eight points is the tags
+     and not the weather.
+     */
+    static let tagged = PromptVariant(
+        id: "tagged",
+        summary: "The shipping wording, with the text between tags instead of quotation marks",
+        instructions: { $0.instructions(startsText: $1) },
+        userPrompt: { language, text, guided in
+            guard guided else { return language.prompt(for: text) }
+
+            return language.prompt(for: "<text>\n\(text)\n</text>")
+        },
         freeTextSuffix: defaultFreeTextSuffix
     )
 

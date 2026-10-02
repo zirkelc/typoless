@@ -101,13 +101,22 @@ actor FoundationModelsCorrector: Corrector {
         /**
          The model's safety filter turns down ordinary text now and again, and
          it does so consistently for a given wording, so repeating the same
-         request is pointless. Asking again in English gets an answer often
-         enough to be worth the second round trip, and the text stays in its own
-         language because the prompt still says which one it is.
-         */
-        guard language != .english, deadline?.hasExpired() != true else { return nil }
+         request is pointless. A second wording is answered often enough to be
+         worth the round trip, and the text stays in its own language because
+         the prompt still says which one it is.
 
-        Log.app.info("Retrying a declined chunk with English instructions")
+         Two things differ, and English needs the second one. The instructions
+         are English, which is what earned this retry for the other languages.
+         The text is not in quotation marks, which is the whole of the
+         difference for a text already in English, and it is enough:
+         "Should we remove teh projects from teh search?" is turned down as
+         sensitive content every time it is quoted and corrected every time it
+         is not. That was reported from the field as a correction that silently
+         did nothing, since English was the one language this retry skipped.
+         */
+        guard deadline?.hasExpired() != true else { return nil }
+
+        Log.app.info("Retrying a declined chunk unquoted")
         return await respond(
             to: text,
             using: CorrectionLanguage.english.instructions(startsText: startsText),

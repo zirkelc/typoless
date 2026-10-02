@@ -133,6 +133,9 @@ struct EvalPipeline: Sendable {
                 continue
             }
 
+            /** Read and left alone, so there is nothing to judge, as the app has it. */
+            guard corrected != source else { continue }
+
             let chunkEdits = TextDiff.edits(from: source, to: corrected)
                 .map { rebase($0, from: source, into: text, at: chunk) }
 
@@ -218,7 +221,7 @@ struct EvalPipeline: Sendable {
         )
 
         if let first { return first }
-        guard language != .english, deadline?.hasExpired() != true else { return nil }
+        guard deadline?.hasExpired() != true else { return nil }
 
         return await backend.reply(
             instructions: instructions(.english, startsText),

@@ -31,6 +31,11 @@ enum CorrectionRefusal: Sendable, Equatable {
     case rewrite
     /** The pass ran out of time before this part of the field. */
     case outOfTime
+    /**
+     The model would not answer, which its safety filter does to ordinary text
+     now and again. Recorded only after the second wording was turned down too.
+     */
+    case modelDeclined
 
     /** One sentence, in the words the history window and a report both use. */
     var summary: String {
@@ -55,6 +60,8 @@ enum CorrectionRefusal: Sendable, Equatable {
             return "The model rewrote the text rather than correcting it."
         case .outOfTime:
             return "The pass ran out of time."
+        case .modelDeclined:
+            return "The model would not answer this text."
         }
     }
 }
