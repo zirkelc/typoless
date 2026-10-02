@@ -136,6 +136,45 @@ struct CorrectionOutcomeTests {
         #expect(Set(pass.outcome.languages) == [.german, .english])
     }
 
+    /**
+     The case this was reported from: Apple's model turns down ordinary text as
+     sensitive content, the app has nothing to show for it, and the user sees a
+     correction that did nothing at all.
+     */
+    @Test
+    func `a chunk the model would not answer says so`() async throws {
+        // Arrange
+        let text = "Should we remove teh projects from teh search?"
+
+        // Act
+        let pass = try await Self.pass(over: text, enabled: [.english]) { _ in nil }
+
+        // Assert
+        #expect(pass.edits.isEmpty)
+        #expect(pass.outcome.languages == [.english])
+        #expect(pass.outcome.notes.count == 1)
+        #expect(pass.outcome.notes.first?.refusal == .modelDeclined)
+        #expect(pass.outcome.notes.first?.after == nil)
+    }
+
+    /** Read and left alone is not a refusal, and used to be reported as one. */
+    @Test
+    func `a reply that changes nothing is not refused`() async throws {
+        // Arrange, a message with a line that carries almost no language of its own
+        let text = """
+        There is a layout shift when we click a selector in the popover.
+
+        384 KB
+        """
+
+        // Act
+        let pass = try await Self.pass(over: text, enabled: [.english]) { source in source }
+
+        // Assert
+        #expect(pass.edits.isEmpty)
+        #expect(pass.outcome.notes.isEmpty)
+    }
+
     @Test
     func `a reply in capitals is refused and says so`() async throws {
         // Arrange
