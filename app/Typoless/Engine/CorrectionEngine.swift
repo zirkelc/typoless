@@ -90,6 +90,10 @@ final class CorrectionEngine {
 
         isRunning = true
         wasCancelled = false
+
+        #if DEBUG
+        PassRecorder.shared.begin()
+        #endif
         defer {
             isRunning = false
             escape.stop()
@@ -138,7 +142,7 @@ final class CorrectionEngine {
              them is in the outcome: which language it read the text as, what it
              offered, and what it refused.
              */
-            await record(target: target, after: target.text, editCount: 0)
+            await record(target: target, after: target.text, editCount: 0, strategy: nil)
 
             report(
                 await message(whenNothingChanged: corrector.outcomeOfLastPass()),
@@ -188,14 +192,14 @@ final class CorrectionEngine {
              still needs an undo. Offering it costs nothing when nothing landed,
              since the record is only kept if the field actually moved.
              */
-            await recordForRevert(target: target, editCount: fieldEdits.count)
+            await recordForRevert(target: target, editCount: fieldEdits.count, strategy: nil)
 
             let message = (error as? TextWriteError)?.userMessage
             report(message, log: "Write failed: \(error)")
             return
         }
 
-        await recordForRevert(target: target, editCount: fieldEdits.count)
+        await recordForRevert(target: target, editCount: fieldEdits.count, strategy: strategy)
         restoreCaret(for: target, after: fieldEdits, corrected: corrected)
 
         report(
@@ -312,7 +316,7 @@ final class CorrectionEngine {
      Reads what the field holds now rather than assuming the correction landed
      as intended, so a write that stopped partway can still be taken back.
      */
-    private func recordForRevert(target: TextTarget, editCount: Int) async {
+    private func recordForRevert(target: TextTarget, editCount: Int, strategy: TextWriter.Strategy?) async {
         guard
             let after = target.element.string(kAXValueAttribute),
             after != target.text
@@ -321,14 +325,14 @@ final class CorrectionEngine {
             canRevert = false
 
             /** A write that landed nowhere is still worth being able to report. */
-            await record(target: target, after: target.text, editCount: 0)
+            await record(target: target, after: target.text, editCount: 0, strategy: strategy)
             return
         }
 
         lastFix = Fix(element: target.element, before: target.text, after: after)
         canRevert = true
 
-        await record(target: target, after: after, editCount: editCount)
+        await record(target: target, after: after, editCount: editCount, strategy: strategy)
     }
 
     /**
@@ -356,15 +360,40 @@ final class CorrectionEngine {
      spent on something else. Kept as well when nothing changed, because that is
      the case a user cannot investigate for themselves.
      */
-    private func record(target: TextTarget, after: String, editCount: Int) async {
+    private func record(
+        target: TextTarget,
+        after: String,
+        editCount: Int,
+        strategy: TextWriter.Strategy?
+    ) async {
+        let models = await corrector.modelsInLastPass()
+        let outcome = await corrector.outcomeOfLastPass()
+
         history.record(
             before: target.text,
             after: after,
             bundleID: target.bundleID,
             editCount: editCount,
-            models: await corrector.modelsInLastPass(),
-            outcome: await corrector.outcomeOfLastPass()
+            models: models,
+            outcome: outcome
         )
+
+        /**
+         The same pass, written where it survives the process. Here rather than
+         anywhere else so the two can never disagree about what happened, and
+         so a pass that is kept in neither place is impossible to write.
+         */
+        #if DEBUG
+        PassRecorder.shared.finish(
+            before: target.text,
+            after: after,
+            bundleID: target.bundleID,
+            models: models,
+            outcome: outcome,
+            editCount: editCount,
+            strategy: strategy?.rawValue
+        )
+        #endif
     }
 
     /**

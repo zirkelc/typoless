@@ -303,6 +303,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(guarded)
 
         add(to: menu, title: "Report Typing Observations", keyEquivalent: "", action: #selector(reportTypingObservations))
+        add(to: menu, title: "Reveal Pass Recordings", keyEquivalent: "", action: #selector(revealRecordings))
         add(to: menu, title: "Flash Overlay", keyEquivalent: "", action: #selector(flashOverlay))
         add(
             to: menu,
@@ -590,6 +591,20 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func toggleGuardrail() {
         model.preferences.isGuardrailEnabled.toggle()
+    }
+
+    /**
+     Opens the folder a dev build fills with everything it corrected.
+
+     Created on the way, so the item is never a window saying the folder does
+     not exist: a build that has corrected nothing yet is the most likely time
+     to go looking for it.
+     */
+    @objc private func revealRecordings() {
+        let directory = PassRecorder.directory
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: directory.path)
     }
 
     @objc private func toggleTypingObservation() {
