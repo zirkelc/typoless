@@ -16,6 +16,12 @@ import PackageDescription
 
  Package versions match `Typoless.xcodeproj`; `Package.resolved` is copied from
  the project so both build against identical revisions.
+
+ The one exception is a model the app cannot reach yet. MLX's registry is where
+ a new model first appears, so measuring one means the harness leads the app by
+ a version until the model is either adopted, which brings the app with it, or
+ dropped. A sweep in that state still compares models fairly, since every model
+ in it runs on the same MLX, and it is not a baseline for anything else.
  */
 let package = Package(
     name: "typoless-eval",
