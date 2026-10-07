@@ -133,12 +133,22 @@ enum ChunkedCorrection {
              markers costs one more call on those replies and can do no worse
              than the pass the app would have made anyway.
              */
+            let askedAt = ContinuousClock.now
             var corrected = try await answer(masked.text, language, startsText).flatMap(masked.restore)
 
             if corrected == nil, !masked.hidesNothing, deadline?.hasExpired() != true {
                 Log.app.info("A marker did not survive, asking again without them")
                 corrected = try await answer(source, language, startsText)
             }
+
+            #if DEBUG
+            PassRecorder.shared.add(
+                source: source,
+                language: language,
+                reply: corrected,
+                took: ContinuousClock.now - askedAt
+            )
+            #endif
 
             /**
              Nothing came back after both wordings were tried, so the chunk
