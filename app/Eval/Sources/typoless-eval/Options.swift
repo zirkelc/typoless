@@ -186,6 +186,7 @@ struct Options: Sendable {
 
           --language, -l   \(CorrectionLanguage.allCases.map(\.code).joined(separator: " | "))
           --model, -m      \(Backends.all().map(\.id).joined(separator: " | "))
+                           and, when named, \(Candidate.considered.map(\.id).joined(separator: " | "))
           --variant, -v    \(PromptVariant.all.map(\.id).joined(separator: " | "))
           --guardrail, -g  on | off | both        (default both)
           --deadline       on | off               (default on, as the app runs)

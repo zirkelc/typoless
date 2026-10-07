@@ -45,11 +45,19 @@ extension EvalBackend {
 /** Every backend the app can be configured with, in a fixed order. */
 enum Backends {
     static func all() -> [any EvalBackend] {
-        SchemaMode.allCases.map { AppleBackend(schema: $0) } + LocalModel.allCases.map(MLXBackend.init)
+        SchemaMode.allCases.map { AppleBackend(schema: $0) } + Candidate.shipping.map(MLXBackend.init)
     }
 
+    /**
+     Everything that can be named, which is wider than what a bare run sweeps.
+
+     A model under consideration is measured only when it is asked for, so
+     nobody downloads several gigabytes by running the harness the usual way.
+     */
     static func named(_ id: String) -> (any EvalBackend)? {
-        all().first { $0.id == id }
+        if let backend = all().first(where: { $0.id == id }) { return backend }
+
+        return Candidate.considered.first { $0.id == id }.map(MLXBackend.init)
     }
 }
 
@@ -500,14 +508,14 @@ private struct OnlyText {
  run, which is also what the app does within a session.
  */
 actor MLXBackend: EvalBackend {
-    private let model: LocalModel
+    private let model: Candidate
     private var container: ModelContainer?
 
-    init(_ model: LocalModel) {
+    init(_ model: Candidate) {
         self.model = model
     }
 
-    nonisolated var id: String { model.rawValue }
+    nonisolated var id: String { model.id }
     nonisolated var displayName: String { model.displayName }
 
     func prepare() async throws {
