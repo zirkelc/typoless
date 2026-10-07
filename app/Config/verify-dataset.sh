@@ -48,7 +48,7 @@ cat > "$SOURCE" <<'SWIFT'
 // here, which is why this stays a stand-in.
 enum LocalModel: String, Equatable, Hashable, Sendable {
     case qwen35_2b
-    case gemma4_e4b
+    case gemma4_e2b
 }
 enum ModelChoice: Equatable, Hashable, Sendable {
     case appleOnDevice

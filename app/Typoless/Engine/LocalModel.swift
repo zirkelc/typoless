@@ -5,12 +5,12 @@ import MLXLMCommon
 /** A downloadable model that can stand in for Apple's on-device one. */
 enum LocalModel: String, CaseIterable, Sendable {
     case qwen35_2b
-    case gemma4_e4b
+    case gemma4_e2b
 
     var displayName: String {
         switch self {
         case .qwen35_2b: return "Qwen3.5 2B"
-        case .gemma4_e4b: return "Gemma 4 E4B"
+        case .gemma4_e2b: return "Gemma 4 E2B"
         }
     }
 
@@ -24,7 +24,7 @@ enum LocalModel: String, CaseIterable, Sendable {
     var approximateSize: String {
         switch self {
         case .qwen35_2b: return "1.6 GB"
-        case .gemma4_e4b: return "4.8 GB"
+        case .gemma4_e2b: return "3.3 GB"
         }
     }
 
@@ -76,7 +76,7 @@ enum LocalModel: String, CaseIterable, Sendable {
     var configuration: ModelConfiguration {
         switch self {
         case .qwen35_2b: return LLMRegistry.qwen3_5_2b_4bit
-        case .gemma4_e4b: return LLMRegistry.gemma4_e4b_it_4bit
+        case .gemma4_e2b: return LLMRegistry.gemma4_e2b_it_4bit
         }
     }
 
@@ -90,7 +90,22 @@ enum LocalModel: String, CaseIterable, Sendable {
     var usesThinkingBlocks: Bool {
         switch self {
         case .qwen35_2b: return true
-        case .gemma4_e4b: return false
+        case .gemma4_e2b: return false
+        }
+    }
+
+    /**
+     What the datasets say about it, in the fewest words that are true.
+
+     These are gigabytes somebody has to choose on purpose, and until now the
+     only thing said about either was its size. Size is the least useful half:
+     the smaller of the two is right about half as often, and a user picking by
+     download alone picks the worse one for the better reason.
+     */
+    var quality: String {
+        switch self {
+        case .qwen35_2b: return "Smallest, and much less accurate"
+        case .gemma4_e2b: return "As accurate as the built-in model"
         }
     }
 }

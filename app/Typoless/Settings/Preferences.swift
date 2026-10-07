@@ -332,13 +332,14 @@ final class Preferences {
             .flatMap(CorrectorBackend.init) ?? .appleOnDevice
 
         /**
-         Gemma by default because it is the one that measures well: it leads fix
-         recall by roughly 15 points over Apple's on-device model in both
-         languages. Anyone who had a since-removed model selected lands here
-         too, since an unknown name reads back as nil.
+         Gemma by default because it is the one that measures well: 80 per cent
+         exact match in English against Qwen's 41, and in German it finds 88 per
+         cent of the fixes where Apple's own model finds 69. Anyone who had a
+         since-removed model selected lands here too, since an unknown name
+         reads back as nil.
          */
         localModel = defaults.string(forKey: DefaultsKey.localModel)
-            .flatMap(LocalModel.init) ?? .gemma4_e4b
+            .flatMap(LocalModel.init) ?? .gemma4_e2b
 
         let denied = defaults.array(forKey: DefaultsKey.deniedBundleIDs) as? [String]
         deniedBundleIDs = Set(denied ?? Array(AppPolicy.defaultDenied))

@@ -158,8 +158,8 @@ private struct LanguageRow: View {
      what the mark meant.
 
      Which model is best is a measured fact per language, not a global one:
-     Apple's model wins English, German, French and Dutch, and Gemma wins
-     Spanish, Italian and Portuguese by between 13 and 25 points.
+     Apple's model holds English and German, and Gemma wins the other five, by
+     4 points in Dutch and by 24 to 27 in Spanish, Italian and Portuguese.
      */
     @ViewBuilder private var advice: some View {
         let best = language.bestModel

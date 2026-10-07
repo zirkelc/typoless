@@ -52,29 +52,34 @@ enum CorrectionLanguage: String, CaseIterable, Sendable, Identifiable {
      ones. `margin` is the points of exact match over the next best model, so 0
      means nothing else came close enough to matter.
 
-     Exact match rather than fixes found, and never against a model that alters
-     more text that was already right. Gemma finds more in every language it was
-     asked about, and in four of the seven it pays for that with text nobody
-     asked it to touch: in English it produced 93 unrequested changes against
-     Apple's 27 and left 19 of 29 correct messages alone where Apple left 28.
-     More fixes with more damage is not better.
+     Exact match rather than fixes found, because a model that finds every
+     error and keeps going is worse here than one that finds slightly fewer and
+     stops. That is not hypothetical: the Gemma this app used to ship led fix
+     recall in English, 92 per cent against 90, and produced 66 unrequested
+     changes across 127 cases against 10, which exact match reports as 43 per
+     cent against 80.
+
+     Measured over all seven datasets on one day, with the shipping wording and
+     the guardrail on. The downloaded model wins five of the seven, by 24 to 27
+     points in Spanish, Italian and Portuguese. English is a tie, and a tie goes
+     to the model with nothing to download.
      */
     var bestModel: (choice: ModelChoice, margin: Int) {
         switch self {
-        /** Apple 80% exact, Gemma 43%, Qwen 41%. */
-        case .english: return (.appleOnDevice, 37)
-        /** Apple 72%, Gemma 68%, Qwen 37%. */
-        case .german: return (.appleOnDevice, 4)
-        /** Apple 71%, Gemma 66%, Qwen 31%. Gemma finds more and breaks more. */
-        case .french: return (.appleOnDevice, 5)
-        /** Gemma 73%, Apple 53%, Qwen 39%, and Gemma left every correct text alone. */
-        case .spanish: return (.local(.gemma4_e4b), 20)
-        /** Gemma 81%, Apple 56%, Qwen 32%. The widest gap of the seven. */
-        case .italian: return (.local(.gemma4_e4b), 25)
-        /** Apple 77%, Gemma 62%, Qwen 25%. */
-        case .dutch: return (.appleOnDevice, 15)
-        /** Gemma 66%, Apple 53%, Qwen 28%. */
-        case .portuguese: return (.local(.gemma4_e4b), 13)
+        /** Apple 80%, Gemma 80%, Qwen 41%. Level, so the one already here wins. */
+        case .english: return (.appleOnDevice, 0)
+        /** Apple 72%, Gemma 71%, Qwen 36%. Gemma finds more, 88% of the fixes against 69%. */
+        case .german: return (.appleOnDevice, 1)
+        /** Gemma 79%, Apple 70%. */
+        case .french: return (.local(.gemma4_e2b), 9)
+        /** Gemma 79%, Apple 52%, and Gemma made one unrequested change in 60 cases. */
+        case .spanish: return (.local(.gemma4_e2b), 27)
+        /** Gemma 81%, Apple 57%. */
+        case .italian: return (.local(.gemma4_e2b), 24)
+        /** Gemma 79%, Apple 75%. The closest of the five it wins. */
+        case .dutch: return (.local(.gemma4_e2b), 4)
+        /** Gemma 81%, Apple 54%. */
+        case .portuguese: return (.local(.gemma4_e2b), 27)
         }
     }
 
