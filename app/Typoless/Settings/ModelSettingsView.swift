@@ -25,7 +25,6 @@ struct ModelSettingsView: View {
                     title: CorrectorBackend.appleOnDevice.displayName,
                     detail: "Built in, nothing to download",
                     isDefault: model.preferences.backend == .appleOnDevice,
-                    isTuned: true,
                     onMakeDefault: { model.use(.appleOnDevice) },
                     state: .ready
                 )
@@ -36,7 +35,6 @@ struct ModelSettingsView: View {
                         detail: detail(for: local),
                         isDefault: model.preferences.backend == .local
                             && model.preferences.localModel == local,
-                        isTuned: local == .gemma4_e4b,
                         onMakeDefault: { model.use(.local, model: local) },
                         state: state(of: local),
                         onDownload: { model.download(local) },
@@ -48,8 +46,17 @@ struct ModelSettingsView: View {
         }
     }
 
+    /**
+     What it costs and what it is worth, in that order.
+
+     The size alone was the whole description, which answered the easy question
+     and left the one that matters: a model that is half the download and half
+     as accurate reads as the sensible choice when only the first half is said.
+     */
     private func detail(for local: LocalModel) -> String {
-        local.isDownloaded ? "Downloaded" : "\(local.approximateSize) download"
+        let cost = local.isDownloaded ? "Downloaded" : "\(local.approximateSize) download"
+
+        return "\(cost) · \(local.quality)"
     }
 
     private func state(of local: LocalModel) -> ModelRow.State {
@@ -99,7 +106,6 @@ private struct ModelRow: View {
     let title: String
     let detail: String
     let isDefault: Bool
-    let isTuned: Bool
     let onMakeDefault: () -> Void
     let state: State
     var onDownload: (() -> Void)?
