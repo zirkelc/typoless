@@ -472,9 +472,44 @@ private struct HistoryRow: View {
 
                     Spacer(minLength: 0)
                 }
+                .contentShape(Rectangle())
+                .contextMenu { protection(for: note) }
             }
         }
         .padding(.top, 2)
+    }
+
+    /**
+     Taking a word out of Typoless's reach, from the row where it went wrong.
+
+     This is the moment the user knows the answer: they are looking at their
+     own word and at what the app wanted to make of it. A settings page asking
+     them to list the words they write would be the same question at the one
+     time they cannot answer it.
+
+     The word goes to the Mac's own dictionary rather than a list of ours. It
+     is the list the user already knows how to edit, the one "Learn Spelling"
+     writes to in every other app, and keeping a second one here would be a
+     second answer waiting to disagree with the first. The item says so, since
+     a change to the whole machine should never be a surprise.
+     */
+    @ViewBuilder private func protection(for note: CorrectionNote) -> some View {
+        let word = note.before.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        /** One word only: "never change this" has no meaning for half a sentence. */
+        if !word.isEmpty, !word.contains(where: \.isWhitespace) {
+            if WordList.isLearned(word) {
+                Button("Allow Changes to \u{201C}\(word)\u{201D}") {
+                    WordList.setLearned(false, for: word)
+                }
+                Text("Removes it from your Mac's dictionary")
+            } else {
+                Button("Never Change \u{201C}\(word)\u{201D}") {
+                    WordList.setLearned(true, for: word)
+                }
+                Text("Adds it to your Mac's dictionary, for every app")
+            }
+        }
     }
 
     private func excerpt(

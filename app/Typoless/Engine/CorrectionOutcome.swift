@@ -41,6 +41,8 @@ enum CorrectionRefusal: Sendable, Equatable {
      judged on its own and one of them was refused.
      */
     case lettersMoved
+    /** A word the user has taught their Mac, which is theirs and not a mistake. */
+    case learnedWord
 
     /** One sentence, in the words the history window and a report both use. */
     var summary: String {
@@ -69,6 +71,8 @@ enum CorrectionRefusal: Sendable, Equatable {
             return "The model would not answer this text."
         case .lettersMoved:
             return "A letter moves between these words, so they are corrected together or not at all."
+        case .learnedWord:
+            return "You taught this word to your Mac, so Typoless leaves it alone."
         }
     }
 }

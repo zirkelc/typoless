@@ -375,6 +375,58 @@ struct RewritingRefusedTests {
     }
 }
 
+/**
+ A word the user has taught their Mac is theirs, and is never corrected.
+
+ The dictionary answers what the language holds, which is the wrong question
+ for a name, a tool or a product: "mord" is one edit from "word", so every
+ spelling rule here is happy to make that change. Only the user can settle it,
+ and "Learn Spelling" is how they already do.
+ */
+struct LearnedWordTests {
+    private static let word = "mord"
+
+    @Test func `a word nobody taught the Mac is still corrected`() {
+        // Arrange
+        let wasLearned = WordList.isLearned(Self.word)
+        WordList.setLearned(false, for: Self.word)
+        defer { WordList.setLearned(wasLearned, for: Self.word) }
+
+        // Act
+        let result = Guardrail.corrected("the mord is wrong", "the word is wrong", in: .english)
+
+        // Assert
+        #expect(result == "the word is wrong")
+    }
+
+    @Test func `a word taught to the Mac is left exactly as written`() {
+        // Arrange
+        let wasLearned = WordList.isLearned(Self.word)
+        WordList.setLearned(true, for: Self.word)
+        defer { WordList.setLearned(wasLearned, for: Self.word) }
+
+        // Act
+        let result = Guardrail.corrected("the mord is wrong", "the word is wrong", in: .english)
+
+        // Assert
+        #expect(result == "the mord is wrong")
+    }
+
+    /** The rest of the sentence is still corrected, since one word is not a rewrite. */
+    @Test func `the words around it are still corrected`() {
+        // Arrange
+        let wasLearned = WordList.isLearned(Self.word)
+        WordList.setLearned(true, for: Self.word)
+        defer { WordList.setLearned(wasLearned, for: Self.word) }
+
+        // Act
+        let result = Guardrail.corrected("teh mord is wrnog", "the word is wrong", in: .english)
+
+        // Assert
+        #expect(result == "the mord is wrong")
+    }
+}
+
 /** Known gaps, pinned so they cannot change unnoticed. */
 struct KnownGapTests {
     /**
