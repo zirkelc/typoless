@@ -50,6 +50,73 @@ enum WordList {
     }
 
     /**
+     Whether the user has taught this word to their Mac.
+
+     A different question from whether it is a word, and a stronger one. The
+     dictionary says what the language holds; this says what this person
+     writes. "pnpm" is in no dictionary and is one edit from "ppm", which is in
+     every dictionary, so the rules that fix a typo will happily make that
+     change and call it a correction. Nothing but the user can settle it, and
+     the user already has: "Learn Spelling" is in the menu of every Mac text
+     field, and the answer belongs to the whole machine rather than to this
+     app.
+
+     Asked in the casings `contains` asks in, since a name taught in the middle
+     of a sentence is still the same name when it opens one.
+     */
+    static func isLearned(_ word: String) -> Bool {
+        let trimmed = String(withoutSurroundingMarks(word))
+
+        guard !trimmed.isEmpty else { return false }
+
+        let lowercased = trimmed.lowercased()
+        let capitalised = lowercased.prefix(1).uppercased() + lowercased.dropFirst()
+
+        lock.lock()
+        defer { lock.unlock() }
+
+        return [trimmed, lowercased, capitalised].contains {
+            NSSpellChecker.shared.hasLearnedWord($0)
+        }
+    }
+
+    /**
+     Teaches the word to the Mac, or takes it back.
+
+     Deliberately the system's list and not one of our own. A private list
+     would protect the word here and nowhere else, and would be a second place
+     the answer lives, which is how two answers start to disagree.
+     */
+    static func setLearned(_ isLearned: Bool, for word: String) {
+        let trimmed = String(withoutSurroundingMarks(word))
+
+        guard !trimmed.isEmpty else { return }
+
+        lock.lock()
+        defer { lock.unlock() }
+
+        if isLearned {
+            NSSpellChecker.shared.learnWord(trimmed)
+        } else {
+            NSSpellChecker.shared.unlearnWord(trimmed)
+        }
+    }
+
+    /** The word without the punctuation a sentence puts around it. */
+    private static func withoutSurroundingMarks(_ word: String) -> Substring {
+        var trimmed = Substring(word)
+
+        while let first = trimmed.first, !first.isLetter, !first.isNumber {
+            trimmed = trimmed.dropFirst()
+        }
+        while let last = trimmed.last, !last.isLetter, !last.isNumber {
+            trimmed = trimmed.dropLast()
+        }
+
+        return trimmed
+    }
+
+    /**
      The dictionary's name for a language. Some are only installed as a
      regional variant, Portuguese as `pt_PT` and `pt_BR`, so the bare code is
      not always one the spell checker knows.

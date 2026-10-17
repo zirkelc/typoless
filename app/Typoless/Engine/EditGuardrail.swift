@@ -154,6 +154,18 @@ enum EditGuardrail {
                 continue
             }
 
+            /**
+             Counted with protected text rather than against the model, for the
+             same reason: a name the user taught their Mac is not the model
+             straying, it is a word this person writes and nobody else does.
+             */
+            guard !changesALearnedWord(edit) else {
+                Log.app.info("Rejected an edit to a word the user taught their Mac")
+                protectedCount += 1
+                refusals.append(Refusal(edit: edit, reason: .learnedWord))
+                continue
+            }
+
             accepted.append(edit)
         }
 
@@ -446,6 +458,20 @@ enum EditGuardrail {
         }
 
         return pieces
+    }
+
+    /**
+     Whether this change touches a word the user has taught their Mac.
+
+     Asked of the text as written, not of the reply: the question is whether
+     the user meant the word, and the reply is the thing being doubted. Every
+     word of the change is asked about, since a run that moved a space holds
+     several and one of them is enough.
+     */
+    private static func changesALearnedWord(_ edit: TextEdit) -> Bool {
+        edit.original
+            .split(whereSeparator: \.isWhitespace)
+            .contains { WordList.isLearned(String($0)) }
     }
 
     /** Whether the second edit gains exactly the letters the first one loses. */
