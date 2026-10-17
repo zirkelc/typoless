@@ -3,6 +3,36 @@
     <channel>
         <title>Typoless</title>
         <item>
+            <title>0.1.9-beta</title>
+            <pubDate>Sat, 17 Oct 2026 13:57:48 +0200</pubDate>
+            <link>https://typoless.app</link>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:version>118</sparkle:version>
+            <sparkle:shortVersionString>0.1.9-beta</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description><![CDATA[<h3>Corrections</h3>
+<ul>
+    <li>A space typed in the wrong place between two words with typos in them is corrected now. "shoudlw e chnage the" becomes "should we change the". Before this, Typoless corrected one word, refused the other, and left the line worse than it found it.</li>
+    <li>A misspelling one letter shorter or longer than its fix is corrected. "oncistently" becomes "consistently".</li>
+    <li>Where the words around a moved space cannot all be corrected, none of them are, and the history says why. Your text is never left with a letter missing.</li>
+</ul>
+<h3>Your own words</h3>
+<ul>
+    <li>A word you have taught your Mac is never changed. Tool names, product names and surnames look like misspellings to any dictionary, and "pnpm" is one letter from "ppm", so Typoless used to accept that as a correction.</li>
+    <li>The history window offers "Never Change" on the word that went wrong. It adds the word to your Mac's dictionary, which protects it in every app, and the same menu takes it back out.</li>
+</ul>
+]]></description>
+            <enclosure url="https://typoless.app/releases/Typoless-0.1.9-beta.zip" length="8215587" type="application/octet-stream" sparkle:edSignature="pJvcPMm/mlsZmdNPQpa51os8kBYed1rWwX7tsFH6WVuVnN3n0t4RKpgXyuL6HpmXBgNHMHjk90YWYOtT51krAQ=="/>
+            <sparkle:deltas>
+                <enclosure url="https://typoless.app/releases/Typoless118-113.delta" sparkle:deltaFrom="113" length="568134" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="pEIAFOjPJkrlZoy3IYcMd8C44JeIwYE0SBsB39TtdpA0BERzgW2OAwlLbVbgdkNyKtRvNJ2V9dkMN7WYa9xKDQ=="/>
+                <enclosure url="https://typoless.app/releases/Typoless118-108.delta" sparkle:deltaFrom="108" length="612870" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="L9iDfo7acCAhkyU33i45ROfiv5lsvLIyzEjvDEFaK4sDS4z4dVxhHYt2X559mOGZHPS6wkCe/NhOXI95wm2oCQ=="/>
+                <enclosure url="https://typoless.app/releases/Typoless118-105.delta" sparkle:deltaFrom="105" length="616874" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="Yj0YhRVwDuih/pIrzz6UwI9z+iQi9McJdIYZ6nM1ha9eGVYxU1uBZtD+rt+aYH19uv7sid0rSBMwsGvR4tFwCA=="/>
+                <enclosure url="https://typoless.app/releases/Typoless118-102.delta" sparkle:deltaFrom="102" length="685866" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="MFOP7yzo137UZU1BRK2hrYsuUwNObKXtBvlaG7KCJVLc+rA91GG0ucEyMVTPdcQMav4T9iwbKpWblx+7SkQnAQ=="/>
+                <enclosure url="https://typoless.app/releases/Typoless118-92.delta" sparkle:deltaFrom="92" length="773850" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="n43J16vJd+lsP4QqD5E1J/OQ0dNuDhP1yQrjFBCc5i1cFC1Eb1rDM0iATN4y5DdGG55RcwbYgUbLwnN8iIZsDw=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>0.1.8-beta</title>
             <pubDate>Wed, 07 Oct 2026 10:37:59 +0200</pubDate>
             <link>https://typoless.app</link>
@@ -55,33 +85,6 @@
                 <enclosure url="https://typoless.app/releases/Typoless108-92.delta" sparkle:deltaFrom="92" length="769658" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="yD4+VaTLth1WonxJKbfdegwajIgRkwQC8GsaFULS97udAOtsunBT0ZNruhr4k2v00+LPbBgZtLaMNISBZi04Cw=="/>
                 <enclosure url="https://typoless.app/releases/Typoless108-89.delta" sparkle:deltaFrom="89" length="757198" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="b0sAuXqp38f6ydbIlg5vyYh7m0cHgZ97wlu+/7ktT03ekMaAvWhyt2zvtWrGVQ2p1SDvleV7lnJDpY1wh1p8CA=="/>
                 <enclosure url="https://typoless.app/releases/Typoless108-85.delta" sparkle:deltaFrom="85" length="784234" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="dJDHXPVHFu0kMyWojaHBmrDbvZr4b8ifT14uCPkNA6I8Jb/Tj49+wFwAU9Ljp1YenFUAF8WZOBz6rcsEcsrhBQ=="/>
-            </sparkle:deltas>
-        </item>
-        <item>
-            <title>0.1.6-beta</title>
-            <pubDate>Wed, 30 Sep 2026 15:00:59 +0200</pubDate>
-            <link>https://typoless.app</link>
-            <sparkle:channel>beta</sparkle:channel>
-            <sparkle:version>105</sparkle:version>
-            <sparkle:shortVersionString>0.1.6-beta</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description><![CDATA[<h3>Updates</h3>
-<ul>
-    <li>The menu bar no longer offers a version that has been overtaken. Typoless looks for a new version once a day without asking for anything, and pressing the notice checks again, so you are always offered the newest one and never have to update twice to catch up.</li>
-</ul>
-<h3>Settings</h3>
-<ul>
-    <li>A note under a setting that is switched off is dimmed, so it no longer reads as though it still applies.</li>
-</ul>
-]]></description>
-            <enclosure url="https://typoless.app/releases/Typoless-0.1.6-beta.zip" length="8203839" type="application/octet-stream" sparkle:edSignature="LBfW7SVerM33DtByta2J1nvgiH0LJkHcpttA4R4B+AOEGL3u6ILXZUXwIOZZZSU0MOViJfQfBx+yQ3Y+Jf+bDw=="/>
-            <sparkle:deltas>
-                <enclosure url="https://typoless.app/releases/Typoless105-102.delta" sparkle:deltaFrom="102" length="552062" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="jk2lTS+lRyQjz2pJDS6vdct0gwEYH3ZGybFMLF38fRT3C0I+wgjcpRWfYbRTOD0M8gaJZt7nWWlBws7D7vsyDg=="/>
-                <enclosure url="https://typoless.app/releases/Typoless105-92.delta" sparkle:deltaFrom="92" length="768234" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="fbpGt/QJjZdUASuj0nTA0/mb22g0TwrqcS0ZbapXr4Hg6yG4b4bS9VLSap9+GgseuJ5RHLST91QXnE3oEx1RAg=="/>
-                <enclosure url="https://typoless.app/releases/Typoless105-89.delta" sparkle:deltaFrom="89" length="774354" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="kRnn0Cz5nD3oWwV+wSWKmStEpoAC0OAsCd+MJto4GBW2b3ruBRzDPz0I75slnpe+VdCvXjzGVCSqk1OMt12bAA=="/>
-                <enclosure url="https://typoless.app/releases/Typoless105-85.delta" sparkle:deltaFrom="85" length="760994" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="HGg5ROyFGWynVtwbYUJVOuswKQjwHtoX0Phlf6/Bn7l6Flhz7TcWDXjT3Z+CRKhItnskoAJNO9SpwOH7KBI9BA=="/>
-                <enclosure url="https://typoless.app/releases/Typoless105-77.delta" sparkle:deltaFrom="77" length="781258" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="wYAf1nGJBAmg+xo0TxoDYvGzrIwjuNFROJ0Hia+klcyP74DJOu9Cw0ccBgIEqNj6uHVCL8HApErxy3t1Mif4DQ=="/>
             </sparkle:deltas>
         </item>
     </channel>
