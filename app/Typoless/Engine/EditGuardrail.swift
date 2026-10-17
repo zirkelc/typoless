@@ -77,11 +77,19 @@ enum EditGuardrail {
             rejected += 1
         }
 
+        let joined = joiningMovedLetters(edits, in: text)
+        edits = joined.edits
+
         for edit in edits {
-            guard let kinds = classify(edit, in: text, language: language) else {
+            let judged = joined.ranges.contains(edit.range)
+                ? classifyMovedSpace(edit, in: text, language: language)
+                : classify(edit, in: text, language: language)
+
+            guard let kinds = judged else {
+                let reason: CorrectionRefusal = joined.ranges.contains(edit.range) ? .lettersMoved : .notACorrection
                 Log.app.info("Rejected an edit that was not a correction")
                 rejected += 1
-                refusals.append(Refusal(edit: edit, reason: .notACorrection))
+                refusals.append(Refusal(edit: edit, reason: reason))
                 continue
             }
 
@@ -266,6 +274,192 @@ enum EditGuardrail {
 
     private static func isLetterOrNumber(_ character: Character) -> Bool {
         character.isLetter || character.isNumber
+    }
+
+    /**
+     Neighbouring edits joined where a letter crossed the space between them.
+
+     Two words are one change when the space between them moved. "shoudlw e
+     chnage" for "should we change" arrives as three edits, and the middle one,
+     "e" to "we", is refused as a word swap, which on its own is exactly what
+     it looks like. Applying the other two writes "should e change" into the
+     field, because the letter the first edit takes off is the letter the
+     refused one would have put back. Deleting a letter out of somebody's
+     sentence is the one thing a guardrail exists to prevent, and this was
+     doing it.
+
+     Found by the lengths rather than by the words: one edit loses exactly what
+     the next one gains, with nothing but whitespace between them. Two ordinary
+     typos side by side, "helo wrold" for "hello world", each gain a letter and
+     stay separate, so one of them being refused still leaves the other.
+
+     Joined rather than dropped, so the run is judged as one thing. Usually it
+     cannot be, and the whole run is refused, which leaves the sentence as the
+     user wrote it. That is worse than correcting it and much better than
+     breaking it.
+     */
+    private static func joiningMovedLetters(
+        _ edits: [TextEdit],
+        in text: String
+    ) -> (edits: [TextEdit], ranges: Set<Range<String.Index>>) {
+        guard edits.count > 1 else { return (edits, []) }
+
+        var result: [TextEdit] = []
+        var ranges: Set<Range<String.Index>> = []
+        var index = 0
+
+        while index < edits.count {
+            var group = edits[index]
+            var next = index + 1
+
+            while next < edits.count, movesLetters(from: group, to: edits[next], in: text) {
+                let gap = String(text[group.range.upperBound..<edits[next].range.lowerBound])
+
+                group = TextEdit(
+                    range: group.range.lowerBound..<edits[next].range.upperBound,
+                    original: group.original + gap + edits[next].original,
+                    replacement: group.replacement + gap + edits[next].replacement
+                )
+                ranges.insert(group.range)
+                next += 1
+            }
+
+            result.append(group)
+            index = next
+        }
+
+        return (result, ranges)
+    }
+
+    /**
+     A run whose spaces moved, judged where the reply puts the boundaries.
+
+     Joining the words stops the guardrail breaking them, and leaves it with a
+     change it cannot read: "shoudlw e chnage" against "should we change" is
+     three words becoming three other words, which is a rewrite by every test
+     here. Read with the spaces where the reply puts them it is something much
+     smaller, two transpositions and a space in the wrong place:
+
+         shoudl -> should      we -> we      chnage -> change
+
+     So the original's letters are re-split by the reply's word lengths and
+     each pair is judged on its own, in a copy of the text with the spaces
+     moved, which is the context those words really sit in. Every pair has to
+     be a correction. One rewrite among them and the whole run is refused, as
+     before.
+
+     Only where the letters balance exactly. A reply that also adds or drops a
+     letter cannot be lined up this way, and guessing where the missing letter
+     belongs is how a guardrail starts inventing text.
+     */
+    private static func classifyMovedSpace(
+        _ edit: TextEdit,
+        in text: String,
+        language: CorrectionLanguage?
+    ) -> Set<CorrectionRule>? {
+        guard let respaced = respacing(edit, in: text) else {
+            return classify(edit, in: text, language: language)
+        }
+
+        var kinds: Set<CorrectionRule> = [.spacing]
+
+        for part in respaced.edits {
+            guard let partKinds = classify(part, in: respaced.text, language: language) else {
+                return classify(edit, in: text, language: language)
+            }
+
+            kinds.formUnion(partKinds)
+        }
+
+        return kinds
+    }
+
+    /**
+     The same words with the spaces where the reply puts them, and the changes
+     that remain once they are there.
+     */
+    private static func respacing(
+        _ edit: TextEdit,
+        in text: String
+    ) -> (text: String, edits: [TextEdit])? {
+        let letters = edit.original.filter { !$0.isWhitespace }
+        let pieces = wordsAndGaps(of: edit.replacement)
+
+        guard
+            pieces.count > 1,
+            letters.count == edit.replacement.filter({ !$0.isWhitespace }).count
+        else {
+            return nil
+        }
+
+        var respaced = ""
+        var originals: [String] = []
+        var cursor = letters.startIndex
+
+        for piece in pieces {
+            guard let end = letters.index(cursor, offsetBy: piece.word.count, limitedBy: letters.endIndex) else {
+                return nil
+            }
+
+            originals.append(String(letters[cursor..<end]))
+            respaced += originals[originals.count - 1] + piece.gap
+            cursor = end
+        }
+
+        let prefix = text[text.startIndex..<edit.range.lowerBound]
+        let rebuilt = prefix + respaced + text[edit.range.upperBound...]
+
+        var index = rebuilt.index(rebuilt.startIndex, offsetBy: prefix.count)
+        var parts: [TextEdit] = []
+
+        for (piece, original) in zip(pieces, originals) {
+            let end = rebuilt.index(index, offsetBy: original.count)
+
+            if original != piece.word {
+                parts.append(TextEdit(range: index..<end, original: original, replacement: String(piece.word)))
+            }
+
+            index = rebuilt.index(end, offsetBy: piece.gap.count)
+        }
+
+        return (String(rebuilt), parts)
+    }
+
+    /** Each word with the spacing that follows it, which the reply decides. */
+    private static func wordsAndGaps(of text: String) -> [(word: Substring, gap: Substring)] {
+        var pieces: [(word: Substring, gap: Substring)] = []
+        var index = text.startIndex
+
+        while index < text.endIndex {
+            var wordEnd = index
+            while wordEnd < text.endIndex, !text[wordEnd].isWhitespace {
+                wordEnd = text.index(after: wordEnd)
+            }
+
+            var gapEnd = wordEnd
+            while gapEnd < text.endIndex, text[gapEnd].isWhitespace {
+                gapEnd = text.index(after: gapEnd)
+            }
+
+            pieces.append((text[index..<wordEnd], text[wordEnd..<gapEnd]))
+            index = gapEnd
+        }
+
+        return pieces
+    }
+
+    /** Whether the second edit gains exactly the letters the first one loses. */
+    private static func movesLetters(from first: TextEdit, to second: TextEdit, in text: String) -> Bool {
+        guard first.range.upperBound <= second.range.lowerBound else { return false }
+
+        let gap = text[first.range.upperBound..<second.range.lowerBound]
+
+        guard !gap.isEmpty, gap.allSatisfy(\.isWhitespace) else { return false }
+
+        let lost = first.original.count - first.replacement.count
+        let gained = second.replacement.count - second.original.count
+
+        return lost != 0 && lost == gained
     }
 
     /**
@@ -691,9 +885,14 @@ enum EditGuardrail {
 
          Unless the word is not a word at all and the fix is. "ectual" has no
          meaning to change, so "actual" can only be a fix, and "hte" can only
-         be "the". The length has to stay the same, a letter swapped or two
-         traded: a tool name is not in the dictionary either, and removing a
-         letter from the front of "pnpm" makes "npm", a different tool.
+         be "the". One letter of difference in length is allowed, no more: a
+         tool name is not in the dictionary either, and removing a letter from
+         the front of "pnpm" makes "npm", a different tool. A letter dropped
+         or doubled is the commonest typo there is, though, and holding the
+         length exactly equal refused "oncistently" for "consistently", which
+         is two edits and plainly not a word anyone meant. The distance cap
+         above is what keeps this honest: "nänlich" is not a word either, and
+         it stays four edits away from "namentlich".
 
          Two letters traded at the start are a typo even between real words:
          "sue" to "use". The same shape turns "on" into "no", which is the
@@ -727,7 +926,7 @@ enum EditGuardrail {
 
             guard
                 let language,
-                word.count == fix.count,
+                abs(word.count - fix.count) <= 1,
                 !WordList.contains(word, in: language),
                 WordList.contains(fix, in: language)
             else {

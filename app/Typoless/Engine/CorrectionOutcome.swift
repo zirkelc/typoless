@@ -36,6 +36,11 @@ enum CorrectionRefusal: Sendable, Equatable {
      now and again. Recorded only after the second wording was turned down too.
      */
     case modelDeclined
+    /**
+     A letter crossed the space between two words, so neither word could be
+     judged on its own and one of them was refused.
+     */
+    case lettersMoved
 
     /** One sentence, in the words the history window and a report both use. */
     var summary: String {
@@ -62,6 +67,8 @@ enum CorrectionRefusal: Sendable, Equatable {
             return "The pass ran out of time."
         case .modelDeclined:
             return "The model would not answer this text."
+        case .lettersMoved:
+            return "A letter moves between these words, so they are corrected together or not at all."
         }
     }
 }

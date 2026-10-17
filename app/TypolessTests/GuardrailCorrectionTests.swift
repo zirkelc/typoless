@@ -69,6 +69,39 @@ struct CorrectionsAppliedTests {
          */
         GuardrailCase("a space typed one letter late", "Very nice, shouldw e add", "Very nice, should we add", expect: "Very nice, should we add"),
         GuardrailCase("a space typed one letter early", "can w eadd it", "can we add it", expect: "can we add it"),
+        /**
+         A word nobody meant, one letter shorter than its fix.
+
+         Reported from a real message: "oncistently" is two edits from
+         "consistently" and well inside the budget, and it was refused because
+         the first letter changes and the two words are not the same length.
+         The length is what the rule was holding on to, and a letter dropped or
+         doubled is the commonest typo there is.
+         */
+        GuardrailCase(
+            "an unknown word one letter shorter than its fix",
+            "we did it oncistently",
+            "we did it consistently",
+            in: .english,
+            expect: "we did it consistently"
+        ),
+        /**
+         A moved space with a typo in each word around it.
+
+         Reported from a real message. The words cannot be judged apart: the
+         letter one of them loses is the letter the other gains, and "e" to
+         "we" reads as a word swap on its own. Judged apart, the guardrail used
+         to write "should e change the" into the field, which deletes a letter
+         out of the user's sentence. Read with the spaces where the reply puts
+         them, it is two transpositions and nothing else.
+         */
+        GuardrailCase(
+            "a moved space with a typo on each side of it",
+            "shoudlw e chnage the",
+            "should we change the",
+            in: .english,
+            expect: "should we change the"
+        ),
         /** Moving a space is spacing, so it needs the spacing rule like any other. */
         GuardrailCase(
             "a moved space is refused where spacing is not allowed",
@@ -282,6 +315,36 @@ struct RewritingRefusedTests {
             "wir fahren nach hause",
             "Wir fahren nach Häuserblock",
             expect: "Wir fahren nach hause"
+        ),
+        /**
+         Moving a space is not a licence for the words beside it.
+
+         The run with the moved space is corrected, "chnage" becoming "chance"
+         is refused as the word swap it is, and the typo past it still lands.
+         Three answers in one sentence, each about the words it belongs to.
+         */
+        GuardrailCase(
+            "a rewrite next to a moved space",
+            "shoudlw e chnage teh plan",
+            "should we chance the plan",
+            in: .english,
+            expect: "should we chnage the plan"
+        ),
+        /**
+         A moved space whose letters do not balance.
+
+         The run can only be re-split where the reply puts the boundaries when
+         both sides hold the same letters. Here the reply is a different
+         sentence, so there is nothing to line up, and guessing where a missing
+         letter belongs is how a guardrail starts inventing text. Refused
+         whole.
+         */
+        GuardrailCase(
+            "a moved space that is really a rewrite",
+            "w ecommunicate it",
+            "we celebrate it",
+            in: .english,
+            expect: "w ecommunicate it"
         ),
         /** Ignoring case in the spelling distance must not turn a word swap into a typo. */
         GuardrailCase(
