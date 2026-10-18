@@ -338,18 +338,22 @@ final class CorrectionEngine {
     /**
      What to say when the field did not move, which is not always the same thing.
 
-     "Nothing to fix" is a claim about the text, and it is wrong where the model
-     turned the text down: the user who hears it reads their own sentence again,
-     finds the mistake still in it, and presses the key a second time. Saying
-     which of the two happened is the difference between a pass that looks
-     broken and one that is merely unlucky.
+     "Nothing to fix" is a claim about the text, and it is false whenever
+     something was refused: the user who hears it reads their own sentence
+     again, finds the mistake still in it, and presses the key a second time.
+     The refusal already carries a sentence of its own, written for the history
+     window, and saying the same thing in both places means there is only one
+     wording to keep true.
+
+     Where several different reasons apply, none of them is the answer, so the
+     line says where all of them are instead.
      */
     private func message(whenNothingChanged outcome: CorrectionOutcome) -> String {
-        guard outcome.appliedCount == 0,
-              outcome.notes.contains(where: { $0.refusal == .modelDeclined })
-        else { return "Nothing to fix." }
+        if let reason = outcome.sharedRefusal { return reason }
 
-        return "The model would not answer that text."
+        guard outcome.notes.contains(where: { !$0.isApplied }) else { return "Nothing to fix." }
+
+        return "Nothing was corrected. History says why."
     }
 
     /**

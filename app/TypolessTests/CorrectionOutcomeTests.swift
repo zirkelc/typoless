@@ -175,6 +175,49 @@ struct CorrectionOutcomeTests {
         #expect(pass.outcome.notes.isEmpty)
     }
 
+    /**
+     What the line under the menu bar icon says when the field did not move.
+
+     "Nothing to fix" is a claim about the user's writing, and it was being
+     made about text that had plenty wrong with it, every time something was
+     refused.
+     */
+    @Test
+    func `one refusal speaks for the pass`() async throws {
+        // Arrange
+        var outcome = CorrectionOutcome()
+        outcome.add(CorrectionNote(before: "teh todo", after: nil, refusal: .modelDeclined))
+
+        // Act
+        let reason = outcome.sharedRefusal
+
+        // Assert
+        #expect(reason == CorrectionRefusal.modelDeclined.summary)
+    }
+
+    @Test
+    func `refusals that disagree speak for none of the pass`() async throws {
+        // Arrange
+        var outcome = CorrectionOutcome()
+        outcome.add(CorrectionNote(before: "teh todo", after: nil, refusal: .modelDeclined))
+        outcome.add(CorrectionNote(before: "384 KB", after: nil, refusal: .shouting))
+
+        // Act, Assert
+        #expect(outcome.sharedRefusal == nil)
+    }
+
+    /** A pass that corrected something has nothing to explain. */
+    @Test
+    func `a pass that changed the text reports no reason`() async throws {
+        // Arrange
+        var outcome = CorrectionOutcome()
+        outcome.add(CorrectionNote(before: "teh", after: "the"))
+        outcome.add(CorrectionNote(before: "mord", after: nil, refusal: .learnedWord))
+
+        // Act, Assert
+        #expect(outcome.sharedRefusal == nil)
+    }
+
     @Test
     func `a reply in capitals is refused and says so`() async throws {
         // Arrange

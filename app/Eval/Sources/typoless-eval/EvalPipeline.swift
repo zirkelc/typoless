@@ -136,7 +136,7 @@ struct EvalPipeline: Sendable {
             /** Read and left alone, so there is nothing to judge, as the app has it. */
             guard corrected != source else { continue }
 
-            let chunkEdits = TextDiff.edits(from: source, to: corrected)
+            var chunkEdits = TextDiff.edits(from: source, to: corrected)
                 .map { rebase($0, from: source, into: text, at: chunk) }
 
             unguardedEdits += chunkEdits
@@ -161,10 +161,22 @@ struct EvalPipeline: Sendable {
                 unguarded.mixedOffRuleEdits += mixed
             }
 
-            if detector.detect(corrected) != language || EditGuardrail.isShouting(corrected, over: source) {
+            if detector.detect(corrected) != language {
                 guarded.chunksDropped += 1
                 guarded.editsRejected += chunkEdits.count
                 continue
+            }
+
+            /** The capitals come off where a correction survives them, as the app does. */
+            if EditGuardrail.isShouting(corrected, over: source) {
+                guard let quietened = EditGuardrail.unshouted(corrected, over: source, language: language) else {
+                    guarded.chunksDropped += 1
+                    guarded.editsRejected += chunkEdits.count
+                    continue
+                }
+
+                chunkEdits = TextDiff.edits(from: source, to: quietened)
+                    .map { rebase($0, from: source, into: text, at: chunk) }
             }
 
             let verdict = EditGuardrail.filter(

@@ -156,7 +156,7 @@ enum ChunkedCorrection {
              that would not answer and a model that found nothing to fix look
              exactly alike in the field, and only one of them is a problem.
              */
-            guard let corrected else {
+            guard var corrected else {
                 pass.outcome.add(CorrectionNote(before: source, after: nil, refusal: .modelDeclined))
                 continue
             }
@@ -176,9 +176,19 @@ enum ChunkedCorrection {
             }
 
             if appliesGuardrail, EditGuardrail.isShouting(corrected, over: source) {
-                Log.app.info("Dropped a chunk the model returned in capitals")
-                pass.outcome.add(CorrectionNote(before: source, after: corrected, refusal: .shouting))
-                continue
+                /**
+                 The capitals come off where there is a correction underneath
+                 them, since this model shouts at the same text however it is
+                 asked and refusing costs the fixes it did get right.
+                 */
+                guard let quietened = EditGuardrail.unshouted(corrected, over: source, language: language) else {
+                    Log.app.info("Dropped a chunk the model returned in capitals")
+                    pass.outcome.add(CorrectionNote(before: source, after: corrected, refusal: .shouting))
+                    continue
+                }
+
+                Log.app.info("Took the capitals off a reply and kept what it fixed")
+                corrected = quietened
             }
 
             let chunkEdits = TextDiff.edits(from: source, to: corrected)

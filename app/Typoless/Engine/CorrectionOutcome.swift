@@ -135,6 +135,24 @@ struct CorrectionOutcome: Sendable, Equatable {
 
     var appliedCount: Int { notes.count(where: \.isApplied) }
 
+    /**
+     Why nothing reached the field, in the one sentence that is true of the
+     whole pass.
+
+     Nil where something was applied, where nothing was refused, or where the
+     refusals disagree, since naming one of several reasons would answer a
+     question the user did not ask. The history window holds all of them; this
+     is for the line that appears under the menu bar icon, where "Nothing to
+     fix" used to be said about text that had plenty wrong with it.
+     */
+    var sharedRefusal: String? {
+        guard appliedCount == 0 else { return nil }
+
+        let reasons = Set(notes.compactMap { $0.refusal?.summary })
+
+        return reasons.count == 1 ? reasons.first : nil
+    }
+
     mutating func add(language: CorrectionLanguage) {
         guard !languages.contains(language) else { return }
 
