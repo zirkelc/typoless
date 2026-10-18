@@ -281,6 +281,37 @@ struct ShoutingTests {
             expect: "run `pnpm install` before you build"
         ),
         GuardrailCase("two words are enough to shout", "ok thanks", "OK THANKS", in: .english, expect: "ok thanks"),
+        /**
+         Shouting with a correction underneath it.
+
+         This model shouts at text it finds odd, the same way every time it is
+         asked, so there is no second wording to try. Reported from a real
+         message, where refusing cost two fixes that were perfectly good once
+         the capitals came off. Every word that is still the user's own word
+         keeps the user's own case, so the capitals are never a fix in
+         themselves.
+         */
+        GuardrailCase(
+            "capitals come off a reply that really corrected something",
+            "teh mord is wrnog",
+            "THE MORD IS WRONG",
+            in: .english,
+            expect: "the mord is wrong"
+        ),
+        /**
+         A model that shouts is often wrong in other ways at the same time.
+
+         "mord" came back as "MORB", which reads as an ordinary one-letter typo
+         once the capitals are gone. The word it lands on is in no dictionary,
+         which is what tells this reply from the one above it.
+         */
+        GuardrailCase(
+            "a shouted reply that mangles a word is still refused",
+            "the mord is wrong",
+            "THE MORB IS WRONG",
+            in: .english,
+            expect: "the mord is wrong"
+        ),
         GuardrailCase("one word in capitals is an acronym", "asap", "ASAP", in: .english, expect: "ASAP"),
         GuardrailCase(
             "text written in capitals may stay in capitals",

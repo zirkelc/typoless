@@ -260,6 +260,51 @@ enum EditGuardrail {
         return countedWords(in: source).filter(isInCapitals).count < shouted.count
     }
 
+    /**
+     A reply in capitals, written back in the user's own case, or nil where
+     nothing is left of it.
+
+     Apple's model shouts at text it finds odd. "teh mord is wrnog" comes back
+     as "THE MORD IS WRONG" every time, quoted or not, so there is no second
+     wording to ask and refusing it costs two corrections that are perfectly
+     good underneath the capitals.
+
+     The capitals are dropped rather than trusted. Every word that is the same
+     word as the user's keeps the user's own casing, so a reply that shouted an
+     ordinary sentence changes nothing about it, and a capital the shouting
+     reply wanted to add is never one of the fixes that survive. What is left
+     is the words that really changed.
+
+     Two conditions, and the second one is why this is safe. If nothing is left
+     but capitals, there was no correction in the reply and it is refused as
+     before. And every word that did change has to land on a word the language
+     knows: a model that shouts is often wrong in other ways at the same time,
+     "the mord is wrong" came back as "THE MORB IS WRONG", and "morb" being in
+     no dictionary is what tells the two replies apart.
+     */
+    static func unshouted(_ reply: String, over source: String, language: CorrectionLanguage?) -> String? {
+        guard let language else { return nil }
+
+        let lowered = reply.lowercased()
+        let kept = TextDiff.edits(from: source, to: lowered).filter {
+            $0.original.lowercased() != $0.replacement.lowercased()
+        }
+
+        guard !kept.isEmpty else { return nil }
+
+        /** Each surviving change has to be a word, which a mangled one is not. */
+        for edit in kept {
+            for word in edit.replacement.split(whereSeparator: \.isWhitespace) {
+                let bare = withoutPunctuation(String(word))
+
+                guard bare.contains(where: \.isLetter) else { continue }
+                guard WordList.contains(bare, in: language) else { return nil }
+            }
+        }
+
+        return TextDiff.apply(kept, to: source)
+    }
+
     /** Words of two letters or more, outside protected text. */
     private static func countedWords(in text: String) -> [Substring] {
         let protected = ProtectedSpans.find(in: text)

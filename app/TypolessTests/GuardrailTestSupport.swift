@@ -75,8 +75,19 @@ enum Guardrail {
         allowing rules: Set<CorrectionRule> = Set(CorrectionRule.allCases),
         in language: CorrectionLanguage? = nil
     ) -> String {
-        /** The same order as the app: a reply in capitals is refused before its edits are judged. */
-        guard !EditGuardrail.isShouting(modelOutput, over: original) else { return original }
+        /**
+         The same order as the app: a reply in capitals has its capitals taken
+         off where a correction survives without them, and is refused outright
+         where one does not, both before any edit is judged.
+         */
+        var modelOutput = modelOutput
+        if EditGuardrail.isShouting(modelOutput, over: original) {
+            guard let quietened = EditGuardrail.unshouted(modelOutput, over: original, language: language) else {
+                return original
+            }
+
+            modelOutput = quietened
+        }
 
         let protected = ProtectedSpans.find(in: original)
         let verdict = EditGuardrail.filter(
