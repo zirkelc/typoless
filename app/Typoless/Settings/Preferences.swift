@@ -7,6 +7,9 @@ import SwiftUI
 enum DefaultsKey {
     static let hasCompletedOnboarding = "hasCompletedOnboarding"
     static let hasAskedForAccessibility = "hasAskedForAccessibility"
+
+    /** Debug builds only: report accessibility as missing, whatever the system says. */
+    static let pretendAccessibilityMissing = "pretendAccessibilityMissing"
     static let checksForUpdates = "checksForUpdates"
     static let lastUpdateCheck = "lastUpdateCheck"
     static let correctorBackend = "correctorBackend"

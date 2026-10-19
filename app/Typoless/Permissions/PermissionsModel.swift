@@ -19,6 +19,16 @@ final class PermissionsModel {
     /** Whether the on-device model is usable, and if not, why. */
     private(set) var modelAvailability: SystemLanguageModel.Availability
 
+    /**
+     Whether the user has asked for accessibility and has not come back with it.
+
+     The grant happens in another application, and this app cannot know how far
+     the user got in it. What it can say is that the question is open, which is
+     enough to keep a spinner turning beside the row and to offer the way back
+     to the pane instead of asking again.
+     */
+    private(set) var isAwaitingAccessibility = false
+
     /** Called whenever a gate opens or closes, including outside any UI. */
     @ObservationIgnored
     var onChange: (() -> Void)?
@@ -51,8 +61,9 @@ final class PermissionsModel {
     }
 
     init() {
-        isAccessibilityTrusted = AXIsProcessTrusted()
+        isAccessibilityTrusted = false
         modelAvailability = SystemLanguageModel.default.availability
+        isAccessibilityTrusted = isTrustedNow
 
         Log.permissions.info(
             "Launched with accessibility trusted: \(self.isAccessibilityTrusted, privacy: .public), model: \(String(describing: self.modelAvailability), privacy: .public)"
@@ -96,10 +107,12 @@ final class PermissionsModel {
      app is unsandboxed.
      */
     func requestAccessibility() {
-        if AXIsProcessTrusted() {
+        if isTrustedNow {
             refresh()
             return
         }
+
+        isAwaitingAccessibility = true
 
         /**
          The first press asks the system, which registers the app so that it has
@@ -187,14 +200,35 @@ final class PermissionsModel {
         }
     }
 
+    /**
+     Whether this app may read and write text in other applications.
+
+     In a debug build a default can hold the answer down at false. The setup
+     window and the helper that goes with it are only ever seen by somebody who
+     has not granted the permission yet, and a developer has granted it: the
+     alternative is taking the permission away to look at the window, which
+     takes the whole app down with it and needs a password to put back.
+     */
+    private var isTrustedNow: Bool {
+        #if DEBUG
+        if defaults.bool(forKey: DefaultsKey.pretendAccessibilityMissing) { return false }
+        #endif
+
+        return AXIsProcessTrusted()
+    }
+
     func refresh() {
         var didChange = false
 
-        let trusted = AXIsProcessTrusted()
+        let trusted = isTrustedNow
         if trusted != isAccessibilityTrusted {
             isAccessibilityTrusted = trusted
             didChange = true
             Log.permissions.info("Accessibility trust changed to \(trusted, privacy: .public)")
+        }
+
+        if trusted, isAwaitingAccessibility {
+            isAwaitingAccessibility = false
         }
 
         let availability = SystemLanguageModel.default.availability
@@ -233,8 +267,18 @@ final class PermissionsModel {
         pollTask = nil
     }
 
+    /**
+     Opens the list this app has to appear in.
+
+     The pane is named after the extension that draws it rather than after the
+     preference pane it replaced. Both names are accepted, and they do not go to
+     the same place: the older one now stops at Privacy and Security, one level
+     above the list, which leaves the user looking at twenty categories with no
+     reason to think Accessibility is the one. The anchor is only honoured by
+     the name that is current.
+     */
     func openAccessibilitySettings() {
-        open("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+        open("x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Accessibility")
     }
 
     func openAppleIntelligenceSettings() {
