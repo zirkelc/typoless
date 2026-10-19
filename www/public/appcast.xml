@@ -3,6 +3,46 @@
     <channel>
         <title>Typoless</title>
         <item>
+            <title>0.1.11-beta</title>
+            <pubDate>Mon, 19 Oct 2026 18:03:38 +0200</pubDate>
+            <link>https://typoless.app</link>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:version>128</sparkle:version>
+            <sparkle:shortVersionString>0.1.11-beta</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description><![CDATA[<h3>Setting up</h3>
+<ul>
+    <li>Setup is rebuilt. Six steps, one at a time, and what Typoless does now comes before what it needs.</li>
+    <li>Accessibility cannot be granted from inside the app that wants it, so Typoless now follows you into System Settings. While that window is in front and the permission is still missing, a small panel sits along the bottom of it with Typoless in it, ready to drag into the list. The copy you drop is the copy that gets the switch, which matters on a Mac that holds more than one.</li>
+    <li>The Allow button opens the Accessibility list itself. It used to stop at Privacy and Security, one level above it, with twenty categories and no reason to think Accessibility was the one.</li>
+    <li>The setup tour can be opened again at any time, from the new About page.</li>
+</ul>
+<h3>Your own words</h3>
+<ul>
+    <li>A tool, a product, a surname: the Mac has never heard of any of them, and each is a few letters from a word it has heard of, so a correction can turn "pnpm" into "ppm". Settings now has Custom words, which lists the words you write that no dictionary knows, once you have written one five times. Never Change teaches the word to your Mac, for every app. Ignore drops the question.</li>
+    <li>The counting happens in memory only and is never written to disk.</li>
+</ul>
+<h3>About</h3>
+<ul>
+    <li>The Privacy tab is now About, with the version, a check for updates, the links, the open-source licences and the setup tour. The sentence about password fields moved to the Apps page, next to the lists it belongs with.</li>
+</ul>
+<h3>Wording</h3>
+<ul>
+    <li>Two messages about fields Typoless leaves alone were long enough to push the rest of the menu off the top of the screen. Both are one line now.</li>
+    <li>Wording across the app and the website says who does what. A refusal that said "The pass ran out of time" now says "The correction ran out of time".</li>
+</ul>
+]]></description>
+            <enclosure url="https://typoless.app/releases/Typoless-0.1.11-beta.zip" length="8259111" type="application/octet-stream" sparkle:edSignature="Mst0/qHKlfEmjxlqg2zM6iIDObrNH+kuhPUEAs8xGs+jKfdQJz03JnmFF+R47euV24i0bumAtve1tpIG5iQ/Dw=="/>
+            <sparkle:deltas>
+                <enclosure url="https://typoless.app/releases/Typoless128-121.delta" sparkle:deltaFrom="121" length="790406" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="MZwHfD8NQNu8+0IlF8EnuxNrHFNMLZBF/SZzv4tMr2Su7MNzhcf6XtkgreSZST/xPcDY4SL9etnZQeheIL5rCw=="/>
+                <enclosure url="https://typoless.app/releases/Typoless128-118.delta" sparkle:deltaFrom="118" length="766214" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="IC26LOW4kvXIwhj53GamRGbpm+cQVnPFf0vD/oJMNE+wv6CK+S+LMsSnmeillXaM5BUzl+LA1UMQJBPRw7uGBw=="/>
+                <enclosure url="https://typoless.app/releases/Typoless128-113.delta" sparkle:deltaFrom="113" length="806062" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="jy8Rchl2Y0hk0/ZBriAdvdvbQcV3RGpvv1pzdkKQDyaP8L5oku9doPtabdAE18WDFm5EaYtbDgo+5conGAVBDg=="/>
+                <enclosure url="https://typoless.app/releases/Typoless128-108.delta" sparkle:deltaFrom="108" length="819814" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="+jpVbOPuSCf/qNSRYCv5Cvo9MA2VXXw2JUKCPkQn5t1qo1GC2s0NBQI4J+ZlrADvbQD1/9fBxwZ8unqnS7YBCA=="/>
+                <enclosure url="https://typoless.app/releases/Typoless128-105.delta" sparkle:deltaFrom="105" length="804382" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="onb8zEOY6ujMPqzhw6QAXmvuT4dhShPt8kW26e1dVbHdLKN9qZ+GbTTJQf3EY6VOVYHk59Jiab11+vBRlpa4CA=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>0.1.10-beta</title>
             <pubDate>Sun, 18 Oct 2026 14:11:12 +0200</pubDate>
             <link>https://typoless.app</link>
@@ -58,32 +98,6 @@
                 <enclosure url="https://typoless.app/releases/Typoless118-105.delta" sparkle:deltaFrom="105" length="616874" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="Yj0YhRVwDuih/pIrzz6UwI9z+iQi9McJdIYZ6nM1ha9eGVYxU1uBZtD+rt+aYH19uv7sid0rSBMwsGvR4tFwCA=="/>
                 <enclosure url="https://typoless.app/releases/Typoless118-102.delta" sparkle:deltaFrom="102" length="685866" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="MFOP7yzo137UZU1BRK2hrYsuUwNObKXtBvlaG7KCJVLc+rA91GG0ucEyMVTPdcQMav4T9iwbKpWblx+7SkQnAQ=="/>
                 <enclosure url="https://typoless.app/releases/Typoless118-92.delta" sparkle:deltaFrom="92" length="773850" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="n43J16vJd+lsP4QqD5E1J/OQ0dNuDhP1yQrjFBCc5i1cFC1Eb1rDM0iATN4y5DdGG55RcwbYgUbLwnN8iIZsDw=="/>
-            </sparkle:deltas>
-        </item>
-        <item>
-            <title>0.1.8-beta</title>
-            <pubDate>Wed, 07 Oct 2026 10:37:59 +0200</pubDate>
-            <link>https://typoless.app</link>
-            <sparkle:channel>beta</sparkle:channel>
-            <sparkle:version>113</sparkle:version>
-            <sparkle:shortVersionString>0.1.8-beta</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description><![CDATA[<h3>Models</h3>
-<ul>
-    <li>The downloaded model is now Gemma 4 E2B, in place of Gemma 4 E4B. It is 1.5 GB smaller, about three times faster, and corrects better in every language that was measured: 80% of English messages exactly right against 43%, and 79 to 81% in Spanish, French, Italian, Dutch and Portuguese. The larger model found slightly more errors and then changed text that was already right, which is the one thing this app is meant not to do.</li>
-    <li>Each model now says what it is worth beside what it costs, so a smaller download is no longer the only thing you have to go on.</li>
-    <li>The advice beside each language follows the new measurements. The downloaded model measures best in five of the seven languages now. English and German stay with the built-in model.</li>
-    <li>If you had Gemma 4 E4B selected, Typoless uses the new model and downloads it the first time you correct something. The old weights stay in <code>~/.cache/huggingface</code> until you remove them.</li>
-</ul>
-]]></description>
-            <enclosure url="https://typoless.app/releases/Typoless-0.1.8-beta.zip" length="8205004" type="application/octet-stream" sparkle:edSignature="1oeD4LU7DhGhjrn7knwD9ivv6614uZXltjbqDorOv+4qsEiLSitopGVHgXKBEqhZgM91B/bNtzOAv2Lg/3dUBw=="/>
-            <sparkle:deltas>
-                <enclosure url="https://typoless.app/releases/Typoless113-108.delta" sparkle:deltaFrom="108" length="337114" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="YE67DZx5ucyIkQHWV1PFTGJLq8WyLPcjoijsjqSodRjDGtAqS98uFdvxUVj2kWs/HJuw3Mhc55VTuK+aaDpABw=="/>
-                <enclosure url="https://typoless.app/releases/Typoless113-105.delta" sparkle:deltaFrom="105" length="419874" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="/XgWJyM6jhQGLpiCmHo9HtjGtuqlAEAhde3QCEgkDvH77tVWOSEuFDPWNtDwQOy5NoUJy05M+sLC1e3i+H3dBA=="/>
-                <enclosure url="https://typoless.app/releases/Typoless113-102.delta" sparkle:deltaFrom="102" length="621118" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="/+FVmo5XNCAvFvrColthBk5J3/mz3gJdvgp/RUIjz6uksUHucoUoocQT4tJyj97G+J5hUI/cI6CfxJmsSFXTDg=="/>
-                <enclosure url="https://typoless.app/releases/Typoless113-92.delta" sparkle:deltaFrom="92" length="782322" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="dp3Iz1Bx7gF60MGphW3h3ViY91UzsoCnsBGKzQiHjeTtKZeEAhQmeUy+uQBBDIep89grUC6Fb0ByDE0Ma+K+DA=="/>
-                <enclosure url="https://typoless.app/releases/Typoless113-89.delta" sparkle:deltaFrom="89" length="754850" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="1pLxV27G1SwTmcLV21y6A/uWOVjnX+d3RzAsUVlg34MY+tUoeBRWQeAo7fcrci+joaoIwhjpanCBptKriD7+AA=="/>
             </sparkle:deltas>
         </item>
     </channel>
