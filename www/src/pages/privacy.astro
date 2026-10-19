@@ -12,7 +12,7 @@ import Legal from '../layouts/Legal.astro';
   <p>
     Typoless corrects the text you are writing on your Mac. It has no account, no server and no analytics, and your
     text never leaves the machine. Three things do reach a network: an update check, which runs about once a day and
-    can be turned off, a download, and a bug report you submit yourself. Each one is described below.
+    which you can turn off, a download, and a bug report you submit yourself. Each one is described below.
   </p>
 
   <h2>The app</h2>
@@ -20,8 +20,8 @@ import Legal from '../layouts/Legal.astro';
   <h3>What it reads</h3>
   <p>
     The field you are typing in, at the moment you press the trigger, through the macOS Accessibility permission.
-    Nothing is read while you type, and no other field is read. Password fields are never read. Terminals and
-    password managers are excluded from the start, and you can exclude any other app.
+    Typoless reads nothing while you type, and no other field. It never reads a password field. It excludes
+    terminals and password managers from the start, and you can exclude any other app.
   </p>
 
   <h3>Where the text goes</h3>
@@ -33,12 +33,12 @@ import Legal from '../layouts/Legal.astro';
   <h3>What is kept</h3>
   <ul>
     <li>
-      <strong>History.</strong> Recent corrections are kept so you can undo them. In memory only, never written to
-      disk, and gone when you quit.
+      <strong>History.</strong> Typoless keeps recent corrections so you can undo them. In memory only, never
+      written to disk, and gone when you quit.
     </li>
     <li>
-      <strong>Settings.</strong> Your preferences are stored on your Mac in the usual place for a Mac app, and
-      nowhere else.
+      <strong>Settings.</strong> Typoless stores your preferences on your Mac, in the usual place for a Mac app,
+      and nowhere else.
     </li>
     <li>
       <strong>Logs.</strong> The local log is off unless you turn it on. It stays on your Mac, in the system log, and
@@ -48,7 +48,7 @@ import Legal from '../layouts/Legal.astro';
 
   <h3>Downloading a model</h3>
   <p>
-    If you choose a downloadable model, the weights are fetched from Hugging Face. That request goes to their servers
+    If you choose a downloadable model, Typoless fetches the weights from Hugging Face. That request goes to their servers
     and carries what any download carries, including your IP address. It happens only when you pick such a model, and
     never on your text.
   </p>
@@ -56,7 +56,7 @@ import Legal from '../layouts/Legal.astro';
   <h2>Updates</h2>
   <p>
     Typoless checks <a href="https://typoless.app">typoless.app</a> for a new version, about once a day. This is on
-    from the first launch and can be turned off in Settings, where you can also check by hand instead.
+    from the first launch, and you can turn it off in Settings, where you can also check by hand instead.
   </p>
   <p>
     Finding an update installs nothing. Typoless marks its menu bar icon and waits, and the version, the notes and
@@ -71,7 +71,7 @@ import Legal from '../layouts/Legal.astro';
   <h2>This website</h2>
   <p>
     The site is static and served by Cloudflare. It sets no cookies, runs no analytics script and loads nothing from
-    a third party: even the fonts are served from this domain, because a font request would hand your address to
+    a third party. Even the fonts come from this domain, because a font request would hand your address to
     someone else on every visit.
   </p>
   <p>
@@ -93,7 +93,7 @@ import Legal from '../layouts/Legal.astro';
   <h2>Bug reports</h2>
   <p>
     From the History window, and from the menu, Typoless can open a prefilled issue on{' '}
-    <a href="https://github.com/zirkelc/typoless/issues">GitHub</a>. Nothing is sent when it opens: the form appears
+    <a href="https://github.com/zirkelc/typoless/issues">GitHub</a>. Nothing is sent when it opens. The form appears
     in your browser, filled in, and you decide what to submit. A report about a correction includes the text before
     and after, so read it and delete anything you would rather not publish, because the tracker is public. What you
     submit is then covered by GitHub's privacy policy.
@@ -112,7 +112,7 @@ import Legal from '../layouts/Legal.astro';
 
   <h2>Changes</h2>
   <p>
-    This page changes when the app does. Typoless is open source, so what it does with your text can be read rather
-    than taken on trust, at <a href="https://github.com/zirkelc/typoless">github.com/zirkelc/typoless</a>.
+    This page changes when the app does. Typoless is open source, so you can read what it does with your text rather
+    than take it on trust, at <a href="https://github.com/zirkelc/typoless">github.com/zirkelc/typoless</a>.
   </p>
 </Legal>

@@ -172,7 +172,7 @@ private struct LanguageRow: View {
         if inUse == best.choice {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.green)
-                .help("\(best.choice.displayName) measured best for \(language.displayName), and corrects it.")
+                .help("\(best.choice.displayName) measured best for \(language.displayName), and is the one in use.")
                 .accessibilityLabel("\(language.displayName) uses \(best.choice.displayName), which measured best")
         } else {
             Image(systemName: "exclamationmark.triangle.fill")

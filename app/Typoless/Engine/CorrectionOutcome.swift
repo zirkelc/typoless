@@ -48,11 +48,11 @@ enum CorrectionRefusal: Sendable, Equatable {
     var summary: String {
         switch self {
         case .notACorrection:
-            return "Not a correction: the word became a different word."
+            return "The change would have replaced one word with a different word."
         case .ruleTurnedOff:
             return "This kind of change is turned off."
         case .protectedText:
-            return "Inside text Typoless never changes."
+            return "This is inside text Typoless never changes."
         case .languageNotCorrected(let detected):
             guard let detected else {
                 return "Not in a language Typoless corrects."
@@ -66,11 +66,11 @@ enum CorrectionRefusal: Sendable, Equatable {
         case .rewrite:
             return "The model rewrote the text rather than correcting it."
         case .outOfTime:
-            return "The pass ran out of time."
+            return "The correction ran out of time."
         case .modelDeclined:
             return "The model would not answer this text."
         case .lettersMoved:
-            return "A letter moves between these words, so they are corrected together or not at all."
+            return "A letter moves between these words, so Typoless corrects them together or not at all."
         case .learnedWord:
             return "You taught this word to your Mac, so Typoless leaves it alone."
         }
