@@ -55,7 +55,7 @@ struct SetupBanner: View {
 
         guard permissions.isAccessibilityTrusted else {
             return Notice(
-                message: "Typoless cannot read or write text until Accessibility is allowed. Nothing on this page has any effect until then.",
+                message: "Typoless cannot read or write text until you allow Accessibility. Nothing on this page has any effect until then.",
                 isBlocking: true
             )
         }

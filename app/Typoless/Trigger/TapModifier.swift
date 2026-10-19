@@ -46,7 +46,7 @@ enum TapModifier: String, CaseIterable, Sendable {
     var caution: String? {
         switch self {
         case .shift:
-            return "Shift is pressed for every capital letter, so this fires more easily by accident than the others."
+            return "You press Shift for every capital letter, so this fires by accident more often than the others."
         case .command, .option, .control:
             return nil
         }

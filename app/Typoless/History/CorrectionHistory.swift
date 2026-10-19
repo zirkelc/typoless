@@ -42,7 +42,7 @@ enum HistoryRetention: String, CaseIterable, Identifiable, Sendable {
     var footnote: String {
         switch self {
         case .off:
-            return "History is turned off."
+            return "History is off."
         case .untilQuit:
             return "Kept until Typoless quits. Never written to disk."
         case .oneHour, .threeHours, .eightHours:

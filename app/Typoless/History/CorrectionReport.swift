@@ -81,7 +81,7 @@ struct CorrectionReport {
 
         let lines = outcome.notes.map { note in
             let mark = note.isApplied ? "applied" : "not applied"
-            let reason = note.refusal.map { " — \($0.summary)" } ?? ""
+            let reason = note.refusal.map { ". \($0.summary)" } ?? ""
 
             return "- \(Self.firstLine(of: note.description, limit: 120)) (\(mark))\(reason)"
         }

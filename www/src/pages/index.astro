@@ -48,11 +48,11 @@ const steps = [
   },
   {
     title: 'Double-tap ⌘',
-    text: 'Or press a shortcut of your own. The field you are in is corrected where it is, in about a second.',
+    text: 'Or press a shortcut of your own. Typoless corrects the field you are in, in about a second.',
   },
   {
     title: 'Only mistakes change',
-    text: 'Your wording, tone and formatting stay yours. Changed your mind? Undo, or restore it from History.',
+    text: 'Your wording, tone and formatting stay yours. If you change your mind, undo it, or restore it from History.',
   },
 ];
 
@@ -72,15 +72,15 @@ const privacy = [
   },
   {
     title: 'Reads only when asked',
-    text: 'Nothing is watched while you type. Typoless reads the field you are in at the moment you trigger it, and no other.',
+    text: 'Typoless watches nothing while you type. It reads the field you are in at the moment you trigger it, and no other.',
   },
   {
     title: 'Never in the wrong place',
-    text: 'Password fields are never read. Terminals and password managers are excluded from the start, and you choose the rest.',
+    text: 'Typoless never reads a password field. It excludes terminals and password managers from the start, and you choose the rest.',
   },
   {
     title: 'History stays in memory',
-    text: 'Recent corrections are kept so you can undo them, in memory only. Quitting Typoless clears them.',
+    text: 'Typoless keeps recent corrections in memory only, so you can undo them. Quitting clears them.',
   },
 ];
 
@@ -90,7 +90,7 @@ const faq = [
   {
     question: 'How is this different from a grammar checker?',
     answer:
-      'A grammar checker suggests, and increasingly it rewrites: other words, another tone, sometimes another language. Typoless fixes typing mistakes and small grammar slips, like “she go” for “she goes”, and stops there. Every change is checked before it is written, and anything that is not spelling, a word ending, punctuation, capitals or spacing is dropped.',
+      'A grammar checker suggests, and increasingly it rewrites: other words, another tone, sometimes another language. Typoless fixes typing mistakes and small grammar slips, like “she go” for “she goes”, and stops there. It checks every change before writing it, and drops anything that is not spelling, a word ending, punctuation, capitals or spacing.',
   },
   {
     question: 'Does my text leave my Mac?',
@@ -105,7 +105,7 @@ const faq = [
   {
     question: 'Which languages does it correct?',
     answer:
-      'English, German, French, Spanish, Italian, Dutch and Portuguese. Each line is corrected in its own language, so a message that mixes two works too.',
+      'English, German, French, Spanish, Italian, Dutch and Portuguese. Typoless corrects each line in its own language, so a message that mixes two works too.',
   },
   {
     question: 'What if it gets something wrong?',
@@ -271,7 +271,7 @@ const faq = [
         <SectionHeading
           eyebrow="Why it exists"
           align="center"
-          intro="Writing tools have learned to rewrite. Ask for a spell check and you get a new sentence, in a voice that is not quite yours. Typoless does the part you actually wanted."
+          intro="Writing tools have learned to rewrite. Ask for a spell check and you get a new sentence, in a voice that is not quite yours. Typoless does the part you wanted."
         >
           Fix the typos. <em class="text-accent-ink">Keep the voice.</em>
         </SectionHeading>
@@ -328,7 +328,7 @@ const faq = [
       <div class="mx-auto grid max-w-6xl gap-14 px-6 lg:grid-cols-[1fr_1.2fr] lg:items-center">
         <SectionHeading
           eyebrow="What it fixes"
-          intro="Every change is checked before it is written. A change that is not one of these five is dropped, so a rephrased or translated sentence never reaches your text."
+          intro="Typoless checks every change before writing it, and drops anything that is not one of these five. A rephrased or translated sentence never reaches your text."
         >
           Five kinds of mistake. <em class="text-accent-ink">Nothing else.</em>
         </SectionHeading>
@@ -381,8 +381,8 @@ const faq = [
             Your text never leaves <em class="text-accent">your Mac.</em>
           </h2>
           <p class="mt-5 text-lg opacity-70">
-            No account, no cloud, no upload. Not as a setting you have to find, but because there is nowhere for
-            the text to go.
+            No account and no upload. There is no setting to turn on, because there is nowhere for the text to
+            go.
           </p>
         </div>
 
@@ -404,7 +404,7 @@ const faq = [
       <div class="grid gap-14 lg:grid-cols-2 lg:items-center">
         <SectionHeading
           eyebrow="Languages"
-          intro="Each line is corrected in its own language, so a message that starts in German and ends in English is fixed as both."
+          intro="Typoless corrects each line in its own language, so a message that starts in German and ends in English is fixed as both."
         >
           Write in the language <em class="text-accent-ink">you think in.</em>
         </SectionHeading>
