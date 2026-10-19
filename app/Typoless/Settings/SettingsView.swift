@@ -24,11 +24,7 @@ struct GeneralSettingsView: View {
                 }
 
                 if let updates {
-                    SettingsLine("Updates") {
-                        Button("Check Now") { updates.checkForUpdates() }
-                            .disabled(!updates.canCheckForUpdates)
-                    }
-
+                    /** The button that checks now is in About, beside the version it reports on. */
                     SettingsLine("Automatically check for updates") {
                         SettingsSwitch(
                             isOn: Binding(
@@ -92,27 +88,6 @@ struct GeneralSettingsView: View {
             get: { preferences.launchAtLogin == .on || preferences.launchAtLogin == .needsApproval },
             set: { preferences.setLaunchesAtLogin($0) }
         )
-    }
-}
-
-struct PrivacySettingsView: View {
-    var body: some View {
-        SettingsSurface {
-            SettingsSection("On this Mac") {
-                SettingsText(
-                    "Nothing leaves your Mac",
-                    text: "Corrections run on a local model on this machine. No text is uploaded and nothing is sent anywhere."
-                )
-            }
-
-            SettingsSection("Never read") {
-                SettingsText(text: """
-                Password fields are always ignored. Every app excluded under Apps is \
-                always ignored, and if you have named apps to correct in, every other \
-                app as well.
-                """)
-            }
-        }
     }
 }
 

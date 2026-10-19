@@ -359,7 +359,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let amount = AppStatus.percentage(progress) ?? "starting…"
         let name = model.activeDownload?.model.displayName ?? model.preferences.localModel.displayName
 
-        return "Downloading \(name) — \(amount)"
+        return "Downloading \(name), \(amount)"
     }
 
     /**
@@ -394,7 +394,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         for local in LocalModel.allCases {
             /** What it costs, unless it is being paid for right now. */
             let suffix = model.activeDownload?.model == local
-                ? " — downloading"
+                ? ", downloading"
                 : " (\(local.approximateSize))"
 
             add(to: menu, override: .local(local), title: "\(local.displayName)\(suffix)")
@@ -447,7 +447,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     @objc private func showAbout() {
-        AboutPanel.show()
+        model.showSettings(.about)
     }
 
     /**
