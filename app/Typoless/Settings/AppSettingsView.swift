@@ -37,11 +37,20 @@ struct AppSettingsView: View {
                 trailing: "Optional",
                 bundleIDs: preferences.allowedBundleIDs,
                 selection: $includedSelection,
-                emptyMessage: "No apps. Typoless corrects everywhere it is allowed.",
+                emptyMessage: "No apps. Typoless corrects everywhere except the apps above.",
                 onAdd: { preferences.allowedBundleIDs.insert($0) },
                 onRemove: { preferences.allowedBundleIDs.remove($0) },
                 note: "Only correct in these apps, or leave empty to correct everywhere."
             )
+
+            /**
+             The part of the answer that neither list can change, on the page
+             where the question is asked. It used to be on a Privacy page of
+             its own, two tabs away from the lists it qualifies.
+             */
+            SettingsSection("Always ignored") {
+                SettingsText(text: "Typoless never reads a password field, in any app, whatever these lists say.")
+            }
         }
     }
 }
