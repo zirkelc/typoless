@@ -379,17 +379,17 @@ enum TextWriteError: Error {
             return "Typoless could not write the correction back into that field."
         case .diverged:
             return "Typoless stopped because that field changed while it was being corrected."
+        /**
+         Short on purpose, both of these. They are read in the menu bar, where
+         the line sits beside the hint about the trigger, and the long version
+         of this one wrapped onto three lines and pushed the hint off the top
+         of the menu. What the user needs is which field was left alone and
+         why, not how the write would have been done.
+         */
         case .wouldFlattenField:
-            return """
-            Typoless left that text alone. This field only accepts being rewritten \
-            whole, which would have stripped its formatting to land a small fix.
-            """
+            return "Typoless left that field alone, since correcting it would have stripped its formatting."
         case .wouldLoseContent:
-            return """
-            Typoless left that text alone. This field holds something its text \
-            does not carry, such as an emoji drawn as an image, and correcting \
-            it here would have deleted that.
-            """
+            return "Typoless left that field alone, since correcting it would have deleted the parts that are not text."
         case .focusMoved:
             return "Typoless stopped because that text field is no longer focused."
         }
