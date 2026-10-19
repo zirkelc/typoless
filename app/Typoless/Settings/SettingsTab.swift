@@ -49,7 +49,12 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .general: GeneralSettingsView(preferences: model.preferences, updates: model.updates)
         case .models: ModelSettingsView(model: model)
         case .languages: LanguageSettingsView(preferences: model.preferences)
-        case .corrections: CorrectionSettingsView(preferences: model.preferences, history: model.history)
+        case .corrections:
+            CorrectionSettingsView(
+                preferences: model.preferences,
+                history: model.history,
+                unknownWords: model.unknownWords
+            )
         case .apps: AppSettingsView(preferences: model.preferences)
         case .privacy: PrivacySettingsView()
         }

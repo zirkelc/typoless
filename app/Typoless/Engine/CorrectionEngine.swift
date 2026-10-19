@@ -26,6 +26,7 @@ final class CorrectionEngine {
     private let overlay: OverlayController
     private let preferences: Preferences
     private let history: CorrectionHistory
+    private let unknownWords: UnknownWords
     private let escape = EscapeMonitor()
 
     private(set) var isRunning = false
@@ -62,12 +63,14 @@ final class CorrectionEngine {
         corrector: any Corrector,
         overlay: OverlayController,
         preferences: Preferences,
-        history: CorrectionHistory
+        history: CorrectionHistory,
+        unknownWords: UnknownWords
     ) {
         self.corrector = corrector
         self.overlay = overlay
         self.preferences = preferences
         self.history = history
+        self.unknownWords = unknownWords
     }
 
     /**
@@ -353,7 +356,7 @@ final class CorrectionEngine {
 
         guard outcome.notes.contains(where: { !$0.isApplied }) else { return "Nothing to fix." }
 
-        return "Nothing was corrected. History says why."
+        return "Nothing was corrected. Open History to see why."
     }
 
     /**
@@ -372,6 +375,13 @@ final class CorrectionEngine {
     ) async {
         let models = await corrector.modelsInLastPass()
         let outcome = await corrector.outcomeOfLastPass()
+
+        /**
+         Counted from the text as written, in the language the pass read it
+         as, so a word is only ever weighed against the dictionary that has an
+         opinion about it.
+         */
+        unknownWords.record(target.text, in: outcome.languages.first)
 
         history.record(
             before: target.text,

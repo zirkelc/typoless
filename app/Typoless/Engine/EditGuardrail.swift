@@ -969,6 +969,14 @@ enum EditGuardrail {
          "sue" to "use". The same shape turns "on" into "no", which is the
          model's call from context, and the same risk the guardrail already
          takes with "now" to "not". Only the swap, with nothing else changed.
+
+         Refusing every change between two real words was measured and is
+         wrong twice over. It costs four dataset cases that are exactly what
+         people ask for, "your" to "you're", "sue" to "use" and "tache" to
+         "tâches", and it protects nothing it was meant to: a tool name or a
+         surname is in no dictionary either, so the rule never fires on the
+         case it was aimed at. That case is the learned word list's, not this
+         rule's.
          */
         /**
          An accent put back on a word that is already a word.
