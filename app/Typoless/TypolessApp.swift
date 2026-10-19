@@ -98,6 +98,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let arguments = ProcessInfo.processInfo.arguments
         if let flag = arguments.firstIndex(of: "--show-settings") {
             let named = arguments.count > flag + 1 ? arguments[flag + 1] : ""
+            model.unknownWords.addSamples()
             model.showSettings(SettingsTab(rawValue: named))
         }
 

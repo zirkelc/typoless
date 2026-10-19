@@ -17,6 +17,9 @@ final class AppModel {
     let overlay = OverlayController()
     let history = CorrectionHistory()
 
+    /** Counted from what the user writes, and asked about in settings. */
+    let unknownWords = UnknownWords()
+
     /**
      Nil where the app was built without a feed or a signing key, which is
      every Debug build: the feed is set only in Release. Starting Sparkle then
@@ -120,7 +123,8 @@ final class AppModel {
             corrector: FoundationModelsCorrector(),
             overlay: overlay,
             preferences: preferences,
-            history: history
+            history: history,
+            unknownWords: unknownWords
         )
 
         modifierTaps.onDoubleTap = { [weak self] in self?.trigger() }
@@ -489,7 +493,7 @@ final class AppModel {
             engine.report(
                 permissions.isAccessibilityTrusted
                     ? "Typoless cannot correct until its model is ready."
-                    : "Typoless cannot read text until Accessibility is allowed.",
+                    : "Typoless cannot read text until you allow Accessibility.",
                 log: "Ignored a trigger while a permission was missing"
             )
             showOnboarding()

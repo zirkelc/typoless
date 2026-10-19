@@ -22,6 +22,7 @@ import SwiftUI
 struct CorrectionSettingsView: View {
     @Bindable var preferences: Preferences
     let history: CorrectionHistory
+    let unknownWords: UnknownWords
 
     /** Nil when every language is collapsed, which is a normal state to be in. */
     @State private var expanded: CorrectionLanguage?
@@ -31,7 +32,7 @@ struct CorrectionSettingsView: View {
         SettingsSurface {
             SettingsSection(
                 "Rules",
-                footer: "Every change is checked against these rules before it is applied, and a change that breaks one is dropped. Turning off a rule drops only that change and keeps the rest of the correction."
+                footer: "Typoless checks every change against these rules before applying it, and drops a change that breaks one. Turning off a rule drops only that change and keeps the rest of the correction."
             ) {
                 if added.isEmpty {
                     Text("No languages yet. Add one under Languages.")
@@ -48,11 +49,39 @@ struct CorrectionSettingsView: View {
                 }
             }
 
+            /**
+             Asked rather than applied, and only about a word written enough
+             times to be somebody's vocabulary rather than somebody's slip.
+             A name is in no dictionary, which is exactly what a misspelling
+             looks like, so this is the one question the app cannot answer on
+             its own.
+             */
+            SettingsSection(
+                "Custom words",
+                footer: "Words you write that your Mac does not know. Typoless may correct them into words it does know, so it asks you first. It counts them in memory only and never writes them to disk. Never Change adds the word to your Mac's dictionary, which holds for every app."
+            ) {
+                if unknownWords.suggestions.isEmpty {
+                    Text("Nothing to ask about. A word has to appear five times before Typoless counts it as yours.")
+                        .settingsEmptyRow()
+                }
+
+                ForEach(unknownWords.suggestions.prefix(5), id: \.self) { word in
+                    SettingsLine(
+                        word,
+                        note: "Written \(unknownWords.count(of: word)) times, and in no dictionary."
+                    ) {
+                        /** The same words as the history window's menu, for the same act. */
+                        Button("Ignore") { unknownWords.dismiss(word) }
+                        Button("Never Change") { WordList.setLearned(true, for: word) }
+                    }
+                }
+            }
+
             SettingsSection("History") {
                 SettingsLine(
                     "Keep history",
                     note: preferences.historyRetention.keepsHistory
-                        ? "Keeps each correction and the original text, so it can be undone later. In memory only, never written to disk and cleared when the application quits."
+                        ? "Keeps each correction and the original text, so it can be undone later. In memory only, never written to disk and cleared when Typoless quits."
                         : "Nothing is kept. Undo still covers the correction you just made, but anything before that is gone.",
                     isNoteActive: preferences.historyRetention.keepsHistory
                 ) {
@@ -229,5 +258,9 @@ private struct RuleRow: View {
 }
 
 #Preview {
-    CorrectionSettingsView(preferences: Preferences(), history: CorrectionHistory())
+    CorrectionSettingsView(
+        preferences: Preferences(),
+        history: CorrectionHistory(),
+        unknownWords: UnknownWords()
+    )
 }
