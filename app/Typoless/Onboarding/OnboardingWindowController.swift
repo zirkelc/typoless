@@ -12,6 +12,7 @@ import SwiftUI
 final class OnboardingWindowController: NSObject, NSWindowDelegate {
     private let model: AppModel
     private var window: NSWindow?
+    private var dragHelp: DragToAllowPanel?
 
     init(model: AppModel) {
         self.model = model
@@ -47,22 +48,39 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
     }
 
     func close() {
-        model.permissions.stopMonitoring()
+        stopHelpers()
         window?.orderOut(nil)
     }
 
     /** The red button does not go through `close`, so it needs its own hook. */
     func windowWillClose(_ notification: Notification) {
+        stopHelpers()
+    }
+
+    /**
+     Both of the things that watch the world rather than this window.
+
+     The drag helper is a window of its own on top of every other application,
+     so a setup window that closed without taking it down would leave it there
+     with nothing to close it.
+     */
+    private func stopHelpers() {
         model.permissions.stopMonitoring()
+        dragHelp?.stop()
     }
 
     private func makeWindow() -> NSWindow {
-        let view = OnboardingView(model: model) { [weak self] in
+        let dragHelp = DragToAllowPanel(permissions: model.permissions) { [weak self] in
+            self?.show()
+        }
+        self.dragHelp = dragHelp
+
+        let view = OnboardingView(model: model, dragHelp: dragHelp) { [weak self] in
             self?.close()
         }
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 500),
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 560),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -70,6 +88,20 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
         window.delegate = self
         window.title = "Set Up Typoless"
         window.titlebarAppearsTransparent = true
+        /**
+         The title would be printed over the first page, where the window says
+         what it is in letters ten times the size.
+         */
+        window.titleVisibility = .hidden
+        window.isMovableByWindowBackground = true
+        /**
+         Setup has one look, and it is this one. The rest of the app follows the
+         system appearance, because the rest of the app has to sit in the menu
+         bar beside everything else; this window is read once and is allowed to
+         be itself.
+         */
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.backgroundColor = NSColor(red: 0.075, green: 0.071, blue: 0.075, alpha: 1)
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: view)
         window.setContentSize(window.contentView?.fittingSize ?? window.frame.size)

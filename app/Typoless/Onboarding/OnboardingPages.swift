@@ -1,34 +1,112 @@
 import SwiftUI
 
-/** What the app is, before it asks for anything. */
-struct WelcomePage: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            ForEach(Self.points, id: \.text) { point in
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Image(systemName: point.symbol)
-                        .font(.title3)
-                        .foregroundStyle(.tint)
-                        .frame(width: 22)
-                        .accessibilityHidden(true)
+/**
+ What the app does, drawn as the keys that do it.
 
-                    Text(point.text)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
+ Both triggers can be changed from here, which makes this page the teaching and
+ the setting at once. That is deliberate: the gesture is the one thing somebody
+ has to remember after setup closes, and the surest way to remember it is to
+ have chosen it.
+ */
+struct TriggersPage: View {
+    @Bindable var preferences: Preferences
+
+    var body: some View {
+        OnboardingCard {
+            doubleTap
+            OnboardingDivider()
+            shortcut
+            OnboardingDivider()
+            undo
         }
     }
 
-    private struct Point {
-        let symbol: String
-        let text: String
+    private var doubleTap: some View {
+        HStack(alignment: .top, spacing: 12) {
+            HStack(spacing: 4) {
+                Keycap(label: preferences.doubleTapModifier.symbol)
+                Keycap(label: preferences.doubleTapModifier.symbol)
+            }
+            .frame(width: 56, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Toggle("Double-tap", isOn: $preferences.isDoubleTapEnabled)
+                    .toggleStyle(.checkbox)
+
+                Text(preferences.doubleTapModifier.caution
+                    ?? "Tap it twice, quickly, with no other key or click in between.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            Picker("", selection: $preferences.doubleTapModifier) {
+                ForEach(TapModifier.allCases, id: \.self) { modifier in
+                    Text(modifier.displayName).tag(modifier)
+                }
+            }
+            .labelsHidden()
+            .fixedSize()
+            .disabled(!preferences.isDoubleTapEnabled)
+        }
+        .onboardingRow()
     }
 
-    private static let points: [Point] = [
-        Point(symbol: "keyboard", text: "Press a key twice, and the field you are typing in is corrected where it stands."),
-        Point(symbol: "lock.laptopcomputer", text: "The model runs on this Mac. Nothing is uploaded, and there is no account."),
-        Point(symbol: "arrow.uturn.backward", text: "Every correction can be undone, and each one is kept in history until you quit."),
-    ]
+    private var shortcut: some View {
+        HStack(alignment: .top, spacing: 12) {
+            /**
+             A tile rather than the keys themselves. The combination is already
+             written out in the recorder at the end of this row, and a shortcut
+             with three modifiers and a named key is five keys wide, which is
+             wider than the column the other two rows line up against.
+             */
+            KeycapSymbol(symbol: "keyboard")
+                .frame(width: 56, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Toggle("Keyboard shortcut", isOn: $preferences.isHotKeyEnabled)
+                    .toggleStyle(.checkbox)
+
+                Text("One key combination, pressed once.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            ShortcutRecorder(shortcut: $preferences.hotKey)
+                .disabled(!preferences.isHotKeyEnabled)
+        }
+        .onboardingRow()
+    }
+
+    /**
+     The promise that makes the other two rows safe to try.
+
+     Nothing to set, which is why it is last. Somebody who has just read that
+     an app will rewrite what they type wants to know what it would take to
+     get their own words back, and the answer is one gesture.
+     */
+    private var undo: some View {
+        HStack(alignment: .top, spacing: 12) {
+            KeycapSymbol(symbol: "arrow.uturn.backward")
+                .frame(width: 56, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Undo")
+
+                Text("Every correction can be undone, and each one is kept in History until you quit.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+        }
+        .onboardingRow()
+    }
 }
 
 /** The two gates, each with the button that opens the right pane of System Settings. */
@@ -36,23 +114,27 @@ struct PermissionsPage: View {
     let permissions: PermissionsModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        OnboardingCard {
             PermissionRow(
+                symbol: "accessibility",
                 title: "Accessibility",
                 rationale: "Lets Typoless read the text in the field you are typing in, and write the corrections back.",
                 isSatisfied: permissions.isAccessibilityTrusted,
-                actionTitle: "Allow…",
+                isWaiting: permissions.isAwaitingAccessibility,
+                actionTitle: permissions.isAwaitingAccessibility ? "Open Settings" : "Allow",
                 action: { permissions.requestAccessibility() },
                 note: permissions.accessibilityNote
             )
 
-            Divider()
+            OnboardingDivider()
 
             PermissionRow(
+                symbol: "sparkles",
                 title: "Apple Intelligence",
                 rationale: permissions.modelAvailability.explanation,
                 isSatisfied: permissions.modelAvailability == .available,
-                actionTitle: permissions.modelAvailability.isActionable ? "Allow…" : nil,
+                isWaiting: false,
+                actionTitle: permissions.modelAvailability.isActionable ? "Allow" : nil,
                 action: permissions.modelAvailability.isActionable
                     ? { permissions.openAppleIntelligenceSettings() }
                     : nil
@@ -73,10 +155,10 @@ struct LanguagesPage: View {
     @Bindable var preferences: Preferences
 
     var body: some View {
-        VStack(spacing: 0) {
+        OnboardingCard {
             ForEach(Array(CorrectionLanguage.allCases.enumerated()), id: \.element) { index, language in
                 if index > 0 {
-                    Divider()
+                    OnboardingDivider()
                 }
 
                 /**
@@ -90,7 +172,8 @@ struct LanguagesPage: View {
                     Text(language.displayName)
                 }
                 .toggleStyle(.checkbox)
-                .padding(.vertical, 5)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -110,57 +193,6 @@ struct LanguagesPage: View {
     }
 }
 
-/** The two ways to start a correction, taught before the page that needs one. */
-struct TriggersPage: View {
-    @Bindable var preferences: Preferences
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Toggle("Double-tap", isOn: $preferences.isDoubleTapEnabled)
-                        .toggleStyle(.checkbox)
-
-                    Spacer()
-
-                    Picker("", selection: $preferences.doubleTapModifier) {
-                        ForEach(TapModifier.allCases, id: \.self) { modifier in
-                            Text(modifier.displayName).tag(modifier)
-                        }
-                    }
-                    .labelsHidden()
-                    .fixedSize()
-                    .disabled(!preferences.isDoubleTapEnabled)
-                }
-
-                Text(preferences.doubleTapModifier.caution
-                    ?? "Tap \(preferences.doubleTapModifier.symbol) twice, quickly, with no other key or click in between.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Toggle("Keyboard shortcut", isOn: $preferences.isHotKeyEnabled)
-                        .toggleStyle(.checkbox)
-
-                    Spacer()
-
-                    ShortcutRecorder(shortcut: $preferences.hotKey)
-                        .disabled(!preferences.isHotKeyEnabled)
-                }
-
-                Text("One key combination, pressed once.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-}
-
 /**
  The end of setup: the user corrects a real field with their own trigger.
 
@@ -176,13 +208,13 @@ struct TryItPage: View {
     let model: AppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             SampleField(
                 model: model,
                 caption: "The whole field",
                 sample: "i  think its ready , lets see if this works",
                 instruction: "with the cursor anywhere in the field.",
-                done: "The whole field was corrected."
+                done: "Typoless corrected the whole field."
             )
 
             /**
@@ -198,7 +230,7 @@ struct TryItPage: View {
                 caption: "Or only what you select",
                 sample: "thanks for the update. i will check teh numbers and come back to you",
                 instruction: "after selecting a few words. Only the selection changes.",
-                done: "Only the selected words were corrected."
+                done: "Typoless corrected only the words you selected."
             )
         }
     }
@@ -221,50 +253,58 @@ struct HistoryPage: View {
     let history: CorrectionHistory
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Keep corrections for")
+        OnboardingCard {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Keep corrections for")
 
-                Spacer()
+                    Spacer()
 
-                Picker("", selection: $preferences.historyRetention) {
-                    ForEach(HistoryRetention.allCases) { option in
-                        Text(option.displayName).tag(option)
+                    Picker("", selection: $preferences.historyRetention) {
+                        ForEach(HistoryRetention.allCases) { option in
+                            Text(option.displayName).tag(option)
+                        }
                     }
+                    .labelsHidden()
+                    .fixedSize()
                 }
-                .labelsHidden()
-                .fixedSize()
-            }
 
-            Text(preferences.historyRetention.keepsHistory
-                ? "In memory only, never written to disk, and cleared when Typoless quits. Undo covers the last correction; History covers the rest."
-                : "Nothing is kept. Undo still covers the correction you just made, and nothing before it.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Divider()
-
-            if history.entries.isEmpty {
-                Text("No corrections yet. Go back a step and fix one of the samples to see it here.")
+                Text(preferences.historyRetention.keepsHistory
+                    ? "In memory only, never written to disk, and cleared when Typoless quits. Undo covers the last correction; History covers the rest."
+                    : "Nothing is kept. Undo still covers the correction you just made, and nothing before it.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-            } else {
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(history.entries.prefix(2)) { entry in
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(entry.before)
-                                .strikethrough()
-                                .foregroundStyle(.secondary)
-                            Text(entry.after)
-                        }
-                        .font(.callout)
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(8)
-                        .background(.quinary, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            }
+            .onboardingRow()
+
+            OnboardingDivider()
+
+            entries
+                .onboardingRow()
+        }
+    }
+
+    @ViewBuilder private var entries: some View {
+        if history.entries.isEmpty {
+            Text("No corrections yet. Go back a step and fix one of the samples to see it here.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(history.entries.prefix(2)) { entry in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(entry.before)
+                            .strikethrough()
+                            .foregroundStyle(.secondary)
+                        Text(entry.after)
                     }
+                    .font(.callout)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
 
                 Text("Open History from the menu bar to put any of these back.")
@@ -297,53 +337,56 @@ private struct SampleField: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(caption)
-                .font(.headline)
+        OnboardingCard {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(caption)
+                    .font(.headline)
 
-            TextEditor(text: $text)
-                .focused($isFocused)
-                .font(.body)
-                .frame(height: 54)
-                .scrollContentBackground(.hidden)
-                .padding(6)
-                .background(.quinary, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-                .onChange(of: text) { _, new in
-                    if new != sample { hasChanged = true }
-                }
-
-            HStack(spacing: 10) {
-                if hasChanged {
-                    Label(done, systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-
-                    Button("Again") {
-                        text = sample
-                        hasChanged = false
-                        isFocused = true
+                TextEditor(text: $text)
+                    .focused($isFocused)
+                    .font(.body)
+                    .frame(height: 48)
+                    .scrollContentBackground(.hidden)
+                    .padding(6)
+                    .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .onChange(of: text) { _, new in
+                        if new != sample { hasChanged = true }
                     }
-                    .buttonStyle(.link)
-                } else {
-                    Text(instructionLine)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
 
-                Spacer(minLength: 8)
+                HStack(spacing: 10) {
+                    if hasChanged {
+                        Label(done, systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
 
-                /**
-                 The pass reads whichever field has focus, and a click moves
-                 focus to the button on a Mac with full keyboard access, so the
-                 field is focused again before anything is asked. A selection
-                 made by hand survives that, since focus returns to where it was.
-                 */
-                Button("Fix") {
-                    isFocused = true
-                    model.trigger()
+                        Button("Again") {
+                            text = sample
+                            hasChanged = false
+                            isFocused = true
+                        }
+                        .buttonStyle(.link)
+                    } else {
+                        Text(instructionLine)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    /**
+                     The pass reads whichever field has focus, and a click moves
+                     focus to the button on a Mac with full keyboard access, so the
+                     field is focused again before anything is asked. A selection
+                     made by hand survives that, since focus returns to where it was.
+                     */
+                    Button("Fix") {
+                        isFocused = true
+                        model.trigger()
+                    }
+                    .disabled(model.isPaused)
                 }
-                .disabled(model.isPaused)
+                .font(.subheadline)
             }
-            .font(.subheadline)
+            .onboardingRow()
         }
     }
 

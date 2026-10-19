@@ -13,23 +13,34 @@ import Foundation
  trigger has to exist before it can be pressed; and only then is there anything
  to try. Each step is blocked until the one before it is satisfied, so nobody
  reaches the sample field and finds that nothing happens.
+
+ The trigger comes before the permissions, which is the one place the order is
+ not a dependency. It is what the app does, and it costs the reader nothing. A
+ window that opens and asks for accessibility on its second breath has not yet
+ said what it wants it for.
  */
 enum OnboardingPage: Int, CaseIterable, Identifiable {
     case welcome
+    case triggers
     case permissions
     case languages
-    case triggers
     case tryIt
     case history
 
     var id: Int { rawValue }
 
+    /**
+     The first page carries the icon and no card, so it is laid out down the
+     middle of the window rather than from the top of it.
+     */
+    var isHero: Bool { self == .welcome }
+
     var title: String {
         switch self {
-        case .welcome: return "Typoless"
-        case .permissions: return "Let's set up permissions"
+        case .welcome: return "Welcome to Typoless"
+        case .triggers: return "How Typoless works"
+        case .permissions: return "Typoless needs two permissions"
         case .languages: return "Which languages do you write in?"
-        case .triggers: return "How to fix your text"
         case .tryIt: return "Try it out"
         case .history: return "If it gets something wrong"
         }
@@ -38,15 +49,15 @@ enum OnboardingPage: Int, CaseIterable, Identifiable {
     var subtitle: String {
         switch self {
         case .welcome:
-            return "Fixes the typos in whatever you are writing, wherever you are writing it. Everything runs on this Mac, and your text is never sent anywhere."
-        case .permissions:
-            return "Two things to allow. Neither can be granted from here, so each one opens System Settings."
-        case .languages:
-            return "The language of each line is detected, and only the languages you add are corrected."
+            return "Fixes the typos in the text you are writing, in any app. Everything runs on this Mac, so your text never leaves it."
         case .triggers:
-            return "Keep either one, or both. You can change them later under Settings."
+            return "Keep either way to start a correction, or both. You can change them later in Settings."
+        case .permissions:
+            return "You cannot grant either from here, so each button opens System Settings."
+        case .languages:
+            return "Typoless detects the language of each line, and corrects only the languages you add."
         case .tryIt:
-            return "Both fields take the same path Typoless takes in any other app."
+            return "Typoless corrects these fields exactly as it does in any other app."
         case .history:
             return "Every correction can be undone, and the ones you just made are below."
         }
@@ -54,7 +65,9 @@ enum OnboardingPage: Int, CaseIterable, Identifiable {
 
     /** What the button at the bottom says on this page. */
     var advanceTitle: String {
-        self == Self.allCases.last ? "Finish" : "Continue"
+        if self == .welcome { return "Get Started" }
+
+        return self == Self.allCases.last ? "Finish" : "Continue"
     }
 
     var next: OnboardingPage? {
@@ -63,10 +76,5 @@ enum OnboardingPage: Int, CaseIterable, Identifiable {
 
     var previous: OnboardingPage? {
         OnboardingPage(rawValue: rawValue - 1)
-    }
-
-    /** How far along the bar at the top is, counting this page as done. */
-    var progress: Double {
-        Double(rawValue + 1) / Double(Self.allCases.count)
     }
 }
