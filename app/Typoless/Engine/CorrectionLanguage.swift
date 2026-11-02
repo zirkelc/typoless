@@ -602,9 +602,27 @@ struct LanguageDetector: Sendable {
 
         let hypotheses = recognizer.languageHypotheses(withMaximum: CorrectionLanguage.allCases.count)
 
-        /** Sure of itself, so its answer stands either way. */
+        /**
+         Sure of itself, so its answer stands, unless the dictionaries disagree
+         before the text is dropped.
+
+         Sure is not the same as right when the text has typos. "create teh
+         draft in X, here is teh enw image:" reads as Dutch at 0.69 and was
+         dropped four times in a row, while two thirds of its words are English
+         and fewer than half are Dutch. A line that really is Dutch is known
+         to the Dutch dictionary at least as well as to any other, so it is
+         still left alone.
+         */
         if hypotheses[dominant, default: 0] >= Self.certainty {
-            return enabled.contains(match) ? .correct(match) : .leave(detected: match)
+            if enabled.contains(match) { return .correct(match) }
+
+            guard let written = writtenIn(text, ratherThan: match) else { return .leave(detected: match) }
+
+            Log.app.info(
+                "Read as \(match.rawValue, privacy: .public), but more of its words are \(written.rawValue, privacy: .public)"
+            )
+
+            return .correct(written)
         }
 
         /**
@@ -625,5 +643,25 @@ struct LanguageDetector: Sendable {
         } ?? enabled.first
 
         return likeliest.map(Choice.correct) ?? .leave(detected: match)
+    }
+
+    /**
+     The enabled language whose dictionary knows more of the words than the
+     detected language's does, or nil if none does.
+
+     Strictly more, so a tie keeps the recogniser's answer. Nil as well where
+     the Mac has no dictionary for the detected language, since a missing word
+     list would otherwise count as a language with no words at all.
+     */
+    private func writtenIn(_ text: String, ratherThan detected: CorrectionLanguage) -> CorrectionLanguage? {
+        guard let detectedShare = WordList.share(of: text, in: detected) else { return nil }
+
+        let best = enabled
+            .compactMap { language in WordList.share(of: text, in: language).map { (language, $0) } }
+            .max { $0.1 < $1.1 }
+
+        guard let best, best.1 > detectedShare else { return nil }
+
+        return best.0
     }
 }

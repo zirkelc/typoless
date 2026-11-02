@@ -50,6 +50,29 @@ enum WordList {
     }
 
     /**
+     How many of the words in a text this language's dictionary knows, from 0
+     to 1, or nil where the Mac has no dictionary for the language or the text
+     has no words.
+
+     A second opinion on the language, and one that holds up where the
+     recogniser does not. The recogniser judges by letter patterns, and a typo
+     changes exactly those: "teh" and "enw" are good Dutch patterns. The words
+     spelled correctly around the typo are still English words, and only a word
+     list can count them.
+     */
+    static func share(of text: String, in language: CorrectionLanguage) -> Double? {
+        guard dictionaryCode(for: language) != nil else { return nil }
+
+        let words = text.split(whereSeparator: \.isWhitespace).filter { $0.contains(where: \.isLetter) }
+
+        guard !words.isEmpty else { return nil }
+
+        let known = words.filter { contains(String($0), in: language) }
+
+        return Double(known.count) / Double(words.count)
+    }
+
+    /**
      Whether the user has taught this word to their Mac.
 
      A different question from whether it is a word, and a stronger one. The

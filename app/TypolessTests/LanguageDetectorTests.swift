@@ -45,6 +45,24 @@ struct LanguageDetectorTests {
             expected: .english
         ),
         Case(
+            name: "typos that read as Dutch with confidence",
+            text: "create teh draft in X, here is teh enw image:",
+            enabled: [.english, .german],
+            expected: .english
+        ),
+        Case(
+            name: "a Dutch line where Dutch is not corrected",
+            text: "kun je even kijken of de build nog groen is",
+            enabled: [.english, .german],
+            expected: nil
+        ),
+        Case(
+            name: "a Portuguese line where Portuguese is not corrected",
+            text: "Eu já mandei a nova versão para o cliente ontem.",
+            enabled: [.english, .german],
+            expected: nil
+        ),
+        Case(
             name: "a confident German line where German is not corrected",
             text: "Ich habe das Thema gestern mit dem Team besprochen und wir sind uns einig.",
             enabled: [.english],
