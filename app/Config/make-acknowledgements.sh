@@ -21,6 +21,7 @@ RESOLVED=Typoless.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.res
 OUTPUT=Typoless/Resources/Acknowledgements.txt
 
 source Config/derived-data.sh
+prepare_xcode
 CHECKOUTS="$(source_packages_dir)/checkouts"
 
 mkdir -p "$(dirname "$OUTPUT")"

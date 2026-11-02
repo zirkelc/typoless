@@ -86,10 +86,11 @@ if [ -f "$RELEASES/appcast.xml" ]; then
 fi
 
 source Config/derived-data.sh
+prepare_xcode
 SPARKLE_BIN="$(source_packages_dir)/artifacts/sparkle/Sparkle/bin"
 
 if [ ! -x "$SPARKLE_BIN/generate_appcast" ]; then
-    echo "Sparkle's tools are not in $SPARKLE_BIN. Build the app once first."
+    echo "Sparkle's tools are not in $SPARKLE_BIN, although the packages were resolved."
     exit 1
 fi
 
@@ -113,12 +114,9 @@ fi
 # those then fails for want of a development team it has no reason to have.
 echo "==> Archiving $VERSION (build $BUILD_NUMBER)"
 xcodebuild archive \
-    -project Typoless.xcodeproj \
-    -scheme Typoless \
+    "${XCODE_FLAGS[@]}" \
     -configuration Release \
     -archivePath "$ARCHIVE" \
-    -skipPackagePluginValidation \
-    -skipMacroValidation \
     MARKETING_VERSION="$VERSION" \
     CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
 

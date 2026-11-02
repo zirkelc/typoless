@@ -177,7 +177,7 @@ anywhere, but the examples assume the `app` folder.
 ```sh
 cd app
 xcodebuild -project Typoless.xcodeproj -scheme Typoless build
-xcodebuild test -project Typoless.xcodeproj -scheme Typoless -destination 'platform=macOS'   # 61 tests, no model needed
+./Config/test.sh                    # unit tests, no model needed, with the release's Xcode setup
 ./Config/verify-dataset.sh          # every eval case can reach its expected text
 ./Config/release.sh 0.2.0           # sign, notarize, package, upload to R2, write the appcast
 swift Config/make-app-icon.swift    # app icon and the site's logo files, from design/logo
