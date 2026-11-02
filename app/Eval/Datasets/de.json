@@ -1121,6 +1121,74 @@
         "shortcode",
         "protected"
       ]
+    },
+    {
+      "id": "de-multi-05",
+      "input": "Hast du irgednwelche Webseiten woe du ein Impressum hast?",
+      "expected": "Hast du irgendwelche Webseiten, wo du ein Impressum hast?",
+      "tags": [
+        "spelling",
+        "comma",
+        "subordinate-clause",
+        "multi-error"
+      ]
+    },
+    {
+      "id": "de-multi-06",
+      "input": "Dafür habe ich zwei neue Flags eingeführt welche man nutzen kann um eine Route temoporär zu deaktivieren.",
+      "expected": "Dafür habe ich zwei neue Flags eingeführt, welche man nutzen kann, um eine Route temporär zu deaktivieren.",
+      "tags": [
+        "spelling",
+        "comma",
+        "subordinate-clause",
+        "multi-error",
+        "umlaut"
+      ]
+    },
+    {
+      "id": "de-spell-08",
+      "input": "Ich bin mir wirklihc sehr sicher",
+      "expected": "Ich bin mir wirklich sehr sicher",
+      "tags": [
+        "spelling"
+      ]
+    },
+    {
+      "id": "de-spell-09",
+      "input": "Zur Sicherheit gibt es zwei automatsiche Anpassungen und alle alten Routen werden deakrtiviert.",
+      "expected": "Zur Sicherheit gibt es zwei automatische Anpassungen und alle alten Routen werden deaktiviert.",
+      "tags": [
+        "spelling",
+        "multi-error"
+      ]
+    },
+    {
+      "id": "de-spell-10",
+      "input": "Ihr könnt einzelne Seiten auch direkt in den Einstellungen auschließen.",
+      "expected": "Ihr könnt einzelne Seiten auch direkt in den Einstellungen ausschließen.",
+      "tags": [
+        "spelling",
+        "umlaut"
+      ]
+    },
+    {
+      "id": "de-uml-09",
+      "input": "Sehr gut, die Skills will ich nänlich auch mal ausprobieren",
+      "expected": "Sehr gut, die Skills will ich nämlich auch mal ausprobieren",
+      "tags": [
+        "umlaut",
+        "spelling"
+      ]
+    },
+    {
+      "id": "de-neg-14",
+      "input": "Hi Anna,\nkannst du dir das bis morgen anschauen?",
+      "expected": "Hi Anna,\nkannst du dir das bis morgen anschauen?",
+      "tags": [
+        "negative",
+        "multiline",
+        "umlaut"
+      ]
     }
   ]
 }

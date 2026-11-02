@@ -1243,6 +1243,57 @@
       "alternatives": [
         "LGTM :thumbsup:"
       ]
+    },
+    {
+      "id": "en-multi-06",
+      "input": "create teh draft in X, here is teh enw image:",
+      "expected": "Create the draft in X, here is the new image:",
+      "tags": [
+        "spelling",
+        "casing",
+        "multi-error"
+      ]
+    },
+    {
+      "id": "en-multi-07",
+      "input": "teh mord is wrnog",
+      "expected": "The word is wrong",
+      "tags": [
+        "spelling",
+        "casing",
+        "multi-error"
+      ]
+    },
+    {
+      "id": "en-multi-08",
+      "input": "merge this with the ther formatOrderNote and give it a unifed siagnture that works with both",
+      "expected": "Merge this with the other formatOrderNote and give it a unified signature that works with both",
+      "tags": [
+        "spelling",
+        "casing",
+        "multi-error",
+        "code"
+      ]
+    },
+    {
+      "id": "en-spell-10",
+      "input": "name it oncistently",
+      "expected": "Name it consistently",
+      "tags": [
+        "spelling",
+        "casing"
+      ]
+    },
+    {
+      "id": "en-unfinished-09",
+      "input": "shoudlw e chnage the",
+      "expected": "Should we change the",
+      "tags": [
+        "unfinished",
+        "spacing",
+        "spelling",
+        "casing"
+      ]
     }
   ]
 }
